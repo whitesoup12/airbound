@@ -2,7 +2,7 @@ import Airport from '../models/Airport.js';
 
 export async function getAirports(req, res) {
   try {
-    const { q, limit = 50 } = req.query;
+    const { q, limit = 200 } = req.query;
     const filter = {};
 
     if (q) {
@@ -15,8 +15,9 @@ export async function getAirports(req, res) {
       ];
     }
 
+    const maxLimit = Math.min(1000, parseInt(limit, 10) || 200);
     const airports = await Airport.find(filter)
-      .limit(parseInt(limit, 10))
+      .limit(maxLimit)
       .sort({ icao: 1 });
 
     res.json(airports);
@@ -28,13 +29,15 @@ export async function getAirports(req, res) {
 export async function getAirportByIcao(req, res) {
   try {
     const { icao } = req.params;
-    const airport = await Airport.findOne({ icao: icao.toUpperCase() });
+    const targetIcao = icao.toUpperCase().trim();
+    let airport = await Airport.findOne({ icao: targetIcao });
+
     if (!airport) {
-      return res.status(404).json({ error: 'Airport not found' });
+      return res.status(404).json({ error: `Airport '${targetIcao}' not found in database.` });
     }
+
     res.json(airport);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 }
-

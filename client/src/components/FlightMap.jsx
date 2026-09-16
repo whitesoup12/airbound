@@ -86,53 +86,63 @@ export function FlightMap({ telemetry, activeJob, visitedAirports = [], allAirpo
   );
 
   return (
-    <div className="relative w-full h-[520px] rounded-2xl overflow-hidden border border-slate-800 shadow-2xl glass-panel">
-      {/* Map Header Overlay Controls */}
-      <div className="absolute top-3 left-3 z-[400] flex items-center space-x-2 bg-slate-950/85 backdrop-blur-md p-1.5 rounded-xl border border-slate-800 text-xs font-mono shadow-xl">
-        <button
-          onClick={() => setFollowAircraft(!followAircraft)}
-          className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg font-medium transition ${
-            followAircraft
-              ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-              : 'bg-slate-800 text-slate-400 hover:text-white'
-          }`}
-        >
-          <Navigation className={`w-3.5 h-3.5 ${followAircraft ? 'text-cyan-400 animate-spin' : ''}`} />
-          <span>{followAircraft ? 'LOCKED ON AIRCRAFT' : 'FREE CAM'}</span>
-        </button>
+    <div className="rounded-2xl overflow-hidden border border-slate-800 shadow-2xl glass-panel bg-slate-950 flex flex-col">
+      {/* Dedicated Tactical Radar Toolbar */}
+      <div className="px-4 py-2.5 bg-slate-950/90 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+        <div className="flex items-center space-x-2.5">
+          <button
+            type="button"
+            onClick={() => setFollowAircraft(!followAircraft)}
+            className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg font-bold transition shadow-sm ${
+              followAircraft
+                ? 'bg-cyan-500 text-slate-950 border border-cyan-400 shadow-cyan-500/30'
+                : 'bg-slate-800 text-slate-300 hover:text-white border border-slate-700'
+            }`}
+          >
+            <Navigation className={`w-3.5 h-3.5 ${followAircraft ? 'text-slate-950 animate-spin' : 'text-slate-400'}`} />
+            <span>{followAircraft ? 'LOCKED ON AIRCRAFT' : 'FREE CAM'}</span>
+          </button>
 
-        <div className="hidden sm:flex items-center space-x-3 px-2 text-slate-400 text-[11px]">
-          <div className="flex items-center space-x-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+          <span className="text-[11px] text-slate-400 hidden md:inline">
+            {followAircraft ? '(Camera tracks aircraft live)' : '(Click to lock view on aircraft)'}
+          </span>
+        </div>
+
+        {/* Waypoint Legend */}
+        <div className="flex items-center space-x-4 text-[11px] text-slate-300">
+          <div className="flex items-center space-x-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
             <span>Origin</span>
           </div>
-          <div className="flex items-center space-x-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+          <div className="flex items-center space-x-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-sm shadow-amber-400/50" />
             <span>Destination</span>
           </div>
-          <div className="flex items-center space-x-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-purple-400" />
+          <div className="flex items-center space-x-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-purple-400 shadow-sm shadow-purple-400/50" />
             <span>Visited ({visitedAirports.length})</span>
           </div>
         </div>
       </div>
 
-      <MapContainer
-        center={aircraftPos}
-        zoom={7}
-        zoomControl={false}
-        scrollWheelZoom={true}
-        className="w-full h-full"
-      >
-        <ZoomControl position="bottomright" />
-        {/* Dark Avionics Tile Layer */}
-        <TileLayer
-          attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          maxZoom={18}
-        />
+      {/* Map Canvas */}
+      <div className="w-full h-[480px]">
+        <MapContainer
+          center={aircraftPos}
+          zoom={7}
+          zoomControl={false}
+          scrollWheelZoom={true}
+          className="w-full h-full"
+        >
+          <ZoomControl position="bottomright" />
+          {/* Dark Avionics Tile Layer */}
+          <TileLayer
+            attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+            maxZoom={18}
+          />
 
-        <MapRecenter center={aircraftPos} followAircraft={followAircraft} />
+          <MapRecenter center={aircraftPos} followAircraft={followAircraft} />
 
         {/* Live Aircraft Marker */}
         <Marker
@@ -221,6 +231,7 @@ export function FlightMap({ telemetry, activeJob, visitedAirports = [], allAirpo
           );
         })}
       </MapContainer>
+      </div>
     </div>
   );
 }

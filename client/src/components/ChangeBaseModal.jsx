@@ -1,23 +1,24 @@
-import React, { useState, useMemo } from 'react';
-import { X, MapPin, Search, Plane, Navigation, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { X, MapPin, Search, Plane, Navigation, CheckCircle2, Loader2 } from 'lucide-react';
+import { fetchAirports } from '../api/client.js';
 
 const POPULAR_HUBS = [
   { icao: 'KLAX', name: 'Los Angeles', country: 'US' },
   { icao: 'KSFO', name: 'San Francisco', country: 'US' },
   { icao: 'KLAS', name: 'Las Vegas', country: 'US' },
-  { icao: 'KPHX', name: 'Phoenix', country: 'US' },
-  { icao: 'KDEN', name: 'Denver', country: 'US' },
-  { icao: 'KSEA', name: 'Seattle', country: 'US' },
+  { icao: 'KXNA', name: 'NW Arkansas', country: 'US' },
   { icao: 'KORD', name: 'Chicago OHare', country: 'US' },
+  { icao: 'KDEN', name: 'Denver', country: 'US' },
+  { icao: 'KDFW', name: 'Dallas/Fort Worth', country: 'US' },
+  { icao: 'KATL', name: 'Atlanta', country: 'US' },
   { icao: 'KJFK', name: 'New York JFK', country: 'US' },
   { icao: 'KMIA', name: 'Miami', country: 'US' },
+  { icao: 'KSEA', name: 'Seattle', country: 'US' },
   { icao: 'EGLL', name: 'London Heathrow', country: 'GB' },
   { icao: 'LFPG', name: 'Paris CDG', country: 'FR' },
-  { icao: 'EHAM', name: 'Amsterdam', country: 'NL' },
   { icao: 'EDDF', name: 'Frankfurt', country: 'DE' },
   { icao: 'OMDB', name: 'Dubai', country: 'AE' },
-  { icao: 'RJTT', name: 'Tokyo Haneda', country: 'JP' },
-  { icao: 'YSSY', name: 'Sydney', country: 'AU' }
+  { icao: 'RJTT', name: 'Tokyo Haneda', country: 'JP' }
 ];
 
 export function ChangeBaseModal({
@@ -30,21 +31,47 @@ export function ChangeBaseModal({
   const [search, setSearch] = useState('');
   const [customIcao, setCustomIcao] = useState('');
   const [loading, setLoading] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
   const [error, setError] = useState('');
 
-  const filteredAirports = useMemo(() => {
-    if (!search.trim()) return allAirports.slice(0, 30);
-    const q = search.trim().toLowerCase();
-    return allAirports
-      .filter(
-        (a) =>
-          a.icao.toLowerCase().includes(q) ||
-          a.name.toLowerCase().includes(q) ||
-          a.city?.toLowerCase().includes(q) ||
-          a.country?.toLowerCase().includes(q)
-      )
-      .slice(0, 40);
-  }, [allAirports, search]);
+  // Live backend search across 6,000+ airports in database
+  useEffect(() => {
+    if (!search.trim()) {
+      setSearchResults([]);
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const results = await fetchAirports(search.trim());
+        setSearchResults(results || []);
+      } catch (err) {
+        console.error('Airport search error:', err);
+      } finally {
+        setSearching(false);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const displayedAirports = useMemo(() => {
+    if (search.trim()) {
+      if (searchResults.length > 0) return searchResults;
+      const q = search.trim().toLowerCase();
+      return allAirports
+        .filter(
+          (a) =>
+            a.icao.toLowerCase().includes(q) ||
+            a.name.toLowerCase().includes(q) ||
+            a.city?.toLowerCase().includes(q) ||
+            a.country?.toLowerCase().includes(q)
+        )
+        .slice(0, 40);
+    }
+    return allAirports.slice(0, 30);
+  }, [search, searchResults, allAirports]);
 
   if (!isOpen) return null;
 
@@ -81,7 +108,7 @@ export function ChangeBaseModal({
                 CHANGE HOME BASE AIRPORT
               </h3>
               <p className="text-xs text-slate-400 font-mono">
-                Current Station: <strong className="text-cyan-400">{currentIcao}</strong> • Repositions aircraft & refreshes contracts
+                Current Station: <strong className="text-cyan-400">{currentIcao}</strong> • 6,300+ airports available
               </p>
             </div>
           </div>
@@ -134,12 +161,16 @@ export function ChangeBaseModal({
           {/* Search bar & Custom ICAO input */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
             <div className="relative">
-              <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+              {searching ? (
+                <Loader2 className="w-4 h-4 text-cyan-400 animate-spin absolute left-3 top-3" />
+              ) : (
+                <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+              )}
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by ICAO, city, or name..."
+                placeholder="Search by ICAO (e.g. KXNA), city..."
                 className="w-full pl-9 pr-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs font-mono text-white focus:outline-none focus:border-cyan-500"
               />
             </div>
@@ -149,7 +180,7 @@ export function ChangeBaseModal({
                 type="text"
                 value={customIcao}
                 onChange={(e) => setCustomIcao(e.target.value.toUpperCase())}
-                placeholder="Enter custom ICAO..."
+                placeholder="Direct ICAO code..."
                 maxLength={4}
                 className="flex-1 px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs font-mono text-white focus:outline-none focus:border-cyan-500 uppercase"
               />
@@ -165,49 +196,55 @@ export function ChangeBaseModal({
 
           {/* Airport List */}
           <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-            {filteredAirports.map((airport) => {
-              const isCurrent = airport.icao === currentIcao;
-              return (
-                <div
-                  key={airport.icao}
-                  onClick={() => !isCurrent && handleSelect(airport.icao)}
-                  className={`p-3 rounded-xl border font-mono text-xs flex items-center justify-between transition cursor-pointer ${
-                    isCurrent
-                      ? 'bg-cyan-950/40 border-cyan-800 cursor-default'
-                      : 'bg-slate-900/60 hover:bg-slate-900 border-slate-800 hover:border-slate-700'
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="w-9 h-9 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-center font-bold text-white text-xs">
-                      {airport.icao}
-                    </div>
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <span className="font-bold text-white text-sm">{airport.name}</span>
-                        {isCurrent && (
-                          <span className="px-1.5 py-0.2 rounded bg-cyan-900 text-[10px] text-cyan-200">
-                            CURRENT BASE
-                          </span>
-                        )}
+            {displayedAirports.length === 0 ? (
+              <div className="p-6 text-center text-xs font-mono text-slate-500">
+                No airports matching "{search}". You can still type the ICAO code into "Direct ICAO code" above.
+              </div>
+            ) : (
+              displayedAirports.map((airport) => {
+                const isCurrent = airport.icao === currentIcao;
+                return (
+                  <div
+                    key={airport.icao}
+                    onClick={() => !isCurrent && handleSelect(airport.icao)}
+                    className={`p-3 rounded-xl border font-mono text-xs flex items-center justify-between transition cursor-pointer ${
+                      isCurrent
+                        ? 'bg-cyan-950/40 border-cyan-800 cursor-default'
+                        : 'bg-slate-900/60 hover:bg-slate-900 border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-9 h-9 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-center font-bold text-white text-xs">
+                        {airport.icao}
                       </div>
-                      <p className="text-[11px] text-slate-400">
-                        {airport.city ? `${airport.city}, ` : ''}{airport.country} • Runway:{' '}
-                        {airport.longest_runway_ft?.toLocaleString()} ft
-                      </p>
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <span className="font-bold text-white text-sm">{airport.name}</span>
+                          {isCurrent && (
+                            <span className="px-1.5 py-0.2 rounded bg-cyan-900 text-[10px] text-cyan-200">
+                              CURRENT BASE
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-400">
+                          {airport.city ? `${airport.city}, ` : ''}{airport.country} • Runway:{' '}
+                          {airport.longest_runway_ft?.toLocaleString() || '3,000'} ft
+                        </p>
+                      </div>
                     </div>
-                  </div>
 
-                  {!isCurrent && (
-                    <button
-                      type="button"
-                      className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-cyan-600 text-slate-300 hover:text-white transition text-xs"
-                    >
-                      Select
-                    </button>
-                  )}
-                </div>
-              );
-            })}
+                    {!isCurrent && (
+                      <button
+                        type="button"
+                        className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-cyan-600 text-slate-300 hover:text-white transition text-xs"
+                      >
+                        Select
+                      </button>
+                    )}
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
 

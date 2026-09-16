@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "seed": "node src/seeds/seedAirports.js",
+    "seed": "node src/seeds/seedCommercialAirports.js",
+    "seed:curated": "node src/seeds/seedAirports.js",
     "seed:full": "node src/seeds/seedAirports.js --full",
     "test": "node tests/runAllTests.js",
     "test:e2e": "node tests/e2eTest.js"
