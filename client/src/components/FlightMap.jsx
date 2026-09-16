@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, ZoomControl } from 'react-leaflet';
 import L from 'leaflet';
 import { Plane, MapPin, CheckCircle, Navigation, Layers } from 'lucide-react';
 
@@ -88,7 +88,7 @@ export function FlightMap({ telemetry, activeJob, visitedAirports = [], allAirpo
   return (
     <div className="relative w-full h-[520px] rounded-2xl overflow-hidden border border-slate-800 shadow-2xl glass-panel">
       {/* Map Header Overlay Controls */}
-      <div className="absolute top-3 left-3 z-[1000] flex items-center space-x-2 bg-slate-950/80 backdrop-blur-md p-1.5 rounded-xl border border-slate-800 text-xs font-mono">
+      <div className="absolute top-3 left-3 z-[400] flex items-center space-x-2 bg-slate-950/85 backdrop-blur-md p-1.5 rounded-xl border border-slate-800 text-xs font-mono shadow-xl">
         <button
           onClick={() => setFollowAircraft(!followAircraft)}
           className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg font-medium transition ${
@@ -120,9 +120,11 @@ export function FlightMap({ telemetry, activeJob, visitedAirports = [], allAirpo
       <MapContainer
         center={aircraftPos}
         zoom={7}
+        zoomControl={false}
         scrollWheelZoom={true}
         className="w-full h-full"
       >
+        <ZoomControl position="bottomright" />
         {/* Dark Avionics Tile Layer */}
         <TileLayer
           attribution='&copy; <a href="https://carto.com/">CARTO</a>'

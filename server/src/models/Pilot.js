@@ -51,7 +51,7 @@ const PilotSchema = new mongoose.Schema(
   {
     callsign: {
       type: String,
-      default: 'Airbound-1',
+      default: 'James',
       trim: true
     },
     balance: {

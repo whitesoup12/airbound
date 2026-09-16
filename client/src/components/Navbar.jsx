@@ -1,7 +1,7 @@
 import React from 'react';
 import { Plane, Radio, BookOpen, RotateCcw, DollarSign, MapPin } from 'lucide-react';
 
-export function Navbar({ pilot, connectionStatus, onOpenLogbook, onResetPilot }) {
+export function Navbar({ pilot, connectionStatus, onOpenLogbook, onResetPilot, onOpenChangeBase }) {
   const isMock = connectionStatus?.isMock;
   const isConnected = connectionStatus?.connected;
 
@@ -55,12 +55,17 @@ export function Navbar({ pilot, connectionStatus, onOpenLogbook, onResetPilot })
 
         {/* Pilot Stats & Actions */}
         <div className="flex items-center space-x-3">
-          {/* Current Airport */}
-          <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-900/90 border border-slate-800 text-xs font-mono">
-            <MapPin className="w-3.5 h-3.5 text-cyan-400" />
+          {/* Current Airport / Change Base Button */}
+          <button
+            onClick={onOpenChangeBase}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/60 text-xs font-mono transition group"
+            title="Click to update home base airport"
+          >
+            <MapPin className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform" />
             <span className="text-slate-400">BASE:</span>
             <span className="text-white font-bold">{pilot?.current_icao || 'KLAX'}</span>
-          </div>
+            <span className="text-[10px] text-cyan-400 ml-0.5">▾</span>
+          </button>
 
           {/* Balance Pill */}
           <div className="flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-emerald-950/40 border border-emerald-800/40 text-xs font-mono">

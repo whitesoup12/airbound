@@ -63,6 +63,32 @@ export class FlightStateMachine {
   }
 
   /**
+   * Forces state machine to a specific phase (used by simulation test controls)
+   */
+  async forceSetPhase(newPhase, telemetry = {}) {
+    if (!this.activeJob) return { phase: this.phase, error: 'No active job' };
+
+    this.phase = newPhase;
+
+    if (newPhase === FLIGHT_PHASES.DEPARTED && !this.departedAt) {
+      this.departedAt = new Date();
+    } else if (newPhase === FLIGHT_PHASES.TOUCHDOWN && !this.touchdownAt) {
+      this.touchdownAt = new Date();
+    } else if (newPhase === FLIGHT_PHASES.COMPLETED) {
+      await this._handleFlightCompleted(telemetry);
+    }
+
+    if (this.onPhaseChangeCallback) {
+      this.onPhaseChangeCallback(this.phase, {
+        job: this.activeJob,
+        telemetry
+      });
+    }
+
+    return { phase: this.phase, activeJob: this.activeJob };
+  }
+
+  /**
    * Evaluates incoming telemetry against state machine rules
    * @param {object} telemetry
    * @param {number} telemetry.latitude Plane Latitude in degrees

@@ -42,7 +42,7 @@ export function LogbookModal({ isOpen, onClose, pilot }) {
                 OFFICIAL PILOT LOGBOOK
               </h2>
               <p className="text-xs text-slate-400 font-mono">
-                Callsign: <strong className="text-cyan-400">{pilot?.callsign || 'Airbound-1'}</strong> • MSFS 2024 Career Records
+                Callsign: <strong className="text-cyan-400">{pilot?.callsign || 'James'}</strong> • MSFS 2024 Career Records
               </p>
             </div>
           </div>

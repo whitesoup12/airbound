@@ -114,7 +114,7 @@ export async function seedAirports(options = {}) {
   let pilot = await Pilot.findOne();
   if (!pilot) {
     pilot = await Pilot.create({
-      callsign: 'Airbound-1',
+      callsign: 'James',
       balance: 15000,
       current_icao: 'KLAX',
       visited_airports: ['KLAX'],

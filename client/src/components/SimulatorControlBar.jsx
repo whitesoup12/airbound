@@ -22,49 +22,64 @@ export function SimulatorControlBar({
   currentPhase,
   activeJob,
   isMock,
-  onPhaseStepSuccess
+  onPhaseStepSuccess,
+  onTeleportSuccess
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isAutoFlying, setIsAutoFlying] = useState(false);
   const [teleportIcao, setTeleportIcao] = useState('KLAX');
   const [speedMultiplier, setSpeedMultiplier] = useState(5.0);
   const [statusMsg, setStatusMsg] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleStep = async (phase) => {
+    setLoading(true);
     try {
       setStatusMsg(`Stepping to ${phase}...`);
-      await stepFlightPhase(phase);
-      setStatusMsg(`Successfully stepped to ${phase}`);
-      if (onPhaseStepSuccess) onPhaseStepSuccess(phase);
+      const res = await stepFlightPhase(phase);
+      setStatusMsg(`Phase transitioned to ${phase}`);
+      if (onPhaseStepSuccess) onPhaseStepSuccess(phase, res);
     } catch (err) {
       setStatusMsg(`Error: ${err.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleToggleAutoFlight = async () => {
-    if (isAutoFlying) {
-      await stopMockFlight();
-      setIsAutoFlying(false);
-      setStatusMsg('Automated flight stopped.');
-    } else {
-      if (!activeJob) {
-        setStatusMsg('Please accept a contract job before starting auto flight.');
-        return;
+    setLoading(true);
+    try {
+      if (isAutoFlying) {
+        await stopMockFlight();
+        setIsAutoFlying(false);
+        setStatusMsg('Automated flight stopped.');
+      } else {
+        const res = await startMockFlight(speedMultiplier);
+        setIsAutoFlying(true);
+        setStatusMsg(`Auto-fly started at ${speedMultiplier}x speed.`);
+        if (onPhaseStepSuccess && res.activeJob) {
+          onPhaseStepSuccess('IDLE', res);
+        }
       }
-      await startMockFlight(speedMultiplier);
-      setIsAutoFlying(true);
-      setStatusMsg(`Auto-fly started at ${speedMultiplier}x speed.`);
+    } catch (err) {
+      setStatusMsg(`Auto-flight error: ${err.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleTeleport = async (e) => {
     e.preventDefault();
-    if (!teleportIcao) return;
+    if (!teleportIcao.trim()) return;
+    setLoading(true);
     try {
-      await teleportToAirport(teleportIcao);
-      setStatusMsg(`Aircraft teleported to ${teleportIcao.toUpperCase()}`);
+      const res = await teleportToAirport(teleportIcao.trim());
+      setStatusMsg(`Aircraft and base teleported to ${teleportIcao.toUpperCase()}`);
+      if (onTeleportSuccess) onTeleportSuccess(res);
     } catch (err) {
       setStatusMsg(`Teleport error: ${err.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -89,68 +104,75 @@ export function SimulatorControlBar({
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               {/* State Machine Stepper */}
               <div>
-                <span className="text-[11px] font-mono text-slate-400 uppercase block mb-1.5">
-                  1-Click Flight Phase State Machine Stepper:
-                </span>
+                <div className="flex items-center space-x-2 mb-1.5">
+                  <span className="text-[11px] font-mono text-slate-400 uppercase">
+                    1-Click Flight Phase State Machine Stepper:
+                  </span>
+                  {!activeJob && (
+                    <span className="text-[10px] font-mono text-amber-400 bg-amber-950/60 px-1.5 py-0.2 rounded border border-amber-800/60">
+                      (Auto-accepts contract)
+                    </span>
+                  )}
+                </div>
                 <div className="flex flex-wrap gap-2 font-mono text-xs">
                   <button
                     onClick={() => handleStep('IDLE')}
-                    disabled={!activeJob}
+                    disabled={loading}
                     className={`px-3 py-1.5 rounded-lg border transition ${
                       currentPhase === 'IDLE'
-                        ? 'bg-blue-600 text-white border-blue-400'
+                        ? 'bg-blue-600 text-white border-blue-400 font-bold'
                         : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border-slate-700'
                     }`}
                   >
-                    1. IDLE (At Origin)
+                    1. IDLE
                   </button>
 
                   <button
                     onClick={() => handleStep('DEPARTED')}
-                    disabled={!activeJob}
+                    disabled={loading}
                     className={`px-3 py-1.5 rounded-lg border transition ${
                       currentPhase === 'DEPARTED'
-                        ? 'bg-amber-600 text-white border-amber-400'
+                        ? 'bg-amber-600 text-white border-amber-400 font-bold'
                         : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border-slate-700'
                     }`}
                   >
-                    2. DEPARTED (Takeoff)
+                    2. DEPARTED
                   </button>
 
                   <button
                     onClick={() => handleStep('EN ROUTE')}
-                    disabled={!activeJob}
+                    disabled={loading}
                     className={`px-3 py-1.5 rounded-lg border transition ${
                       currentPhase === 'EN ROUTE'
-                        ? 'bg-cyan-600 text-white border-cyan-400'
+                        ? 'bg-cyan-600 text-white border-cyan-400 font-bold'
                         : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border-slate-700'
                     }`}
                   >
-                    3. EN ROUTE (Airborne)
+                    3. EN ROUTE
                   </button>
 
                   <button
                     onClick={() => handleStep('TOUCHDOWN')}
-                    disabled={!activeJob}
+                    disabled={loading}
                     className={`px-3 py-1.5 rounded-lg border transition ${
                       currentPhase === 'TOUCHDOWN'
-                        ? 'bg-purple-600 text-white border-purple-400'
+                        ? 'bg-purple-600 text-white border-purple-400 font-bold'
                         : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border-slate-700'
                     }`}
                   >
-                    4. TOUCHDOWN (Destination)
+                    4. TOUCHDOWN
                   </button>
 
                   <button
                     onClick={() => handleStep('COMPLETED')}
-                    disabled={!activeJob}
+                    disabled={loading}
                     className={`px-3 py-1.5 rounded-lg border transition ${
                       currentPhase === 'COMPLETED'
-                        ? 'bg-emerald-600 text-white border-emerald-400'
+                        ? 'bg-emerald-600 text-white border-emerald-400 font-bold glow-green'
                         : 'bg-emerald-950/60 text-emerald-300 hover:bg-emerald-900 border-emerald-800'
                     }`}
                   >
-                    5. COMPLETED (Shutdown & Persist)
+                    5. COMPLETED (Persist Payout)
                   </button>
                 </div>
               </div>
@@ -161,7 +183,7 @@ export function SimulatorControlBar({
                 <div className="flex items-center space-x-2 bg-slate-900 p-1.5 rounded-xl border border-slate-800 font-mono text-xs">
                   <button
                     onClick={handleToggleAutoFlight}
-                    disabled={!activeJob}
+                    disabled={loading}
                     className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg font-bold transition ${
                       isAutoFlying
                         ? 'bg-rose-600 text-white shadow-rose-900/50'
@@ -190,15 +212,16 @@ export function SimulatorControlBar({
                     type="text"
                     value={teleportIcao}
                     onChange={(e) => setTeleportIcao(e.target.value.toUpperCase())}
-                    placeholder="ICAO"
+                    placeholder="ICAO (e.g. KSFO)"
                     maxLength={4}
-                    className="w-20 px-2.5 py-1.5 bg-slate-900 text-white font-mono text-xs rounded-xl border border-slate-800 focus:outline-none focus:border-cyan-500 uppercase"
+                    className="w-24 px-2.5 py-1.5 bg-slate-900 text-white font-mono text-xs rounded-xl border border-slate-800 focus:outline-none focus:border-cyan-500 uppercase"
                   />
                   <button
                     type="submit"
+                    disabled={loading || !teleportIcao.trim()}
                     className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-mono rounded-xl border border-slate-700 transition"
                   >
-                    Teleport
+                    Teleport Base
                   </button>
                 </form>
               </div>
@@ -218,4 +241,3 @@ export function SimulatorControlBar({
 }
 
 export default SimulatorControlBar;
-

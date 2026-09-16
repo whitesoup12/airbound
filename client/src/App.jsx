@@ -5,6 +5,7 @@ import TelemetryDashboard from './components/TelemetryDashboard.jsx';
 import FlightMap from './components/FlightMap.jsx';
 import JobBoard from './components/JobBoard.jsx';
 import LogbookModal from './components/LogbookModal.jsx';
+import ChangeBaseModal from './components/ChangeBaseModal.jsx';
 import SimulatorControlBar from './components/SimulatorControlBar.jsx';
 import { useTelemetry } from './hooks/useTelemetry.js';
 import {
@@ -14,7 +15,8 @@ import {
   refreshJobs,
   acceptJob,
   cancelJob,
-  fetchAirports
+  fetchAirports,
+  updateBaseAirport
 } from './api/client.js';
 import { CheckCircle, Trophy, DollarSign, X } from 'lucide-react';
 
@@ -24,6 +26,7 @@ export function App() {
   const [jobs, setJobs] = useState([]);
   const [allAirports, setAllAirports] = useState([]);
   const [isLogbookOpen, setIsLogbookOpen] = useState(false);
+  const [isChangeBaseOpen, setIsChangeBaseOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [completionBanner, setCompletionBanner] = useState(null);
 
@@ -116,6 +119,14 @@ export function App() {
     }
   };
 
+  const handleSelectBaseAirport = async (icao) => {
+    const res = await updateBaseAirport(icao);
+    setPilot(res.pilot);
+    setCurrentAirport(res.currentAirport);
+    setJobs(res.jobs || []);
+    setActiveJob(null);
+  };
+
   const handleResetPilot = async () => {
     if (
       !confirm(
@@ -140,6 +151,7 @@ export function App() {
         pilot={pilot}
         connectionStatus={connectionStatus}
         onOpenLogbook={() => setIsLogbookOpen(true)}
+        onOpenChangeBase={() => setIsChangeBaseOpen(true)}
         onResetPilot={handleResetPilot}
       />
 
@@ -174,7 +186,11 @@ export function App() {
       {/* Main Content */}
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 w-full">
         {/* Pilot HUD Strip */}
-        <PilotHUD pilot={pilot} currentAirport={currentAirport} />
+        <PilotHUD
+          pilot={pilot}
+          currentAirport={currentAirport}
+          onOpenChangeBase={() => setIsChangeBaseOpen(true)}
+        />
 
         {/* Live Telemetry Instruments & Active Contract */}
         <TelemetryDashboard
@@ -220,16 +236,33 @@ export function App() {
         pilot={pilot}
       />
 
+      {/* Change Base Airport Modal */}
+      <ChangeBaseModal
+        isOpen={isChangeBaseOpen}
+        onClose={() => setIsChangeBaseOpen(false)}
+        currentIcao={pilot?.current_icao || 'KLAX'}
+        allAirports={allAirports}
+        onSelectBaseAirport={handleSelectBaseAirport}
+      />
+
       {/* Interactive Simulator Control Bar */}
       <SimulatorControlBar
         currentPhase={phase}
         activeJob={activeJob}
         isMock={connectionStatus?.isMock}
-        onPhaseStepSuccess={(phaseName) => {
+        onPhaseStepSuccess={(phaseName, res) => {
+          if (res?.activeJob) {
+            setActiveJob(res.activeJob);
+          }
           if (phaseName === 'COMPLETED') {
-            // refresh data
             loadInitialData();
           }
+        }}
+        onTeleportSuccess={(res) => {
+          if (res?.pilot) setPilot(res.pilot);
+          if (res?.currentAirport) setCurrentAirport(res.currentAirport);
+          if (res?.jobs) setJobs(res.jobs);
+          setActiveJob(null);
         }}
       />
     </div>
@@ -237,4 +270,3 @@ export function App() {
 }
 
 export default App;
-

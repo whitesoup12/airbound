@@ -84,6 +84,24 @@ export async function teleportToAirport(icao) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ icao })
   });
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || 'Failed to teleport to airport');
+  }
   return res.json();
 }
+
+export async function updateBaseAirport(icao) {
+  const res = await fetch(`${API_BASE}/pilot/base-airport`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ icao })
+  });
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || 'Failed to update base airport');
+  }
+  return res.json();
+}
+
 

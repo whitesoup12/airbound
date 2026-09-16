@@ -1,7 +1,7 @@
 import React from 'react';
 import { Award, Compass, Globe, PlaneTakeoff, ShieldCheck } from 'lucide-react';
 
-export function PilotHUD({ pilot, currentAirport }) {
+export function PilotHUD({ pilot, currentAirport, onOpenChangeBase }) {
   const totalEarnings = (pilot?.flight_log || []).reduce((acc, f) => acc + (f.payout || 0), 0);
   const totalNm = (pilot?.flight_log || []).reduce((acc, f) => acc + (f.distance_nm || 0), 0);
   const visitedAirportsCount = pilot?.visited_airports?.length || 1;
@@ -17,10 +17,21 @@ export function PilotHUD({ pilot, currentAirport }) {
           </div>
           <div>
             <p className="text-[11px] uppercase tracking-wider text-slate-400 font-mono">Pilot In Command</p>
-            <h3 className="text-base font-bold text-white tracking-wide">{pilot?.callsign || 'Airbound-1'}</h3>
-            <p className="text-xs text-cyan-400 font-mono">
-              {currentAirport ? `${currentAirport.name} (${currentAirport.icao})` : pilot?.current_icao}
-            </p>
+            <h3 className="text-base font-bold text-white tracking-wide">{pilot?.callsign || 'James'}</h3>
+            <div className="flex items-center space-x-1.5">
+              <span className="text-xs text-cyan-400 font-mono truncate max-w-[150px]">
+                {currentAirport ? `${currentAirport.name} (${currentAirport.icao})` : pilot?.current_icao}
+              </span>
+              {onOpenChangeBase && (
+                <button
+                  onClick={onOpenChangeBase}
+                  className="text-[10px] text-slate-400 hover:text-cyan-300 font-mono px-1 py-0.2 rounded bg-slate-800 border border-slate-700 hover:border-cyan-500 transition"
+                  title="Change base airport"
+                >
+                  Edit
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
