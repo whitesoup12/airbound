@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, ZoomControl } from 'react-leaflet';
 import L from 'leaflet';
-import { Plane, MapPin, CheckCircle, Navigation, Layers } from 'lucide-react';
+import { Plane, MapPin, CheckCircle, Navigation, Layers, ArrowRight, DollarSign } from 'lucide-react';
 
 // Controller to auto-center the map on the aircraft when "Follow Aircraft" is active
 function MapRecenter({ center, followAircraft }) {
@@ -11,6 +11,17 @@ function MapRecenter({ center, followAircraft }) {
       map.setView(center, map.getZoom(), { animate: true });
     }
   }, [center, followAircraft, map]);
+  return null;
+}
+
+// Controller to fit route bounds on preview selection
+function MapBoundsFitter({ bounds, shouldFit }) {
+  const map = useMap();
+  useEffect(() => {
+    if (shouldFit && bounds && bounds.length === 2 && bounds[0] && bounds[1]) {
+      map.fitBounds(bounds, { padding: [60, 60], maxZoom: 9, animate: true });
+    }
+  }, [bounds, shouldFit, map]);
   return null;
 }
 
@@ -33,16 +44,15 @@ function createAircraftIcon(heading = 0, isAirborne = false) {
   });
 }
 
-// Marker icon for visited airports
+// Marker icon for visited, origin, or destination airports
 function createAirportIcon(type = 'visited') {
   let bg = 'bg-purple-950 border-purple-500 text-purple-400';
-  let label = 'VISITED';
   if (type === 'origin') {
     bg = 'bg-emerald-950 border-emerald-500 text-emerald-400';
-    label = 'ORIGIN';
   } else if (type === 'destination') {
     bg = 'bg-amber-950 border-amber-500 text-amber-400';
-    label = 'DEST';
+  } else if (type === 'preview') {
+    bg = 'bg-cyan-950 border-cyan-400 text-cyan-300';
   }
 
   return L.divIcon({
@@ -59,22 +69,43 @@ function createAirportIcon(type = 'visited') {
   });
 }
 
-export function FlightMap({ telemetry, activeJob, visitedAirports = [], allAirports = [] }) {
+export function FlightMap({
+  telemetry,
+  activeJob,
+  previewJob = null,
+  visitedAirports = [],
+  allAirports = [],
+  currentAirport = null,
+  onAcceptJob = null
+}) {
   const [followAircraft, setFollowAircraft] = useState(true);
 
   const aircraftPos = [telemetry?.latitude || 33.9425, telemetry?.longitude || -118.4081];
   const aircraftHeading = telemetry?.heading || 0;
   const isAirborne = !telemetry?.simOnGround;
 
+  // Determine active route vs preview route
+  const displayedJob = activeJob || previewJob;
+  const isPreview = !activeJob && Boolean(previewJob);
+
   // Compute flight route coordinates
-  const origCoords = activeJob?.origin_airport?.location?.coordinates ||
-    activeJob?.origin_location?.coordinates;
-  const destCoords = activeJob?.destination_airport?.location?.coordinates ||
-    activeJob?.destination_location?.coordinates;
+  const origCoords =
+    displayedJob?.origin_airport?.location?.coordinates ||
+    currentAirport?.location?.coordinates ||
+    [telemetry?.longitude || -118.408, telemetry?.latitude || 33.942];
+
+  const destCoords =
+    displayedJob?.destination_airport?.location?.coordinates ||
+    displayedJob?.destination_location?.coordinates;
 
   let routeLine = null;
+  let routeBounds = null;
   if (origCoords && destCoords) {
     routeLine = [
+      [origCoords[1], origCoords[0]],
+      [destCoords[1], destCoords[0]]
+    ];
+    routeBounds = [
       [origCoords[1], origCoords[0]],
       [destCoords[1], destCoords[0]]
     ];
@@ -103,9 +134,24 @@ export function FlightMap({ telemetry, activeJob, visitedAirports = [], allAirpo
             <span>{followAircraft ? 'LOCKED ON AIRCRAFT' : 'FREE CAM'}</span>
           </button>
 
-          <span className="text-[11px] text-slate-400 hidden md:inline">
-            {followAircraft ? '(Camera tracks aircraft live)' : '(Click to lock view on aircraft)'}
-          </span>
+          {/* Route Preview Badge in Toolbar */}
+          {isPreview && displayedJob && (
+            <div className="flex items-center space-x-2 px-2.5 py-1 rounded-lg bg-amber-950/80 border border-amber-500/50 text-amber-300 text-[11px] shadow-sm animate-fadeIn">
+              <span className="font-bold">PREVIEW:</span>
+              <span>
+                {displayedJob.origin_icao} ➔ {displayedJob.destination_icao} ({displayedJob.distance_nm} NM)
+              </span>
+              {onAcceptJob && (
+                <button
+                  onClick={() => onAcceptJob(displayedJob._id)}
+                  className="px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition ml-1 flex items-center space-x-0.5"
+                >
+                  <span>Accept (${displayedJob.payout?.toLocaleString()})</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Waypoint Legend */}
@@ -115,8 +161,8 @@ export function FlightMap({ telemetry, activeJob, visitedAirports = [], allAirpo
             <span>Origin</span>
           </div>
           <div className="flex items-center space-x-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-sm shadow-amber-400/50" />
-            <span>Destination</span>
+            <span className={`w-2.5 h-2.5 rounded-full ${isPreview ? 'bg-cyan-400 shadow-cyan-400/50' : 'bg-amber-400 shadow-amber-400/50'} shadow-sm`} />
+            <span>{isPreview ? 'Preview Dest' : 'Destination'}</span>
           </div>
           <div className="flex items-center space-x-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-purple-400 shadow-sm shadow-purple-400/50" />
@@ -143,98 +189,117 @@ export function FlightMap({ telemetry, activeJob, visitedAirports = [], allAirpo
           />
 
           <MapRecenter center={aircraftPos} followAircraft={followAircraft} />
+          {/* Fit route when preview job is chosen and user is not locked on aircraft */}
+          <MapBoundsFitter bounds={routeBounds} shouldFit={!followAircraft && Boolean(routeBounds)} />
 
-        {/* Live Aircraft Marker */}
-        <Marker
-          position={aircraftPos}
-          icon={createAircraftIcon(aircraftHeading, isAirborne)}
-          zIndexOffset={1000}
-        >
-          <Popup className="avionics-popup">
-            <div className="p-1 font-mono text-xs text-slate-900">
-              <p className="font-bold text-cyan-700">AIRCRAFT POSITION</p>
-              <p>Alt: {Math.round(telemetry?.altitude || 0)} FT</p>
-              <p>GS: {Math.round(telemetry?.groundSpeed || 0)} KTS</p>
-              <p>HDG: {Math.round(telemetry?.heading || 0)}°</p>
-              <p>Lat: {telemetry?.latitude?.toFixed(4)}</p>
-              <p>Lon: {telemetry?.longitude?.toFixed(4)}</p>
-            </div>
-          </Popup>
-        </Marker>
+          {/* Live Aircraft Marker */}
+          <Marker
+            position={aircraftPos}
+            icon={createAircraftIcon(aircraftHeading, isAirborne)}
+            zIndexOffset={1000}
+          >
+            <Popup className="avionics-popup">
+              <div className="p-1 font-mono text-xs text-slate-900">
+                <p className="font-bold text-cyan-700">AIRCRAFT POSITION</p>
+                <p>Alt: {Math.round(telemetry?.altitude || 0)} FT</p>
+                <p>GS: {Math.round(telemetry?.groundSpeed || 0)} KTS</p>
+                <p>HDG: {Math.round(telemetry?.heading || 0)}°</p>
+                <p>Lat: {telemetry?.latitude?.toFixed(4)}</p>
+                <p>Lon: {telemetry?.longitude?.toFixed(4)}</p>
+              </div>
+            </Popup>
+          </Marker>
 
-        {/* Active Route Line */}
-        {routeLine && (
-          <>
-            <Polyline
-              positions={routeLine}
-              pathOptions={{
-                color: '#06b6d4',
-                weight: 3,
-                dashArray: '6, 8',
-                opacity: 0.8
-              }}
-            />
-            {/* Origin Marker */}
-            <Marker
-              position={[origCoords[1], origCoords[0]]}
-              icon={createAirportIcon('origin')}
-            >
-              <Popup>
-                <div className="p-1 font-mono text-xs text-slate-900">
-                  <p className="font-bold text-emerald-700">ORIGIN: {activeJob?.origin_icao}</p>
-                  <p>{activeJob?.origin_airport?.name}</p>
-                </div>
-              </Popup>
-            </Marker>
+          {/* Route Line (Active or Preview) */}
+          {routeLine && (
+            <>
+              <Polyline
+                positions={routeLine}
+                pathOptions={{
+                  color: isPreview ? '#f59e0b' : '#06b6d4',
+                  weight: isPreview ? 3.5 : 3,
+                  dashArray: isPreview ? '8, 8' : '6, 8',
+                  opacity: isPreview ? 0.95 : 0.8
+                }}
+              />
+              {/* Origin Marker */}
+              <Marker
+                position={[origCoords[1], origCoords[0]]}
+                icon={createAirportIcon('origin')}
+              >
+                <Popup>
+                  <div className="p-1 font-mono text-xs text-slate-900">
+                    <p className="font-bold text-emerald-700">ORIGIN: {displayedJob?.origin_icao}</p>
+                    <p>{displayedJob?.origin_airport?.name || currentAirport?.name || displayedJob?.origin_icao}</p>
+                  </div>
+                </Popup>
+              </Marker>
 
-            {/* Destination Marker */}
-            <Marker
-              position={[destCoords[1], destCoords[0]]}
-              icon={createAirportIcon('destination')}
-            >
-              <Popup>
-                <div className="p-1 font-mono text-xs text-slate-900">
-                  <p className="font-bold text-amber-700">DESTINATION: {activeJob?.destination_icao}</p>
-                  <p>{activeJob?.destination_airport?.name}</p>
-                  <p>Runway: {activeJob?.destination_airport?.longest_runway_ft} ft</p>
-                  <p>Payout: ${activeJob?.payout?.toLocaleString()}</p>
-                </div>
-              </Popup>
-            </Marker>
-          </>
-        )}
+              {/* Destination Marker */}
+              <Marker
+                position={[destCoords[1], destCoords[0]]}
+                icon={createAirportIcon(isPreview ? 'preview' : 'destination')}
+              >
+                <Popup>
+                  <div className="p-1 font-mono text-xs text-slate-900 min-w-[180px]">
+                    <div className="flex items-center justify-between border-b pb-1 mb-1">
+                      <p className="font-bold text-amber-700">
+                        {isPreview ? 'ROUTE PREVIEW' : 'DESTINATION'}: {displayedJob?.destination_icao}
+                      </p>
+                    </div>
+                    <p className="font-bold">{displayedJob?.destination_name || displayedJob?.destination_airport?.name}</p>
+                    <p>{displayedJob?.destination_city ? `${displayedJob.destination_city}, ` : ''}{displayedJob?.destination_country || displayedJob?.destination_airport?.country}</p>
+                    <p>Distance: {displayedJob?.distance_nm} NM</p>
+                    <p>Runway: {displayedJob?.destination_runway_ft?.toLocaleString() || displayedJob?.destination_airport?.longest_runway_ft?.toLocaleString()} ft</p>
+                    <p>Payload: {displayedJob?.cargo_lbs?.toLocaleString()} lbs cargo • {displayedJob?.pax_count} pax</p>
+                    <p className="font-bold text-emerald-700 mt-1">Payout: ${displayedJob?.payout?.toLocaleString()}</p>
+                    {isPreview && onAcceptJob && (
+                      <button
+                        onClick={() => onAcceptJob(displayedJob._id)}
+                        className="mt-2 w-full py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded text-xs transition"
+                      >
+                        Accept Contract
+                      </button>
+                    )}
+                  </div>
+                </Popup>
+              </Marker>
+            </>
+          )}
 
-        {/* Visited Airports Markers */}
-        {visitedAirportObjects.map((airport) => {
-          if (!airport.location?.coordinates) return null;
-          const [lon, lat] = airport.location.coordinates;
-          // Skip if already drawn as origin or destination
-          if (airport.icao === activeJob?.origin_icao || airport.icao === activeJob?.destination_icao) {
-            return null;
-          }
+          {/* Visited Airports Markers */}
+          {visitedAirportObjects.map((airport) => {
+            if (!airport.location?.coordinates) return null;
+            const [lon, lat] = airport.location.coordinates;
+            // Skip if already drawn as origin or destination
+            if (
+              airport.icao === displayedJob?.origin_icao ||
+              airport.icao === displayedJob?.destination_icao
+            ) {
+              return null;
+            }
 
-          return (
-            <Marker
-              key={airport.icao}
-              position={[lat, lon]}
-              icon={createAirportIcon('visited')}
-            >
-              <Popup>
-                <div className="p-1 font-mono text-xs text-slate-900">
-                  <p className="font-bold text-purple-700">VISITED AIRPORT</p>
-                  <p className="font-bold">{airport.icao} — {airport.name}</p>
-                  <p>{airport.city}, {airport.country}</p>
-                  <p>Longest Runway: {airport.longest_runway_ft?.toLocaleString()} ft</p>
-                </div>
-              </Popup>
-            </Marker>
-          );
-        })}
-      </MapContainer>
+            return (
+              <Marker
+                key={airport.icao}
+                position={[lat, lon]}
+                icon={createAirportIcon('visited')}
+              >
+                <Popup>
+                  <div className="p-1 font-mono text-xs text-slate-900">
+                    <p className="font-bold text-purple-700">VISITED AIRPORT</p>
+                    <p className="font-bold">{airport.icao} — {airport.name}</p>
+                    <p>{airport.city}, {airport.country}</p>
+                    <p>Longest Runway: {airport.longest_runway_ft?.toLocaleString()} ft</p>
+                  </div>
+                </Popup>
+              </Marker>
+            );
+          })}
+        </MapContainer>
       </div>
     </div>
   );
 }
 
 export default FlightMap;
-

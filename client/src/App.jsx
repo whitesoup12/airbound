@@ -24,6 +24,7 @@ export function App() {
   const [pilot, setPilot] = useState(null);
   const [currentAirport, setCurrentAirport] = useState(null);
   const [jobs, setJobs] = useState([]);
+  const [previewJob, setPreviewJob] = useState(null);
   const [allAirports, setAllAirports] = useState([]);
   const [isLogbookOpen, setIsLogbookOpen] = useState(false);
   const [isChangeBaseOpen, setIsChangeBaseOpen] = useState(false);
@@ -39,7 +40,11 @@ export function App() {
       setCurrentAirport(pilotData.currentAirport);
 
       const jobData = await fetchJobs(pilotData.pilot?.current_icao);
-      setJobs(jobData.jobs || []);
+      const fetchedJobs = jobData.jobs || [];
+      setJobs(fetchedJobs);
+      if (fetchedJobs.length > 0 && !jobData.activeJob) {
+        setPreviewJob(fetchedJobs[0]);
+      }
 
       const airportsData = await fetchAirports();
       setAllAirports(airportsData || []);
@@ -67,7 +72,11 @@ export function App() {
         setCurrentAirport(pilotData.currentAirport);
 
         const jobData = await fetchJobs(pilotData.pilot?.current_icao);
-        setJobs(jobData.jobs || []);
+        const newJobs = jobData.jobs || [];
+        setJobs(newJobs);
+        if (newJobs.length > 0) {
+          setPreviewJob(newJobs[0]);
+        }
       } catch (err) {
         console.error('Error updating state after completion:', err);
       }
@@ -89,6 +98,7 @@ export function App() {
     try {
       const res = await acceptJob(jobId);
       setActiveJob(res.job);
+      setPreviewJob(null);
       // Remove accepted job from available jobs list
       setJobs((prev) => prev.filter((j) => j._id !== jobId));
     } catch (err) {
@@ -103,7 +113,11 @@ export function App() {
       setActiveJob(null);
       // Refresh available jobs
       const jobData = await fetchJobs(pilot?.current_icao);
-      setJobs(jobData.jobs || []);
+      const refreshed = jobData.jobs || [];
+      setJobs(refreshed);
+      if (refreshed.length > 0) {
+        setPreviewJob(refreshed[0]);
+      }
     } catch (err) {
       alert(err.message);
     }
@@ -113,7 +127,11 @@ export function App() {
     if (!pilot?.current_icao) return;
     try {
       const res = await refreshJobs(pilot.current_icao);
-      setJobs(res.jobs || []);
+      const refreshed = res.jobs || [];
+      setJobs(refreshed);
+      if (refreshed.length > 0) {
+        setPreviewJob(refreshed[0]);
+      }
     } catch (err) {
       alert(err.message);
     }
@@ -123,8 +141,12 @@ export function App() {
     const res = await updateBaseAirport(icao);
     setPilot(res.pilot);
     setCurrentAirport(res.currentAirport);
-    setJobs(res.jobs || []);
+    const newJobs = res.jobs || [];
+    setJobs(newJobs);
     setActiveJob(null);
+    if (newJobs.length > 0) {
+      setPreviewJob(newJobs[0]);
+    }
   };
 
   const handleResetPilot = async () => {
@@ -213,6 +235,9 @@ export function App() {
           <FlightMap
             telemetry={telemetry}
             activeJob={activeJob}
+            previewJob={previewJob}
+            currentAirport={currentAirport}
+            onAcceptJob={handleAcceptJob}
             visitedAirports={pilot?.visited_airports || []}
             allAirports={allAirports}
           />
@@ -223,6 +248,8 @@ export function App() {
           jobs={jobs}
           activeJob={activeJob}
           currentIcao={pilot?.current_icao || 'KLAX'}
+          selectedJobId={activeJob?._id || previewJob?._id}
+          onSelectJob={(job) => setPreviewJob(job)}
           onAcceptJob={handleAcceptJob}
           onRefreshJobs={handleRefreshJobs}
           loading={loading}
@@ -253,6 +280,7 @@ export function App() {
         onPhaseStepSuccess={(phaseName, res) => {
           if (res?.activeJob) {
             setActiveJob(res.activeJob);
+            setPreviewJob(null);
           }
           if (phaseName === 'COMPLETED') {
             loadInitialData();
@@ -261,7 +289,10 @@ export function App() {
         onTeleportSuccess={(res) => {
           if (res?.pilot) setPilot(res.pilot);
           if (res?.currentAirport) setCurrentAirport(res.currentAirport);
-          if (res?.jobs) setJobs(res.jobs);
+          if (res?.jobs) {
+            setJobs(res.jobs);
+            if (res.jobs.length > 0) setPreviewJob(res.jobs[0]);
+          }
           setActiveJob(null);
         }}
       />

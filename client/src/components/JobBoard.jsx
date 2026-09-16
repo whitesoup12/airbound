@@ -9,13 +9,16 @@ import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
-  Plane
+  Plane,
+  Eye
 } from 'lucide-react';
 
 export function JobBoard({
   jobs = [],
   activeJob = null,
   currentIcao = 'KLAX',
+  selectedJobId = null,
+  onSelectJob,
   onAcceptJob,
   onRefreshJobs,
   loading = false
@@ -49,7 +52,7 @@ export function JobBoard({
               </span>
             </div>
             <p className="text-xs text-slate-400">
-              Contract jobs scaled by distance, cargo weight, and destination runway requirements.
+              Click any contract to plot and preview its route on the radar map.
             </p>
           </div>
         </div>
@@ -97,14 +100,18 @@ export function JobBoard({
           {jobs.map((job) => {
             const isShortRunway = job.destination_runway_ft && job.destination_runway_ft < 4500;
             const isJobActive = activeJob?._id === job._id;
+            const isSelected = selectedJobId === job._id;
 
             return (
               <div
                 key={job._id}
-                className={`glass-panel rounded-2xl p-4 sm:p-5 border transition-all duration-200 flex flex-col justify-between ${
+                onClick={() => onSelectJob && onSelectJob(job)}
+                className={`glass-panel rounded-2xl p-4 sm:p-5 border transition-all duration-200 flex flex-col justify-between cursor-pointer select-none ${
                   isJobActive
-                    ? 'border-cyan-500 bg-cyan-950/30 glow-cyan'
-                    : 'border-slate-800 hover:border-slate-700 bg-slate-900/60 hover:bg-slate-900/90'
+                    ? 'border-cyan-500 bg-cyan-950/30 glow-cyan ring-1 ring-cyan-500/50'
+                    : isSelected
+                    ? 'border-amber-400 bg-amber-950/20 ring-2 ring-amber-400/60 shadow-lg shadow-amber-950/40 transform scale-[1.01]'
+                    : 'border-slate-800 hover:border-slate-600 bg-slate-900/60 hover:bg-slate-900/90'
                 }`}
               >
                 <div>
@@ -115,6 +122,12 @@ export function JobBoard({
                         <span className="text-xl font-bold font-mono text-white tracking-wider">
                           {job.destination_icao}
                         </span>
+                        {isSelected && !isJobActive && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-amber-500 text-slate-950 font-bold flex items-center space-x-1 shadow-sm">
+                            <Eye className="w-2.5 h-2.5" />
+                            <span>MAPPED</span>
+                          </span>
+                        )}
                         {isShortRunway && (
                           <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-amber-950 text-amber-300 border border-amber-800 flex items-center space-x-1">
                             <AlertTriangle className="w-2.5 h-2.5" />
@@ -182,7 +195,10 @@ export function JobBoard({
                     </div>
                   ) : (
                     <button
-                      onClick={() => onAcceptJob(job._id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onAcceptJob(job._id);
+                      }}
                       disabled={Boolean(activeJob)}
                       className={`flex items-center space-x-1 px-4 py-2 rounded-xl text-xs font-mono font-bold transition shadow-lg ${
                         activeJob
@@ -205,4 +221,3 @@ export function JobBoard({
 }
 
 export default JobBoard;
-
