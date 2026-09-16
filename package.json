@@ -1,0 +1,24 @@
+{
+  "name": "airbound",
+  "version": "1.0.0",
+  "description": "MSFS 2024 Career & Logbook Tracker",
+  "scripts": {
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "start": "npm --prefix server start",
+    "seed": "npm --prefix server run seed",
+    "seed:full": "npm --prefix server run seed:full",
+    "test": "npm --prefix server test",
+    "build": "npm --prefix client run build"
+  },
+  "keywords": [
+    "msfs",
+    "msfs2024",
+    "simconnect",
+    "flight-simulator",
+    "logbook",
+    "career"
+  ],
+  "author": "",
+  "license": "MIT"
+}

@@ -1,0 +1,386 @@
+[
+  {
+    "icao": "KLAX",
+    "name": "Los Angeles International Airport",
+    "city": "Los Angeles",
+    "country": "US",
+    "longest_runway_ft": 12923,
+    "location": { "type": "Point", "coordinates": [-118.408074, 33.942536] }
+  },
+  {
+    "icao": "KSFO",
+    "name": "San Francisco International Airport",
+    "city": "San Francisco",
+    "country": "US",
+    "longest_runway_ft": 11870,
+    "location": { "type": "Point", "coordinates": [-122.374889, 37.618972] }
+  },
+  {
+    "icao": "KSAN",
+    "name": "San Diego International Airport",
+    "city": "San Diego",
+    "country": "US",
+    "longest_runway_ft": 9400,
+    "location": { "type": "Point", "coordinates": [-117.189667, 32.733556] }
+  },
+  {
+    "icao": "KLAS",
+    "name": "Harry Reid International Airport",
+    "city": "Las Vegas",
+    "country": "US",
+    "longest_runway_ft": 14512,
+    "location": { "type": "Point", "coordinates": [-115.15225, 36.080056] }
+  },
+  {
+    "icao": "KPHX",
+    "name": "Phoenix Sky Harbor International Airport",
+    "city": "Phoenix",
+    "country": "US",
+    "longest_runway_ft": 11489,
+    "location": { "type": "Point", "coordinates": [-112.011583, 33.434278] }
+  },
+  {
+    "icao": "KBUR",
+    "name": "Hollywood Burbank Airport",
+    "city": "Burbank",
+    "country": "US",
+    "longest_runway_ft": 6886,
+    "location": { "type": "Point", "coordinates": [-118.358667, 34.200667] }
+  },
+  {
+    "icao": "KSNA",
+    "name": "John Wayne Airport",
+    "city": "Santa Ana",
+    "country": "US",
+    "longest_runway_ft": 5701,
+    "location": { "type": "Point", "coordinates": [-117.868222, 33.675667] }
+  },
+  {
+    "icao": "KPSP",
+    "name": "Palm Springs International Airport",
+    "city": "Palm Springs",
+    "country": "US",
+    "longest_runway_ft": 10000,
+    "location": { "type": "Point", "coordinates": [-116.506694, 33.829667] }
+  },
+  {
+    "icao": "KSBA",
+    "name": "Santa Barbara Municipal Airport",
+    "city": "Santa Barbara",
+    "country": "US",
+    "longest_runway_ft": 6052,
+    "location": { "type": "Point", "coordinates": [-119.840375, 34.426214] }
+  },
+  {
+    "icao": "KONT",
+    "name": "Ontario International Airport",
+    "city": "Ontario",
+    "country": "US",
+    "longest_runway_ft": 12197,
+    "location": { "type": "Point", "coordinates": [-117.601194, 34.056] }
+  },
+  {
+    "icao": "KSMO",
+    "name": "Santa Monica Municipal Airport",
+    "city": "Santa Monica",
+    "country": "US",
+    "longest_runway_ft": 3500,
+    "location": { "type": "Point", "coordinates": [-118.451306, 34.015833] }
+  },
+  {
+    "icao": "KVNY",
+    "name": "Van Nuys Airport",
+    "city": "Van Nuys",
+    "country": "US",
+    "longest_runway_ft": 8001,
+    "location": { "type": "Point", "coordinates": [-118.490019, 34.209811] }
+  },
+  {
+    "icao": "KCRQ",
+    "name": "McClellan-Palomar Airport",
+    "city": "Carlsbad",
+    "country": "US",
+    "longest_runway_ft": 4897,
+    "location": { "type": "Point", "coordinates": [-117.279861, 33.128361] }
+  },
+  {
+    "icao": "KAVX",
+    "name": "Catalina Airport",
+    "city": "Avalon",
+    "country": "US",
+    "longest_runway_ft": 3000,
+    "location": { "type": "Point", "coordinates": [-118.415833, 33.405] }
+  },
+  {
+    "icao": "KMRY",
+    "name": "Monterey Regional Airport",
+    "city": "Monterey",
+    "country": "US",
+    "longest_runway_ft": 7611,
+    "location": { "type": "Point", "coordinates": [-121.842944, 36.586972] }
+  },
+  {
+    "icao": "KDEN",
+    "name": "Denver International Airport",
+    "city": "Denver",
+    "country": "US",
+    "longest_runway_ft": 16000,
+    "location": { "type": "Point", "coordinates": [-104.673778, 39.861694] }
+  },
+  {
+    "icao": "KASE",
+    "name": "Aspen-Pitkin County Airport",
+    "city": "Aspen",
+    "country": "US",
+    "longest_runway_ft": 8006,
+    "location": { "type": "Point", "coordinates": [-106.86885, 39.223167] }
+  },
+  {
+    "icao": "KSEA",
+    "name": "Seattle-Tacoma International Airport",
+    "city": "Seattle",
+    "country": "US",
+    "longest_runway_ft": 11901,
+    "location": { "type": "Point", "coordinates": [-122.309306, 47.449] }
+  },
+  {
+    "icao": "KPDX",
+    "name": "Portland International Airport",
+    "city": "Portland",
+    "country": "US",
+    "longest_runway_ft": 11000,
+    "location": { "type": "Point", "coordinates": [-122.5975, 45.588722] }
+  },
+  {
+    "icao": "KORD",
+    "name": "O'Hare International Airport",
+    "city": "Chicago",
+    "country": "US",
+    "longest_runway_ft": 13000,
+    "location": { "type": "Point", "coordinates": [-87.904842, 41.978603] }
+  },
+  {
+    "icao": "KJFK",
+    "name": "John F. Kennedy International Airport",
+    "city": "New York",
+    "country": "US",
+    "longest_runway_ft": 14511,
+    "location": { "type": "Point", "coordinates": [-73.778925, 40.639751] }
+  },
+  {
+    "icao": "KEWR",
+    "name": "Newark Liberty International Airport",
+    "city": "Newark",
+    "country": "US",
+    "longest_runway_ft": 11000,
+    "location": { "type": "Point", "coordinates": [-74.168667, 40.6925] }
+  },
+  {
+    "icao": "KMIA",
+    "name": "Miami International Airport",
+    "city": "Miami",
+    "country": "US",
+    "longest_runway_ft": 13016,
+    "location": { "type": "Point", "coordinates": [-80.290556, 25.79325] }
+  },
+  {
+    "icao": "KEYW",
+    "name": "Key West International Airport",
+    "city": "Key West",
+    "country": "US",
+    "longest_runway_ft": 5076,
+    "location": { "type": "Point", "coordinates": [-81.759556, 24.555639] }
+  },
+  {
+    "icao": "EGLL",
+    "name": "London Heathrow Airport",
+    "city": "London",
+    "country": "GB",
+    "longest_runway_ft": 12799,
+    "location": { "type": "Point", "coordinates": [-0.461389, 51.4775] }
+  },
+  {
+    "icao": "EGKK",
+    "name": "London Gatwick Airport",
+    "city": "London",
+    "country": "GB",
+    "longest_runway_ft": 10879,
+    "location": { "type": "Point", "coordinates": [-0.190278, 51.148056] }
+  },
+  {
+    "icao": "LFPG",
+    "name": "Charles de Gaulle International Airport",
+    "city": "Paris",
+    "country": "FR",
+    "longest_runway_ft": 13829,
+    "location": { "type": "Point", "coordinates": [2.55, 49.012779] }
+  },
+  {
+    "icao": "LFPO",
+    "name": "Paris-Orly Airport",
+    "city": "Paris",
+    "country": "FR",
+    "longest_runway_ft": 11975,
+    "location": { "type": "Point", "coordinates": [2.379444, 48.723333] }
+  },
+  {
+    "icao": "LFMN",
+    "name": "Nice Côte d'Azur Airport",
+    "city": "Nice",
+    "country": "FR",
+    "longest_runway_ft": 9711,
+    "location": { "type": "Point", "coordinates": [7.2175, 43.658411] }
+  },
+  {
+    "icao": "EHAM",
+    "name": "Amsterdam Airport Schiphol",
+    "city": "Amsterdam",
+    "country": "NL",
+    "longest_runway_ft": 12467,
+    "location": { "type": "Point", "coordinates": [4.763889, 52.308613] }
+  },
+  {
+    "icao": "EDDF",
+    "name": "Frankfurt Airport",
+    "city": "Frankfurt",
+    "country": "DE",
+    "longest_runway_ft": 13123,
+    "location": { "type": "Point", "coordinates": [8.570556, 50.033333] }
+  },
+  {
+    "icao": "EDDM",
+    "name": "Munich Airport",
+    "city": "Munich",
+    "country": "DE",
+    "longest_runway_ft": 13123,
+    "location": { "type": "Point", "coordinates": [11.786086, 48.353783] }
+  },
+  {
+    "icao": "LSZH",
+    "name": "Zurich Airport",
+    "city": "Zurich",
+    "country": "CH",
+    "longest_runway_ft": 12139,
+    "location": { "type": "Point", "coordinates": [8.549167, 47.464722] }
+  },
+  {
+    "icao": "LOWI",
+    "name": "Innsbruck Airport",
+    "city": "Innsbruck",
+    "country": "AT",
+    "longest_runway_ft": 6562,
+    "location": { "type": "Point", "coordinates": [11.343981, 47.260211] }
+  },
+  {
+    "icao": "LEMD",
+    "name": "Adolfo Suárez Madrid–Barajas Airport",
+    "city": "Madrid",
+    "country": "ES",
+    "longest_runway_ft": 13776,
+    "location": { "type": "Point", "coordinates": [-3.56264, 40.471926] }
+  },
+  {
+    "icao": "LEBL",
+    "name": "Josep Tarradellas Barcelona-El Prat Airport",
+    "city": "Barcelona",
+    "country": "ES",
+    "longest_runway_ft": 10997,
+    "location": { "type": "Point", "coordinates": [2.078464, 41.297078] }
+  },
+  {
+    "icao": "LIRF",
+    "name": "Leonardo da Vinci–Fiumicino Airport",
+    "city": "Rome",
+    "country": "IT",
+    "longest_runway_ft": 12808,
+    "location": { "type": "Point", "coordinates": [12.238889, 41.800278] }
+  },
+  {
+    "icao": "OMDB",
+    "name": "Dubai International Airport",
+    "city": "Dubai",
+    "country": "AE",
+    "longest_runway_ft": 14764,
+    "location": { "type": "Point", "coordinates": [55.364444, 25.252778] }
+  },
+  {
+    "icao": "RJTT",
+    "name": "Tokyo Haneda Airport",
+    "city": "Tokyo",
+    "country": "JP",
+    "longest_runway_ft": 11024,
+    "location": { "type": "Point", "coordinates": [139.781113, 35.552258] }
+  },
+  {
+    "icao": "RJAA",
+    "name": "Narita International Airport",
+    "city": "Tokyo",
+    "country": "JP",
+    "longest_runway_ft": 13123,
+    "location": { "type": "Point", "coordinates": [140.386389, 35.764722] }
+  },
+  {
+    "icao": "VHHH",
+    "name": "Hong Kong International Airport",
+    "city": "Hong Kong",
+    "country": "HK",
+    "longest_runway_ft": 12467,
+    "location": { "type": "Point", "coordinates": [113.914722, 22.308889] }
+  },
+  {
+    "icao": "WSSS",
+    "name": "Singapore Changi Airport",
+    "city": "Singapore",
+    "country": "SG",
+    "longest_runway_ft": 13123,
+    "location": { "type": "Point", "coordinates": [103.994444, 1.350189] }
+  },
+  {
+    "icao": "YSSY",
+    "name": "Sydney Kingsford Smith Airport",
+    "city": "Sydney",
+    "country": "AU",
+    "longest_runway_ft": 12999,
+    "location": { "type": "Point", "coordinates": [151.177222, -33.946111] }
+  },
+  {
+    "icao": "YMML",
+    "name": "Melbourne Airport",
+    "city": "Melbourne",
+    "country": "AU",
+    "longest_runway_ft": 11998,
+    "location": { "type": "Point", "coordinates": [144.843333, -37.673333] }
+  },
+  {
+    "icao": "NZAA",
+    "name": "Auckland Airport",
+    "city": "Auckland",
+    "country": "NZ",
+    "longest_runway_ft": 11926,
+    "location": { "type": "Point", "coordinates": [174.791667, -37.008056] }
+  },
+  {
+    "icao": "CYYZ",
+    "name": "Toronto Pearson International Airport",
+    "city": "Toronto",
+    "country": "CA",
+    "longest_runway_ft": 11120,
+    "location": { "type": "Point", "coordinates": [-79.630556, 43.677222] }
+  },
+  {
+    "icao": "CYVR",
+    "name": "Vancouver International Airport",
+    "city": "Vancouver",
+    "country": "CA",
+    "longest_runway_ft": 11500,
+    "location": { "type": "Point", "coordinates": [-123.184444, 49.193889] }
+  },
+  {
+    "icao": "MMMX",
+    "name": "Mexico City International Airport",
+    "city": "Mexico City",
+    "country": "MX",
+    "longest_runway_ft": 13074,
+    "location": { "type": "Point", "coordinates": [-99.072098, 19.436302] }
+  }
+]

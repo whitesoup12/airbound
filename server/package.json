@@ -1,0 +1,28 @@
+{
+  "name": "airbound-server",
+  "version": "1.0.0",
+  "description": "MSFS 2024 Career & Logbook Tracker Backend & SimConnect Bridge",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "seed": "node src/seeds/seedAirports.js",
+    "seed:full": "node src/seeds/seedAirports.js --full",
+    "test": "node tests/runAllTests.js",
+    "test:e2e": "node tests/e2eTest.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "csv-parser": "^3.2.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mongoose": "^8.9.5",
+    "node-simconnect": "^3.0.0",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "mongodb-memory-server": "^10.1.3",
+    "socket.io-client": "^4.8.3"
+  }
+}
