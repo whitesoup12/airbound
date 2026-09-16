@@ -320,3 +320,4 @@ export function TelemetryDashboard({ telemetry, phase, activeJob, onCancelJob })
 }
 
 export default TelemetryDashboard;
+

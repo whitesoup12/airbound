@@ -78,3 +78,4 @@ export function useTelemetry(onFlightCompleted) {
     setCompletedFlight
   };
 }
+

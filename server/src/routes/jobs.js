@@ -14,3 +14,4 @@ router.post('/:id/accept', acceptJob);
 router.post('/:id/cancel', cancelJob);
 
 export default router;
+

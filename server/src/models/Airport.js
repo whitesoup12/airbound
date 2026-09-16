@@ -54,3 +54,4 @@ AirportSchema.index({ location: '2dsphere' });
 
 export const Airport = mongoose.model('Airport', AirportSchema);
 export default Airport;
+

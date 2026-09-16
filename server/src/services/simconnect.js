@@ -273,3 +273,4 @@ export class SimConnectBridge extends EventEmitter {
 
 export const simConnectBridge = new SimConnectBridge();
 export default simConnectBridge;
+

@@ -73,3 +73,4 @@ export function PilotHUD({ pilot, currentAirport }) {
 }
 
 export default PilotHUD;
+

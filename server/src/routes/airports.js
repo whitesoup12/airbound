@@ -7,3 +7,4 @@ router.get('/', getAirports);
 router.get('/:icao', getAirportByIcao);
 
 export default router;
+

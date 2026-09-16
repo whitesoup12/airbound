@@ -36,3 +36,4 @@ export function calculateBearing(lat1, lon1, lat2, lon2) {
   const bearing = (Math.atan2(y, x) * 180) / Math.PI;
   return (bearing + 360) % 360;
 }
+

@@ -98,3 +98,4 @@ export function Navbar({ pilot, connectionStatus, onOpenLogbook, onResetPilot })
 }
 
 export default Navbar;
+

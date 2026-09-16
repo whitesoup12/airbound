@@ -122,3 +122,4 @@ export async function generateJobsForAirport(originIcao, options = {}) {
 
   return generatedJobs;
 }
+

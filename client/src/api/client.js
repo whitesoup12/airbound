@@ -86,3 +86,4 @@ export async function teleportToAirport(icao) {
   });
   return res.json();
 }
+

@@ -214,3 +214,4 @@ export function LogbookModal({ isOpen, onClose, pilot }) {
 }
 
 export default LogbookModal;
+

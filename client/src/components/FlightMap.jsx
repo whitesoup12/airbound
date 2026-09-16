@@ -224,3 +224,4 @@ export function FlightMap({ telemetry, activeJob, visitedAirports = [], allAirpo
 }
 
 export default FlightMap;
+
