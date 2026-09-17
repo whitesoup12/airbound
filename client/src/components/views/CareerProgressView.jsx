@@ -34,30 +34,10 @@ export function CareerProgressView({
   const rankInfo = useMemo(() => getPilotRank(pilot?.xp || 0), [pilot?.xp]);
   const flightLog = pilot?.flight_log || [];
 
-  const totalEarnings = useMemo(
-    () => flightLog.reduce((acc, f) => acc + (f.net_payout || f.payout || 0), 0),
-    [flightLog]
-  );
-  const totalGrossRevenue = useMemo(
-    () => flightLog.reduce((acc, f) => acc + (f.gross_payout || f.payout || 0), 0),
-    [flightLog]
-  );
   const totalNm = useMemo(
     () => flightLog.reduce((acc, f) => acc + (f.distance_nm || 0), 0),
     [flightLog]
   );
-  const totalDurationSec = useMemo(
-    () => flightLog.reduce((acc, f) => acc + (f.duration_seconds || 0), 0),
-    [flightLog]
-  );
-
-  const formatDuration = (sec) => {
-    if (!sec || sec < 60) return `${sec || 0}s`;
-    const mins = Math.floor(sec / 60);
-    const hours = Math.floor(mins / 60);
-    if (hours > 0) return `${hours}h ${mins % 60}m`;
-    return `${mins}m ${sec % 60}s`;
-  };
 
   // Touchdown telemetry analysis across flight history
   const landingStats = useMemo(() => {
@@ -287,39 +267,6 @@ export function CareerProgressView({
           <div className="flex justify-between items-center text-[11px] font-mono text-slate-500">
             <span>{rankInfo.prevLevelXp.toLocaleString()} XP (Level {rankInfo.level})</span>
             <span>{rankInfo.nextLevelXp ? `${rankInfo.nextLevelXp.toLocaleString()} XP (Level ${rankInfo.level + 1})` : 'Master Aviator'}</span>
-          </div>
-        </div>
-
-        {/* Career Vital Statistics Strip */}
-        <div className="mt-6 pt-5 border-t border-slate-800/80 grid grid-cols-2 sm:grid-cols-4 gap-4 font-mono text-xs">
-          <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
-            <span className="text-slate-400 text-[10px] block uppercase">FLIGHTS LOGGED</span>
-            <span className="text-xl font-bold text-white mt-0.5 block">{flightLog.length}</span>
-            <span className="text-[10px] text-slate-500 mt-0.5 block">Recorded MSFS Flights</span>
-          </div>
-
-          <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
-            <span className="text-slate-400 text-[10px] block uppercase">TOTAL AIR MILES</span>
-            <span className="text-xl font-bold text-cyan-400 mt-0.5 block">
-              {Math.round(totalNm).toLocaleString()} NM
-            </span>
-            <span className="text-[10px] text-slate-500 mt-0.5 block">1 NM = 1 Base XP</span>
-          </div>
-
-          <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
-            <span className="text-slate-400 text-[10px] block uppercase">TOTAL FLIGHT TIME</span>
-            <span className="text-xl font-bold text-amber-400 mt-0.5 block">
-              {formatDuration(totalDurationSec)}
-            </span>
-            <span className="text-[10px] text-slate-500 mt-0.5 block">Airborne time tracked</span>
-          </div>
-
-          <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
-            <span className="text-slate-400 text-[10px] block uppercase">CAREER EARNINGS</span>
-            <span className="text-xl font-bold text-emerald-400 mt-0.5 block">
-              ${totalEarnings.toLocaleString()}
-            </span>
-            <span className="text-[10px] text-slate-500 mt-0.5 block">Net Contract Profits</span>
           </div>
         </div>
       </div>

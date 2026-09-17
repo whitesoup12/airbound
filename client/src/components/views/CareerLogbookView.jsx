@@ -54,6 +54,15 @@ export function CareerLogbookView({
   const visitedAirports = pilot?.visited_airports || [];
   const visitedCountries = pilot?.visited_countries || [];
 
+  const totalNm = useMemo(
+    () => flightLog.reduce((acc, f) => acc + (f.distance_nm || 0), 0),
+    [flightLog]
+  );
+  const totalDurationSec = useMemo(
+    () => flightLog.reduce((acc, f) => acc + (f.duration_seconds || f.airborne_seconds || 0), 0),
+    [flightLog]
+  );
+
   // Lookup map for airport details
   const airportInfoMap = useMemo(() => {
     const map = new Map();
@@ -274,6 +283,46 @@ export function CareerLogbookView({
 
   return (
     <div className="space-y-6 animate-fadeIn">
+      {/* Flight Log Vital Statistics Strip */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 font-mono text-xs">
+        <div className="p-4 rounded-2xl bg-slate-900/50 border border-slate-800/80 shadow-inner flex items-center justify-between">
+          <div>
+            <span className="text-slate-400 text-[10px] block uppercase tracking-wider">FLIGHTS LOGGED</span>
+            <span className="text-2xl font-bold text-white mt-1 block">{flightLog.length}</span>
+            <span className="text-[10px] text-slate-500 mt-0.5 block">Recorded MSFS Flights</span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-slate-800/60 border border-slate-700/50 flex items-center justify-center text-slate-300">
+            <Plane className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-slate-900/50 border border-slate-800/80 shadow-inner flex items-center justify-between">
+          <div>
+            <span className="text-slate-400 text-[10px] block uppercase tracking-wider">TOTAL AIR MILES</span>
+            <span className="text-2xl font-bold text-cyan-400 mt-1 block">
+              {Math.round(totalNm).toLocaleString()} NM
+            </span>
+            <span className="text-[10px] text-slate-500 mt-0.5 block">Airborne distance tracked</span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-cyan-950/60 border border-cyan-800/50 flex items-center justify-center text-cyan-400">
+            <Compass className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-slate-900/50 border border-slate-800/80 shadow-inner flex items-center justify-between">
+          <div>
+            <span className="text-slate-400 text-[10px] block uppercase tracking-wider">TOTAL FLIGHT TIME</span>
+            <span className="text-2xl font-bold text-amber-400 mt-1 block">
+              {formatDuration(totalDurationSec)}
+            </span>
+            <span className="text-[10px] text-slate-500 mt-0.5 block">Airborne time logged</span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-amber-950/60 border border-amber-800/50 flex items-center justify-center text-amber-400">
+            <Clock className="w-5 h-5" />
+          </div>
+        </div>
+      </div>
+
       {/* Cleaned Exploration Hub - Grouped by Country */}
       <div className="glass-panel p-5 rounded-2xl border border-slate-800/80 bg-slate-900/40 space-y-4 font-mono text-xs">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
