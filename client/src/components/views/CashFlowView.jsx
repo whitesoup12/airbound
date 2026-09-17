@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import {
   DollarSign,
   TrendingUp,
@@ -6,21 +6,17 @@ import {
   Sparkles,
   Plane,
   MapPin,
-  Search,
-  ArrowUpDown,
-  ChevronDown,
-  ChevronUp,
   Percent,
-  Calendar,
-  Layers,
-  ArrowRight,
-  Receipt,
   Warehouse,
   Coins,
-  CheckCircle2,
-  ExternalLink,
-  ChevronRight,
-  Key
+  Receipt,
+  ArrowRight,
+  ShieldCheck,
+  Package,
+  Users,
+  Gauge,
+  Key,
+  Compass
 } from 'lucide-react';
 
 export function CashFlowView({
@@ -29,25 +25,10 @@ export function CashFlowView({
   onSwitchToDispatch,
   onSwitchToFleet
 }) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState('all'); // 'all' | 'dispatch' | 'bonus' | 'rentals' | 'expenses'
-  const [sortField, setSortField] = useState('completed_at');
-  const [sortAsc, setSortAsc] = useState(false);
-  const [expandedFlightId, setExpandedFlightId] = useState(null);
-
   const flightLog = useMemo(() => pilot?.flight_log || [], [pilot?.flight_log]);
   const fleet = useMemo(() => pilot?.fleet || [], [pilot?.fleet]);
   const balance = pilot?.balance || 0;
   const STARTING_BALANCE = 15000;
-
-  // Airport dictionary lookup
-  const airportMap = useMemo(() => {
-    const map = new Map();
-    for (const a of allAirports) {
-      if (a.icao) map.set(a.icao.toUpperCase(), a);
-    }
-    return map;
-  }, [allAirports]);
 
   // Rented aircraft in fleet
   const rentedPlanes = useMemo(
@@ -55,8 +36,8 @@ export function CashFlowView({
     [fleet]
   );
 
-  // Aggregate financial metrics
-  const financialTotals = useMemo(() => {
+  // Aggregate comprehensive financial metrics
+  const financialData = useMemo(() => {
     let grossRevenue = 0;
     let netPayout = 0;
     let fuelCost = 0;
@@ -66,6 +47,11 @@ export function CashFlowView({
     let explorationBonuses = 0;
     let dispatchCount = 0;
     let totalDistanceNm = 0;
+    let totalCargoLbs = 0;
+    let totalPax = 0;
+
+    // Per-aircraft performance tracker
+    const aircraftMap = new Map();
 
     for (const f of flightLog) {
       const gross = f.gross_payout || f.payout || 0;
@@ -76,6 +62,8 @@ export function CashFlowView({
       const rental = f.rental_fee || 0;
       const bonus = f.exploration_bonus || 0;
       const dist = f.distance_nm || 0;
+      const cargo = f.cargo_lbs || 0;
+      const pax = f.pax_count || 0;
 
       grossRevenue += gross;
       netPayout += net;
@@ -85,13 +73,51 @@ export function CashFlowView({
       rentalFees += rental;
       explorationBonuses += bonus;
       totalDistanceNm += dist;
+      totalCargoLbs += cargo;
+      totalPax += pax;
 
-      if (f.source === 'airbound_dispatch' || fuel > 0 || landing > 0 || f.gross_payout > 0) {
+      const isDispatch = f.source === 'airbound_dispatch' || fuel > 0 || landing > 0 || gross > 0;
+      if (isDispatch) {
         dispatchCount++;
+
+        // Track per aircraft model
+        const planeName = f.aircraft_name || 'Cessna 172 Skyhawk';
+        if (!aircraftMap.has(planeName)) {
+          const matchingFleet = fleet.find(
+            (p) => p.name === planeName || (p.model_id && planeName.toLowerCase().includes(p.model_id.toLowerCase()))
+          );
+
+          aircraftMap.set(planeName, {
+            name: planeName,
+            tailNumber: matchingFleet?.tail_number || 'N172AB',
+            isRental: Boolean(matchingFleet?.is_rental || rental > 0),
+            rentalRate: matchingFleet?.rental_price_per_flight || (rental > 0 ? rental : 0),
+            flights: 0,
+            gross: 0,
+            fuelCost: 0,
+            fuelGal: 0,
+            landingFees: 0,
+            rentalFees: 0,
+            distanceNm: 0,
+            cargoLbs: 0,
+            paxCount: 0
+          });
+        }
+
+        const planeStats = aircraftMap.get(planeName);
+        planeStats.flights++;
+        planeStats.gross += gross;
+        planeStats.fuelCost += fuel;
+        planeStats.fuelGal += gal;
+        planeStats.landingFees += landing;
+        planeStats.rentalFees += rental;
+        planeStats.distanceNm += dist;
+        planeStats.cargoLbs += cargo;
+        planeStats.paxCount += pax;
       }
     }
 
-    // If rental fee was paid at lease time but not logged on flight, account for it from fleet
+    // Fallback: If rental fee was paid at lease time but not logged on flight
     if (rentalFees === 0 && rentedPlanes.length > 0) {
       rentalFees = rentedPlanes.reduce((sum, p) => sum + (p.rental_price_per_flight || 0), 0);
     }
@@ -99,154 +125,86 @@ export function CashFlowView({
     const totalOperatingExpenses = fuelCost + landingFees + rentalFees;
     const trueNetProfit = grossRevenue - totalOperatingExpenses;
     const profitMargin = grossRevenue > 0 ? (trueNetProfit / grossRevenue) * 100 : 100;
-    const avgGrossPerFlight = dispatchCount > 0 ? grossRevenue / dispatchCount : 0;
-    const avgNetPerFlight = dispatchCount > 0 ? trueNetProfit / dispatchCount : 0;
+    const baseContractRevenue = Math.max(0, grossRevenue - explorationBonuses);
+    const careerNetGain = balance - STARTING_BALANCE;
+
     const avgFuelPerGal = fuelGallons > 0 ? fuelCost / fuelGallons : 6.0;
     const avgFuelPerNm = totalDistanceNm > 0 ? fuelCost / totalDistanceNm : 0;
-    const careerNetGain = balance - STARTING_BALANCE;
+    const revenuePerNm = totalDistanceNm > 0 ? grossRevenue / totalDistanceNm : 0;
+    const costPerNm = totalDistanceNm > 0 ? totalOperatingExpenses / totalDistanceNm : 0;
+    const netPerNm = totalDistanceNm > 0 ? trueNetProfit / totalDistanceNm : 0;
+    const fuelMultiplier = fuelCost > 0 ? grossRevenue / fuelCost : 0;
+
+    // Aircraft performance list
+    const aircraftList = Array.from(aircraftMap.values()).map((ac) => {
+      const expenses = ac.fuelCost + ac.landingFees + ac.rentalFees;
+      const net = ac.gross - expenses;
+      const margin = ac.gross > 0 ? (net / ac.gross) * 100 : 100;
+      return {
+        ...ac,
+        totalExpenses: expenses,
+        netProfit: net,
+        margin
+      };
+    });
 
     return {
       grossRevenue,
-      netPayout,
+      baseContractRevenue,
+      explorationBonuses,
       fuelCost,
       fuelGallons,
       landingFees,
       rentalFees,
-      explorationBonuses,
       totalOperatingExpenses,
       trueNetProfit,
       profitMargin,
       dispatchCount,
       totalDistanceNm,
-      avgGrossPerFlight,
-      avgNetPerFlight,
+      totalCargoLbs,
+      totalPax,
+      careerNetGain,
       avgFuelPerGal,
       avgFuelPerNm,
-      careerNetGain
+      revenuePerNm,
+      costPerNm,
+      netPerNm,
+      fuelMultiplier,
+      aircraftList
     };
-  }, [flightLog, balance, rentedPlanes]);
+  }, [flightLog, fleet, balance, rentedPlanes]);
 
-  // Filtered and sorted flight transactions
-  const filteredFlights = useMemo(() => {
-    let list = flightLog.map((f, idx) => {
-      const gross = f.gross_payout || f.payout || 0;
-      const fuel = f.fuel_cost || 0;
-      const landing = f.landing_fee || 0;
-      const rental = f.rental_fee || 0;
-      // Flight true net after all operating expenses including rental fee
-      const trueFlightNet = gross > 0 ? gross - fuel - landing - rental : (f.net_payout || f.payout || 0);
-
-      return {
-        ...f,
-        _virtualId: f._id || `flight-${idx}`,
-        gross_payout: gross,
-        net_payout: f.net_payout || f.payout || 0,
-        true_flight_net: trueFlightNet,
-        fuel_cost: fuel,
-        fuel_gallons: f.fuel_gallons || 0,
-        landing_fee: landing,
-        rental_fee: rental,
-        exploration_bonus: f.exploration_bonus || 0
-      };
-    });
-
-    // Filter type
-    if (filterType === 'dispatch') {
-      list = list.filter((f) => f.source === 'airbound_dispatch' || f.gross_payout > 0 || f.fuel_cost > 0);
-    } else if (filterType === 'bonus') {
-      list = list.filter((f) => f.exploration_bonus > 0);
-    } else if (filterType === 'rentals') {
-      list = list.filter((f) => f.rental_fee > 0);
-    } else if (filterType === 'expenses') {
-      list = list.filter((f) => f.fuel_cost > 0 || f.landing_fee > 0 || f.rental_fee > 0);
-    }
-
-    // Search query
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      list = list.filter((f) => {
-        const orig = (f.origin_icao || '').toLowerCase();
-        const dest = (f.destination_icao || '').toLowerCase();
-        const plane = (f.aircraft_name || '').toLowerCase();
-        const origName = (airportMap.get(f.origin_icao?.toUpperCase())?.name || '').toLowerCase();
-        const destName = (airportMap.get(f.destination_icao?.toUpperCase())?.name || '').toLowerCase();
-        return (
-          orig.includes(q) ||
-          dest.includes(q) ||
-          plane.includes(q) ||
-          origName.includes(q) ||
-          destName.includes(q)
-        );
-      });
-    }
-
-    // Sort
-    list.sort((a, b) => {
-      let valA = 0;
-      let valB = 0;
-      switch (sortField) {
-        case 'true_flight_net':
-        case 'net_payout':
-          valA = a.true_flight_net;
-          valB = b.true_flight_net;
-          break;
-        case 'gross_payout':
-          valA = a.gross_payout;
-          valB = b.gross_payout;
-          break;
-        case 'rental_fee':
-          valA = a.rental_fee;
-          valB = b.rental_fee;
-          break;
-        case 'fuel_cost':
-          valA = a.fuel_cost;
-          valB = b.fuel_cost;
-          break;
-        case 'landing_fee':
-          valA = a.landing_fee;
-          valB = b.landing_fee;
-          break;
-        case 'exploration_bonus':
-          valA = a.exploration_bonus;
-          valB = b.exploration_bonus;
-          break;
-        case 'completed_at':
-        default:
-          valA = a.completed_at ? new Date(a.completed_at).getTime() : 0;
-          valB = b.completed_at ? new Date(b.completed_at).getTime() : 0;
-          break;
-      }
-      return sortAsc ? valA - valB : valB - valA;
-    });
-
-    return list;
-  }, [flightLog, filterType, searchQuery, sortField, sortAsc, airportMap]);
-
-  const handleSort = (field) => {
-    if (sortField === field) {
-      setSortAsc(!sortAsc);
-    } else {
-      setSortField(field);
-      setSortAsc(false);
-    }
-  };
-
-  const toggleExpandFlight = (id) => {
-    setExpandedFlightId((prev) => (prev === id ? null : id));
-  };
-
-  // Percentages for visual breakdown bar
-  const netShare = financialTotals.grossRevenue > 0
-    ? (financialTotals.trueNetProfit / financialTotals.grossRevenue) * 100
+  // Income category shares
+  const baseRevenueShare = financialData.grossRevenue > 0
+    ? (financialData.baseContractRevenue / financialData.grossRevenue) * 100
     : 100;
-  const rentalShare = financialTotals.grossRevenue > 0
-    ? (financialTotals.rentalFees / financialTotals.grossRevenue) * 100
+  const explorationShare = financialData.grossRevenue > 0
+    ? (financialData.explorationBonuses / financialData.grossRevenue) * 100
     : 0;
-  const landingShare = financialTotals.grossRevenue > 0
-    ? (financialTotals.landingFees / financialTotals.grossRevenue) * 100
+
+  // Expense category shares
+  const rentalExpenseShare = financialData.totalOperatingExpenses > 0
+    ? (financialData.rentalFees / financialData.totalOperatingExpenses) * 100
     : 0;
-  const fuelShare = financialTotals.grossRevenue > 0
-    ? (financialTotals.fuelCost / financialTotals.grossRevenue) * 100
+  const landingExpenseShare = financialData.totalOperatingExpenses > 0
+    ? (financialData.landingFees / financialData.totalOperatingExpenses) * 100
+    : 0;
+  const fuelExpenseShare = financialData.totalOperatingExpenses > 0
+    ? (financialData.fuelCost / financialData.totalOperatingExpenses) * 100
+    : 0;
+
+  // Macro retention bar percentages
+  const netRetainedPct = financialData.grossRevenue > 0
+    ? (financialData.trueNetProfit / financialData.grossRevenue) * 100
+    : 100;
+  const rentalGrossPct = financialData.grossRevenue > 0
+    ? (financialData.rentalFees / financialData.grossRevenue) * 100
+    : 0;
+  const landingGrossPct = financialData.grossRevenue > 0
+    ? (financialData.landingFees / financialData.grossRevenue) * 100
+    : 0;
+  const fuelGrossPct = financialData.grossRevenue > 0
+    ? (financialData.fuelCost / financialData.grossRevenue) * 100
     : 0;
 
   return (
@@ -260,13 +218,13 @@ export function CashFlowView({
             </div>
             <div>
               <h1 className="text-xl font-bold text-white font-mono tracking-wide uppercase flex items-center space-x-2">
-                <span>CASH FLOW & FINANCIAL LEDGER</span>
+                <span>CASH FLOW & CATEGORY ECONOMICS</span>
                 <span className="text-[10px] bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-700/50">
-                  REAL-TIME ECONOMICS
+                  MACRO ACCOUNTING
                 </span>
               </h1>
               <p className="text-xs text-slate-400 font-mono mt-0.5">
-                Complete accounting of flight revenues, fuel expenses, aircraft rental costs, exploration bonuses, and liquid capital.
+                Comprehensive breakdown of income sources, operating cost categories, and airframe profitability.
               </p>
             </div>
           </div>
@@ -277,7 +235,7 @@ export function CashFlowView({
             <button
               type="button"
               onClick={onSwitchToDispatch}
-              className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-mono text-slate-300 hover:text-white transition flex items-center space-x-1.5 cursor-pointer"
+              className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-mono text-slate-300 hover:text-white transition flex items-center space-x-1.5 cursor-pointer"
             >
               <span>Dispatch Board</span>
               <ArrowRight className="w-3.5 h-3.5 text-cyan-400" />
@@ -287,7 +245,7 @@ export function CashFlowView({
             <button
               type="button"
               onClick={onSwitchToFleet}
-              className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-mono text-slate-300 hover:text-white transition flex items-center space-x-1.5 cursor-pointer"
+              className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-mono text-slate-300 hover:text-white transition flex items-center space-x-1.5 cursor-pointer"
             >
               <Warehouse className="w-3.5 h-3.5 text-amber-400" />
               <span>Fleet Hangar</span>
@@ -296,9 +254,9 @@ export function CashFlowView({
         </div>
       </div>
 
-      {/* 2. Primary 5-Hero KPI Cards */}
+      {/* 2. Top 5 KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 font-mono text-xs">
-        {/* Card 1: Money in the Bank */}
+        {/* Card 1: Money in Bank */}
         <div className="p-5 rounded-2xl bg-slate-900/50 border border-emerald-800/60 shadow-lg shadow-emerald-950/20 relative overflow-hidden flex flex-col justify-between">
           <div className="absolute -right-4 -top-4 w-24 h-24 bg-emerald-500/10 rounded-full blur-xl pointer-events-none" />
           <div className="flex items-center justify-between">
@@ -314,23 +272,23 @@ export function CashFlowView({
               ${balance.toLocaleString()}
             </span>
             <span className="text-[11px] text-slate-400 block mt-1">
-              Liquid capital available in bank
+              Liquid capital available
             </span>
           </div>
           <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-[10px]">
             <span className="text-slate-500">Seed: $15,000</span>
             <span className="text-emerald-300 font-bold">
-              {financialTotals.careerNetGain >= 0 ? `+$${financialTotals.careerNetGain.toLocaleString()}` : `-$${Math.abs(financialTotals.careerNetGain).toLocaleString()}`} Net
+              {financialData.careerNetGain >= 0 ? `+$${financialData.careerNetGain.toLocaleString()}` : `-$${Math.abs(financialData.careerNetGain).toLocaleString()}`} Net
             </span>
           </div>
         </div>
 
-        {/* Card 2: Money Earned from Jobs */}
+        {/* Card 2: Total Gross Income */}
         <div className="p-5 rounded-2xl bg-slate-900/50 border border-cyan-800/60 shadow-lg shadow-cyan-950/20 relative overflow-hidden flex flex-col justify-between">
           <div className="absolute -right-4 -top-4 w-24 h-24 bg-cyan-500/10 rounded-full blur-xl pointer-events-none" />
           <div className="flex items-center justify-between">
             <span className="text-slate-400 text-[10px] uppercase tracking-wider font-semibold">
-              MONEY EARNED FROM JOBS
+              TOTAL GROSS INCOME
             </span>
             <div className="w-8 h-8 rounded-lg bg-cyan-950/80 border border-cyan-700/60 flex items-center justify-center text-cyan-400">
               <TrendingUp className="w-4 h-4" />
@@ -338,72 +296,70 @@ export function CashFlowView({
           </div>
           <div className="my-3">
             <span className="text-2xl sm:text-3xl font-extrabold text-cyan-400 block tracking-tight">
-              ${financialTotals.grossRevenue.toLocaleString()}
+              ${financialData.grossRevenue.toLocaleString()}
             </span>
             <span className="text-[11px] text-slate-400 block mt-1">
-              Gross dispatch contract revenue
+              Contract & bonus revenue
             </span>
           </div>
           <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-[10px]">
-            <span className="text-slate-500">{financialTotals.dispatchCount} Missions</span>
+            <span className="text-slate-500">{financialData.dispatchCount} Missions</span>
             <span className="text-cyan-300 font-bold">
-              Avg ${Math.round(financialTotals.avgGrossPerFlight).toLocaleString()} / run
+              Avg ${Math.round(financialData.grossRevenue / Math.max(1, financialData.dispatchCount)).toLocaleString()}/flt
             </span>
           </div>
         </div>
 
-        {/* Card 3: Aircraft Rentals Paid */}
-        <div className="p-5 rounded-2xl bg-slate-900/50 border border-indigo-800/60 shadow-lg shadow-indigo-950/20 relative overflow-hidden flex flex-col justify-between">
-          <div className="absolute -right-4 -top-4 w-24 h-24 bg-indigo-500/10 rounded-full blur-xl pointer-events-none" />
+        {/* Card 3: Total Operating Expenses */}
+        <div className="p-5 rounded-2xl bg-slate-900/50 border border-rose-800/60 shadow-lg shadow-rose-950/20 relative overflow-hidden flex flex-col justify-between">
+          <div className="absolute -right-4 -top-4 w-24 h-24 bg-rose-500/10 rounded-full blur-xl pointer-events-none" />
           <div className="flex items-center justify-between">
             <span className="text-slate-400 text-[10px] uppercase tracking-wider font-semibold">
-              AIRCRAFT RENTALS PAID
+              TOTAL EXPENSES PAID
             </span>
-            <div className="w-8 h-8 rounded-lg bg-indigo-950/80 border border-indigo-700/60 flex items-center justify-center text-indigo-400">
-              <Key className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-lg bg-rose-950/80 border border-rose-700/60 flex items-center justify-center text-rose-400">
+              <Receipt className="w-4 h-4" />
             </div>
           </div>
           <div className="my-3">
-            <span className="text-2xl sm:text-3xl font-extrabold text-indigo-300 block tracking-tight">
-              -${financialTotals.rentalFees.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <span className="text-2xl sm:text-3xl font-extrabold text-rose-400 block tracking-tight">
+              -${financialData.totalOperatingExpenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
             <span className="text-[11px] text-slate-400 block mt-1">
-              Airframe lease fees paid
+              Rentals, fuel & landing fees
             </span>
           </div>
           <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-[10px]">
-            <span className="text-slate-500">
-              {rentedPlanes.length > 0 ? rentedPlanes[0].name.replace(' (Rental)', '') : 'Fleet Leases'}
-            </span>
-            <span className="text-indigo-300 font-bold">
-              {rentedPlanes.length > 0 ? `$${rentedPlanes[0].rental_price_per_flight}/flt` : 'None'}
+            <span className="text-slate-500">3 Cost Categories</span>
+            <span className="text-rose-300 font-bold">
+              Avg -${(financialData.totalOperatingExpenses / Math.max(1, financialData.dispatchCount)).toFixed(2)}/flt
             </span>
           </div>
         </div>
 
-        {/* Card 4: Fuel Paid */}
-        <div className="p-5 rounded-2xl bg-slate-900/50 border border-amber-800/60 shadow-lg shadow-amber-950/20 relative overflow-hidden flex flex-col justify-between">
-          <div className="absolute -right-4 -top-4 w-24 h-24 bg-amber-500/10 rounded-full blur-xl pointer-events-none" />
+        {/* Card 4: Net Operating Profit */}
+        <div className="p-5 rounded-2xl bg-slate-900/50 border border-emerald-800/60 shadow-lg shadow-emerald-950/20 relative overflow-hidden flex flex-col justify-between">
+          <div className="absolute -right-4 -top-4 w-24 h-24 bg-emerald-500/10 rounded-full blur-xl pointer-events-none" />
           <div className="flex items-center justify-between">
             <span className="text-slate-400 text-[10px] uppercase tracking-wider font-semibold">
-              FUEL EXPENSES PAID
+              NET OPERATING PROFIT
             </span>
-            <div className="w-8 h-8 rounded-lg bg-amber-950/80 border border-amber-700/60 flex items-center justify-center text-amber-400">
-              <Fuel className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-lg bg-emerald-950/80 border border-emerald-700/60 flex items-center justify-center text-emerald-400">
+              <Percent className="w-4 h-4" />
             </div>
           </div>
           <div className="my-3">
-            <span className="text-2xl sm:text-3xl font-extrabold text-amber-400 block tracking-tight">
-              -${financialTotals.fuelCost.toFixed(2)}
+            <span className="text-2xl sm:text-3xl font-extrabold text-emerald-300 block tracking-tight">
+              +${financialData.trueNetProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
             <span className="text-[11px] text-slate-400 block mt-1">
-              {financialTotals.fuelGallons.toFixed(1)} gal aviation fuel
+              Retained career earnings
             </span>
           </div>
           <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-[10px]">
-            <span className="text-slate-500">${financialTotals.avgFuelPerGal.toFixed(2)}/gal</span>
-            <span className="text-amber-300 font-bold">
-              ${financialTotals.avgFuelPerNm.toFixed(2)} / NM
+            <span className="text-slate-500">Margin</span>
+            <span className="text-emerald-400 font-bold">
+              {financialData.profitMargin.toFixed(1)}% Operating Margin
             </span>
           </div>
         </div>
@@ -421,10 +377,10 @@ export function CashFlowView({
           </div>
           <div className="my-3">
             <span className="text-2xl sm:text-3xl font-extrabold text-purple-300 block tracking-tight">
-              +${financialTotals.explorationBonuses.toLocaleString()}
+              +${financialData.explorationBonuses.toLocaleString()}
             </span>
             <span className="text-[11px] text-slate-400 block mt-1">
-              Featured discovery incentives
+              Discovery airfield rewards
             </span>
           </div>
           <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-[10px]">
@@ -434,24 +390,24 @@ export function CashFlowView({
         </div>
       </div>
 
-      {/* 3. Revenue Retention & Operating Efficiency Bar */}
+      {/* 3. Revenue Retention & Macro Economics Bar */}
       <div className="glass-panel p-5 sm:p-6 rounded-2xl border border-slate-800/80 bg-slate-900/40 space-y-4 font-mono text-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
           <div className="flex items-center space-x-2">
             <Percent className="w-4 h-4 text-emerald-400" />
             <span className="text-slate-200 font-bold text-sm tracking-wide">
-              OPERATING EFFICIENCY & CASH FLOW RETENTION
+              MACRO CASH RETENTION & EXPENSE ALLOCATION
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-3 text-xs">
             <span className="text-slate-400">
-              Net Operating Profit:{' '}
+              Net Career Profit:{' '}
               <strong className="text-emerald-400 font-bold text-sm">
-                ${financialTotals.trueNetProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                ${financialData.trueNetProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </strong>
             </span>
-            <span className="px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800 font-bold">
-              {financialTotals.profitMargin.toFixed(1)}% Operating Margin
+            <span className="px-2.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800 font-bold">
+              {financialData.profitMargin.toFixed(1)}% Retained
             </span>
           </div>
         </div>
@@ -461,23 +417,23 @@ export function CashFlowView({
           <div className="w-full h-4 rounded-full bg-slate-950 border border-slate-800 overflow-hidden flex shadow-inner">
             <div
               className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500"
-              style={{ width: `${Math.max(netShare, 0)}%` }}
-              title={`Net Profit Retained: ${netShare.toFixed(1)}%`}
+              style={{ width: `${Math.max(netRetainedPct, 0)}%` }}
+              title={`Net Profit Retained: ${netRetainedPct.toFixed(1)}%`}
             />
             <div
               className="h-full bg-indigo-500 transition-all duration-500"
-              style={{ width: `${Math.max(rentalShare, 0)}%` }}
-              title={`Aircraft Rentals: ${rentalShare.toFixed(1)}%`}
+              style={{ width: `${Math.max(rentalGrossPct, 0)}%` }}
+              title={`Aircraft Rentals: ${rentalGrossPct.toFixed(1)}%`}
             />
             <div
               className="h-full bg-rose-500 transition-all duration-500"
-              style={{ width: `${Math.max(landingShare, 0)}%` }}
-              title={`Landing Fees: ${landingShare.toFixed(1)}%`}
+              style={{ width: `${Math.max(landingGrossPct, 0)}%` }}
+              title={`Landing Fees: ${landingGrossPct.toFixed(1)}%`}
             />
             <div
               className="h-full bg-amber-500 transition-all duration-500"
-              style={{ width: `${Math.max(fuelShare, 0)}%` }}
-              title={`Fuel Cost: ${fuelShare.toFixed(1)}%`}
+              style={{ width: `${Math.max(fuelGrossPct, 0)}%` }}
+              title={`Fuel Cost: ${fuelGrossPct.toFixed(1)}%`}
             />
           </div>
 
@@ -485,502 +441,448 @@ export function CashFlowView({
             <div className="flex items-center space-x-1.5">
               <span className="w-2.5 h-2.5 rounded-sm bg-emerald-400 inline-block" />
               <span>
-                Net Profit: <strong className="text-emerald-300">${financialTotals.trueNetProfit.toFixed(2)}</strong> ({netShare.toFixed(1)}%)
+                Net Profit: <strong className="text-emerald-300">${financialData.trueNetProfit.toFixed(2)}</strong> ({netRetainedPct.toFixed(1)}%)
               </span>
             </div>
             <div className="flex items-center space-x-1.5">
               <span className="w-2.5 h-2.5 rounded-sm bg-indigo-500 inline-block" />
               <span>
-                Aircraft Rentals: <strong className="text-indigo-300">${financialTotals.rentalFees.toFixed(2)}</strong> ({rentalShare.toFixed(1)}%)
+                Aircraft Rentals: <strong className="text-indigo-300">${financialData.rentalFees.toFixed(2)}</strong> ({rentalGrossPct.toFixed(1)}%)
               </span>
             </div>
             <div className="flex items-center space-x-1.5">
               <span className="w-2.5 h-2.5 rounded-sm bg-rose-500 inline-block" />
               <span>
-                Landing Fees: <strong className="text-rose-300">${financialTotals.landingFees.toFixed(2)}</strong> ({landingShare.toFixed(1)}%)
+                Landing Fees: <strong className="text-rose-300">${financialData.landingFees.toFixed(2)}</strong> ({landingGrossPct.toFixed(1)}%)
               </span>
             </div>
             <div className="flex items-center space-x-1.5">
               <span className="w-2.5 h-2.5 rounded-sm bg-amber-500 inline-block" />
               <span>
-                Fuel Expenses: <strong className="text-amber-300">${financialTotals.fuelCost.toFixed(2)}</strong> ({fuelShare.toFixed(1)}%)
+                Fuel Expenses: <strong className="text-amber-300">${financialData.fuelCost.toFixed(2)}</strong> ({fuelGrossPct.toFixed(1)}%)
               </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 4. Two-Column Streams Breakdown */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-xs">
-        {/* Income Sources */}
-        <div className="p-5 rounded-2xl bg-slate-900/40 border border-slate-800 space-y-3">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
-            <div className="flex items-center space-x-2">
-              <TrendingUp className="w-4 h-4 text-cyan-400" />
-              <span className="font-bold text-white uppercase tracking-wider">INCOME STREAMS</span>
+      {/* 4. Side-by-Side Category Breakdown: Income vs Expenses */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 font-mono text-xs">
+        {/* LEFT COLUMN: INCOME BY CATEGORY */}
+        <div className="glass-panel p-5 sm:p-6 rounded-3xl border border-slate-800 bg-slate-900/40 space-y-5">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="flex items-center space-x-2.5">
+              <div className="w-8 h-8 rounded-lg bg-cyan-950/80 border border-cyan-700/60 flex items-center justify-center text-cyan-400">
+                <TrendingUp className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="font-bold text-white text-sm uppercase tracking-wider">
+                  INCOME BY CATEGORY
+                </h2>
+                <p className="text-[11px] text-slate-400">Where your earnings came from</p>
+              </div>
             </div>
-            <span className="text-cyan-400 font-bold">
-              ${financialTotals.grossRevenue.toLocaleString()}
+            <span className="text-cyan-400 font-extrabold text-base">
+              ${financialData.grossRevenue.toLocaleString()}
             </span>
           </div>
 
-          <div className="space-y-2 text-[11px]">
-            <div className="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800/60">
-              <span className="text-slate-400">Base Freight & Passenger Contracts</span>
-              <span className="text-white font-semibold">
-                ${(financialTotals.grossRevenue - financialTotals.explorationBonuses).toLocaleString()}
-              </span>
-            </div>
-            <div className="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800/60">
-              <div className="flex items-center space-x-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-                <span className="text-slate-400">Featured Discovery Bonuses</span>
+          <div className="space-y-4">
+            {/* Category 1: Base Dispatch Revenue */}
+            <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800/90 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className="w-6 h-6 rounded-md bg-cyan-950/80 border border-cyan-800/60 flex items-center justify-center text-cyan-400">
+                    <Package className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-200 block text-xs">Base Dispatch Contracts</span>
+                    <span className="text-[10px] text-slate-500">Freight & Passenger Delivery Missions</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="font-bold text-cyan-300 text-sm block">
+                    ${financialData.baseContractRevenue.toLocaleString()}
+                  </span>
+                  <span className="text-[10px] text-slate-400">{baseRevenueShare.toFixed(1)}% of total</span>
+                </div>
               </div>
-              <span className="text-purple-300 font-semibold">
-                +${financialTotals.explorationBonuses.toLocaleString()}
-              </span>
+
+              {/* Progress bar */}
+              <div className="w-full h-2 rounded-full bg-slate-900 overflow-hidden border border-slate-800">
+                <div
+                  className="h-full bg-cyan-500 rounded-full transition-all duration-500"
+                  style={{ width: `${baseRevenueShare}%` }}
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 pt-1 text-[10px] text-slate-400">
+                <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800">
+                  📦 {financialData.totalCargoLbs.toLocaleString()} lbs cargo hauled
+                </span>
+                <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800">
+                  👥 {financialData.totalPax} passenger{financialData.totalPax === 1 ? '' : 's'} flown
+                </span>
+                <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800">
+                  ✈️ {financialData.dispatchCount} completed runs
+                </span>
+              </div>
             </div>
-            <div className="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800/60">
-              <span className="text-slate-400">Average Payout per Flight</span>
-              <span className="text-slate-300 font-semibold">
-                ${Math.round(financialTotals.avgNetPerFlight).toLocaleString()} Net
-              </span>
+
+            {/* Category 2: Exploration & Discovery Bonuses */}
+            <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800/90 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className="w-6 h-6 rounded-md bg-purple-950/80 border border-purple-800/60 flex items-center justify-center text-purple-400">
+                    <Sparkles className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-200 block text-xs">Exploration & Discovery Bonuses</span>
+                    <span className="text-[10px] text-slate-500">Featured unvisited destination incentive payouts</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="font-bold text-purple-300 text-sm block">
+                    +${financialData.explorationBonuses.toLocaleString()}
+                  </span>
+                  <span className="text-[10px] text-slate-400">{explorationShare.toFixed(1)}% of total</span>
+                </div>
+              </div>
+
+              {/* Progress bar */}
+              <div className="w-full h-2 rounded-full bg-slate-900 overflow-hidden border border-slate-800">
+                <div
+                  className="h-full bg-purple-500 rounded-full transition-all duration-500"
+                  style={{ width: `${explorationShare}%` }}
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 pt-1 text-[10px] text-slate-400">
+                <span className="px-2 py-0.5 rounded bg-purple-950/50 border border-purple-800/50 text-purple-300">
+                  ⭐ +$500 per unvisited destination
+                </span>
+                <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800">
+                  🌍 {pilot?.visited_airports?.length || 1} airfields explored
+                </span>
+              </div>
+            </div>
+
+            {/* Income Performance Highlights */}
+            <div className="p-3.5 rounded-2xl bg-slate-900/40 border border-slate-800/80 grid grid-cols-2 gap-3 text-[11px]">
+              <div>
+                <span className="text-slate-500 block text-[10px] uppercase">AVERAGE PAYOUT PER RUN</span>
+                <span className="text-white font-bold text-sm mt-0.5 block">
+                  ${Math.round(financialData.grossRevenue / Math.max(1, financialData.dispatchCount)).toLocaleString()}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-500 block text-[10px] uppercase">REVENUE GENERATED PER NM</span>
+                <span className="text-cyan-400 font-bold text-sm mt-0.5 block">
+                  ${financialData.revenuePerNm.toFixed(2)} / NM
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Operating Deductions */}
-        <div className="p-5 rounded-2xl bg-slate-900/40 border border-slate-800 space-y-3">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
-            <div className="flex items-center space-x-2">
-              <Receipt className="w-4 h-4 text-amber-400" />
-              <span className="font-bold text-white uppercase tracking-wider">OPERATING EXPENDITURES</span>
+        {/* RIGHT COLUMN: EXPENSES BY CATEGORY */}
+        <div className="glass-panel p-5 sm:p-6 rounded-3xl border border-slate-800 bg-slate-900/40 space-y-5">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="flex items-center space-x-2.5">
+              <div className="w-8 h-8 rounded-lg bg-rose-950/80 border border-rose-700/60 flex items-center justify-center text-rose-400">
+                <Receipt className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="font-bold text-white text-sm uppercase tracking-wider">
+                  EXPENSES BY CATEGORY
+                </h2>
+                <p className="text-[11px] text-slate-400">Where your money was spent</p>
+              </div>
             </div>
-            <span className="text-rose-400 font-bold">
-              -${financialTotals.totalOperatingExpenses.toFixed(2)}
+            <span className="text-rose-400 font-extrabold text-base">
+              -${financialData.totalOperatingExpenses.toFixed(2)}
             </span>
           </div>
 
-          <div className="space-y-2 text-[11px]">
-            <div className="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800/60">
-              <div className="flex items-center space-x-1.5">
-                <Key className="w-3.5 h-3.5 text-indigo-400" />
-                <span className="text-slate-400">Aircraft Rental Leases</span>
+          <div className="space-y-4">
+            {/* Expense 1: Aircraft Rental Leases */}
+            <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800/90 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className="w-6 h-6 rounded-md bg-indigo-950/80 border border-indigo-800/60 flex items-center justify-center text-indigo-400">
+                    <Key className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-200 block text-xs">Aircraft Rental Leases</span>
+                    <span className="text-[10px] text-slate-500">Per-flight airframe rental deductions</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="font-bold text-indigo-300 text-sm block">
+                    -${financialData.rentalFees.toFixed(2)}
+                  </span>
+                  <span className="text-[10px] text-slate-400">{rentalExpenseShare.toFixed(1)}% of expenses</span>
+                </div>
               </div>
-              <span className="text-indigo-300 font-semibold">
-                -${financialTotals.rentalFees.toFixed(2)}
-                {rentedPlanes.length > 0 ? ` (${rentedPlanes[0].name.replace(' (Rental)', '')})` : ''}
-              </span>
+
+              {/* Progress bar */}
+              <div className="w-full h-2 rounded-full bg-slate-900 overflow-hidden border border-slate-800">
+                <div
+                  className="h-full bg-indigo-500 rounded-full transition-all duration-500"
+                  style={{ width: `${rentalExpenseShare}%` }}
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 pt-1 text-[10px] text-slate-400">
+                <span className="px-2 py-0.5 rounded bg-indigo-950/50 border border-indigo-800/50 text-indigo-300">
+                  🔑 {rentedPlanes.length > 0 ? rentedPlanes[0].name.replace(' (Rental)', '') : 'Fleet Leases'} (${rentedPlanes.length > 0 ? rentedPlanes[0].rental_price_per_flight : 950}/flight)
+                </span>
+                <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800">
+                  Owned planes: $0.00 lease
+                </span>
+              </div>
             </div>
-            <div className="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800/60">
-              <div className="flex items-center space-x-1.5">
-                <MapPin className="w-3.5 h-3.5 text-rose-400" />
-                <span className="text-slate-400">Airport Runway & Handling Fees</span>
+
+            {/* Expense 2: Airport Landing Fees */}
+            <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800/90 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className="w-6 h-6 rounded-md bg-rose-950/80 border border-rose-800/60 flex items-center justify-center text-rose-400">
+                    <MapPin className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-200 block text-xs">Airport Runway & Landing Fees</span>
+                    <span className="text-[10px] text-slate-500">Arrival runway maintenance and handling</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="font-bold text-rose-300 text-sm block">
+                    -${financialData.landingFees.toFixed(2)}
+                  </span>
+                  <span className="text-[10px] text-slate-400">{landingExpenseShare.toFixed(1)}% of expenses</span>
+                </div>
               </div>
-              <span className="text-rose-300 font-semibold">
-                -${financialTotals.landingFees.toFixed(2)}
-              </span>
+
+              {/* Progress bar */}
+              <div className="w-full h-2 rounded-full bg-slate-900 overflow-hidden border border-slate-800">
+                <div
+                  className="h-full bg-rose-500 rounded-full transition-all duration-500"
+                  style={{ width: `${landingExpenseShare}%` }}
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 pt-1 text-[10px] text-slate-400">
+                <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800">
+                  🏢 Hubs: $350
+                </span>
+                <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800">
+                  🛫 Regional: $120
+                </span>
+                <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800">
+                  🛬 Small: $35
+                </span>
+              </div>
             </div>
-            <div className="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800/60">
-              <div className="flex items-center space-x-1.5">
-                <Fuel className="w-3.5 h-3.5 text-amber-400" />
-                <span className="text-slate-400">Aviation Fuel (100LL & Jet-A)</span>
+
+            {/* Expense 3: Aviation Fuel Burn */}
+            <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800/90 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className="w-6 h-6 rounded-md bg-amber-950/80 border border-amber-800/60 flex items-center justify-center text-amber-400">
+                    <Fuel className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-200 block text-xs">Aviation Fuel (100LL & Jet-A)</span>
+                    <span className="text-[10px] text-slate-500">Operating fuel burned during transit</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="font-bold text-amber-300 text-sm block">
+                    -${financialData.fuelCost.toFixed(2)}
+                  </span>
+                  <span className="text-[10px] text-slate-400">{fuelExpenseShare.toFixed(1)}% of expenses</span>
+                </div>
               </div>
-              <span className="text-amber-300 font-semibold">
-                -${financialTotals.fuelCost.toFixed(2)} ({financialTotals.fuelGallons.toFixed(1)} gal)
-              </span>
+
+              {/* Progress bar */}
+              <div className="w-full h-2 rounded-full bg-slate-900 overflow-hidden border border-slate-800">
+                <div
+                  className="h-full bg-amber-500 rounded-full transition-all duration-500"
+                  style={{ width: `${fuelExpenseShare}%` }}
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 pt-1 text-[10px] text-slate-400">
+                <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800">
+                  ⛽ {financialData.fuelGallons.toFixed(1)} gal total
+                </span>
+                <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800">
+                  💲 ${financialData.avgFuelPerGal.toFixed(2)} / gal avg
+                </span>
+                <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800">
+                  📏 ${financialData.avgFuelPerNm.toFixed(2)} / NM
+                </span>
+              </div>
+            </div>
+
+            {/* Operating Expense Highlights */}
+            <div className="p-3.5 rounded-2xl bg-slate-900/40 border border-slate-800/80 grid grid-cols-2 gap-3 text-[11px]">
+              <div>
+                <span className="text-slate-500 block text-[10px] uppercase">AVERAGE COST PER RUN</span>
+                <span className="text-rose-300 font-bold text-sm mt-0.5 block">
+                  -${(financialData.totalOperatingExpenses / Math.max(1, financialData.dispatchCount)).toFixed(2)}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-500 block text-[10px] uppercase">OPERATING COST PER NM</span>
+                <span className="text-rose-400 font-bold text-sm mt-0.5 block">
+                  -${financialData.costPerNm.toFixed(2)} / NM
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 5. Flight Settlement Transaction History (Ledger Table) */}
-      <div className="glass-panel rounded-3xl border border-slate-800 bg-slate-900/40 p-5 sm:p-6 space-y-4 font-mono text-xs">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
-          <div>
-            <h2 className="text-base font-bold text-white uppercase tracking-wider flex items-center space-x-2">
-              <Receipt className="w-4 h-4 text-cyan-400" />
-              <span>FLIGHT SETTLEMENT TRANSACTION HISTORY</span>
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Itemized ledger of contract revenue, airframe rentals, fuel burn, and airport fees logged per mission.
-            </p>
+      {/* 5. Airframe & Fleet Economics Breakdown */}
+      <div className="glass-panel p-5 sm:p-6 rounded-3xl border border-slate-800 bg-slate-900/40 space-y-4 font-mono text-xs">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-800 pb-4">
+          <div className="flex items-center space-x-2.5">
+            <div className="w-8 h-8 rounded-lg bg-indigo-950/80 border border-indigo-700/60 flex items-center justify-center text-indigo-400">
+              <Warehouse className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-white uppercase tracking-wider">
+                AIRFRAME PROFITABILITY & FLEET COMPARISON
+              </h2>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Financial performance, rental overhead, and net margin compared by aircraft model.
+              </p>
+            </div>
           </div>
-
-          {/* Quick Filter Buttons */}
-          <div className="flex flex-wrap items-center gap-1.5 self-stretch sm:self-auto">
-            <button
-              type="button"
-              onClick={() => setFilterType('all')}
-              className={`px-3 py-1.5 rounded-lg transition cursor-pointer text-xs ${
-                filterType === 'all'
-                  ? 'bg-cyan-600 text-white font-bold shadow-md shadow-cyan-600/30'
-                  : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
-              }`}
-            >
-              All ({flightLog.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setFilterType('dispatch')}
-              className={`px-3 py-1.5 rounded-lg transition cursor-pointer text-xs ${
-                filterType === 'dispatch'
-                  ? 'bg-cyan-600 text-white font-bold shadow-md shadow-cyan-600/30'
-                  : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
-              }`}
-            >
-              Dispatches ({financialTotals.dispatchCount})
-            </button>
-            <button
-              type="button"
-              onClick={() => setFilterType('rentals')}
-              className={`px-3 py-1.5 rounded-lg transition cursor-pointer text-xs ${
-                filterType === 'rentals'
-                  ? 'bg-indigo-600 text-white font-bold shadow-md shadow-indigo-600/30'
-                  : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
-              }`}
-            >
-              Rentals
-            </button>
-            <button
-              type="button"
-              onClick={() => setFilterType('bonus')}
-              className={`px-3 py-1.5 rounded-lg transition cursor-pointer text-xs ${
-                filterType === 'bonus'
-                  ? 'bg-purple-600 text-white font-bold shadow-md shadow-purple-600/30'
-                  : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
-              }`}
-            >
-              Discovery Bonuses
-            </button>
-            <button
-              type="button"
-              onClick={() => setFilterType('expenses')}
-              className={`px-3 py-1.5 rounded-lg transition cursor-pointer text-xs ${
-                filterType === 'expenses'
-                  ? 'bg-amber-600 text-white font-bold shadow-md shadow-amber-600/30'
-                  : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
-              }`}
-            >
-              With Expenses
-            </button>
-          </div>
+          <span className="text-xs text-slate-400">
+            {financialData.aircraftList.length} Aircraft Model{financialData.aircraftList.length === 1 ? '' : 's'} Flown
+          </span>
         </div>
 
-        {/* Search Input */}
-        <div className="relative">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Search transactions by ICAO code, airport name, or aircraft..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-950/80 border border-slate-800 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition text-xs font-mono"
-          />
+        {/* Aircraft Comparison Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {financialData.aircraftList.map((ac) => {
+            return (
+              <div
+                key={ac.name}
+                className="p-5 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-4 shadow-md"
+              >
+                {/* Aircraft Header */}
+                <div className="flex items-start justify-between border-b border-slate-800/80 pb-3">
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <Plane className="w-4 h-4 text-cyan-400" />
+                      <span className="font-bold text-white text-sm">{ac.name}</span>
+                    </div>
+                    <span className="text-[11px] text-slate-400 mt-0.5 block">
+                      Tail: <strong className="text-slate-200">{ac.tailNumber}</strong> • {ac.flights} flight{ac.flights === 1 ? '' : 's'} ({Math.round(ac.distanceNm)} NM)
+                    </span>
+                  </div>
+
+                  {ac.isRental ? (
+                    <span className="px-2.5 py-1 rounded-lg bg-indigo-950/80 text-indigo-300 border border-indigo-700/60 font-bold text-[10px]">
+                      RENTAL (${ac.rentalRate}/flt)
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-1 rounded-lg bg-emerald-950/80 text-emerald-300 border border-emerald-700/60 font-bold text-[10px]">
+                      OWNED AIRFRAME
+                    </span>
+                  )}
+                </div>
+
+                {/* Arithmetic Breakdown */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                  <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
+                    <span className="text-slate-500 block text-[9px] uppercase">GROSS REVENUE</span>
+                    <span className="font-bold text-cyan-400 text-xs mt-0.5 block">
+                      ${ac.gross.toLocaleString()}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
+                    <span className="text-slate-500 block text-[9px] uppercase">RENTAL LEASE</span>
+                    <span className="font-bold text-indigo-400 text-xs mt-0.5 block">
+                      {ac.rentalFees > 0 ? `-$${ac.rentalFees.toLocaleString()}` : '$0.00'}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
+                    <span className="text-slate-500 block text-[9px] uppercase">FUEL & FEES</span>
+                    <span className="font-bold text-rose-400 text-xs mt-0.5 block">
+                      -${(ac.fuelCost + ac.landingFees).toFixed(2)}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-emerald-950/50 border border-emerald-800/60">
+                    <span className="text-emerald-400 block text-[9px] uppercase font-semibold">NET PROFIT</span>
+                    <span className="font-extrabold text-emerald-300 text-xs mt-0.5 block">
+                      +${ac.netProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Sub-metrics */}
+                <div className="pt-1 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 border-t border-slate-800/60">
+                  <span>
+                    Operating Margin:{' '}
+                    <strong className={ac.margin >= 80 ? 'text-emerald-400' : 'text-cyan-400'}>
+                      {ac.margin.toFixed(1)}%
+                    </strong>
+                  </span>
+                  <span>
+                    Fuel Consumed: <strong className="text-amber-400">{ac.fuelGal.toFixed(1)} gal</strong>
+                  </span>
+                  <span>
+                    Avg Net:{' '}
+                    <strong className="text-slate-200">
+                      ${Math.round(ac.netProfit / Math.max(1, ac.flights)).toLocaleString()}/flight
+                    </strong>
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 6. Career Efficiency & ROI Multipliers (Summary Tiles) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 font-mono text-xs">
+        <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800">
+          <span className="text-slate-500 text-[10px] block uppercase">GROSS / NAUTICAL MILE</span>
+          <span className="text-lg font-bold text-white mt-1 block">
+            ${financialData.revenuePerNm.toFixed(2)} / NM
+          </span>
+          <span className="text-[10px] text-slate-500 mt-0.5 block">Airborne revenue rate</span>
         </div>
 
-        {/* Ledger Table */}
-        <div className="overflow-x-auto rounded-2xl border border-slate-800/80 bg-slate-950/60">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-800 text-[10px] text-slate-400 uppercase tracking-wider bg-slate-900/60 select-none">
-                <th
-                  onClick={() => handleSort('completed_at')}
-                  className="p-3.5 cursor-pointer hover:text-white transition"
-                >
-                  <div className="flex items-center space-x-1">
-                    <span>DATE</span>
-                    <ArrowUpDown className="w-3 h-3 opacity-60" />
-                  </div>
-                </th>
-                <th className="p-3.5">ROUTE</th>
-                <th className="p-3.5">AIRCRAFT</th>
-                <th
-                  onClick={() => handleSort('gross_payout')}
-                  className="p-3.5 cursor-pointer hover:text-white transition text-right"
-                >
-                  <div className="flex items-center justify-end space-x-1">
-                    <span>GROSS</span>
-                    <ArrowUpDown className="w-3 h-3 opacity-60" />
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('exploration_bonus')}
-                  className="p-3.5 cursor-pointer hover:text-white transition text-center"
-                >
-                  <div className="flex items-center justify-center space-x-1">
-                    <span>EXPLORATION</span>
-                    <ArrowUpDown className="w-3 h-3 opacity-60" />
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('rental_fee')}
-                  className="p-3.5 cursor-pointer hover:text-white transition text-right"
-                >
-                  <div className="flex items-center justify-end space-x-1">
-                    <span>RENTAL</span>
-                    <ArrowUpDown className="w-3 h-3 opacity-60" />
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('fuel_cost')}
-                  className="p-3.5 cursor-pointer hover:text-white transition text-right"
-                >
-                  <div className="flex items-center justify-end space-x-1">
-                    <span>FUEL</span>
-                    <ArrowUpDown className="w-3 h-3 opacity-60" />
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('landing_fee')}
-                  className="p-3.5 cursor-pointer hover:text-white transition text-right"
-                >
-                  <div className="flex items-center justify-end space-x-1">
-                    <span>LANDING</span>
-                    <ArrowUpDown className="w-3 h-3 opacity-60" />
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSort('true_flight_net')}
-                  className="p-3.5 cursor-pointer hover:text-white transition text-right"
-                >
-                  <div className="flex items-center justify-end space-x-1">
-                    <span>NET CASH FLOW</span>
-                    <ArrowUpDown className="w-3 h-3 opacity-60" />
-                  </div>
-                </th>
-                <th className="p-3.5 text-center">MARGIN</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60 font-mono text-[11px]">
-              {filteredFlights.length === 0 ? (
-                <tr>
-                  <td colSpan={10} className="p-8 text-center text-slate-500">
-                    No financial transactions match your current filter or search criteria.
-                  </td>
-                </tr>
-              ) : (
-                filteredFlights.map((flight) => {
-                  const isExpanded = expandedFlightId === flight._virtualId;
-                  const marginPct = flight.gross_payout > 0
-                    ? ((flight.true_flight_net / flight.gross_payout) * 100).toFixed(0)
-                    : '100';
+        <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800">
+          <span className="text-slate-500 text-[10px] block uppercase">COST / NAUTICAL MILE</span>
+          <span className="text-lg font-bold text-rose-400 mt-1 block">
+            -${financialData.costPerNm.toFixed(2)} / NM
+          </span>
+          <span className="text-[10px] text-slate-500 mt-0.5 block">Operating expense rate</span>
+        </div>
 
-                  const completedDateStr = flight.completed_at
-                    ? new Date(flight.completed_at).toLocaleDateString(undefined, {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                      })
-                    : 'MSFS Import';
+        <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800">
+          <span className="text-slate-500 text-[10px] block uppercase">NET PROFIT / NM</span>
+          <span className="text-lg font-bold text-emerald-400 mt-1 block">
+            +${financialData.netPerNm.toFixed(2)} / NM
+          </span>
+          <span className="text-[10px] text-slate-500 mt-0.5 block">True profit per air mile</span>
+        </div>
 
-                  const completedTimeStr = flight.completed_at
-                    ? new Date(flight.completed_at).toLocaleTimeString(undefined, {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })
-                    : '';
-
-                  return (
-                    <React.Fragment key={flight._virtualId}>
-                      <tr
-                        onClick={() => toggleExpandFlight(flight._virtualId)}
-                        className={`hover:bg-slate-900/70 transition cursor-pointer ${
-                          isExpanded ? 'bg-slate-900/80' : ''
-                        }`}
-                      >
-                        {/* Date */}
-                        <td className="p-3.5 whitespace-nowrap">
-                          <span className="text-slate-200 block font-semibold">{completedDateStr}</span>
-                          {completedTimeStr && (
-                            <span className="text-[10px] text-slate-500 block">{completedTimeStr}</span>
-                          )}
-                        </td>
-
-                        {/* Route */}
-                        <td className="p-3.5 whitespace-nowrap">
-                          <div className="flex items-center space-x-1.5 font-bold">
-                            <span className="text-slate-300">{flight.origin_icao || '—'}</span>
-                            <span className="text-slate-500">➔</span>
-                            <span className="text-cyan-400">{flight.destination_icao || '—'}</span>
-                          </div>
-                          <span className="text-[10px] text-slate-500 block">
-                            {Math.round(flight.distance_nm || 0)} NM
-                          </span>
-                        </td>
-
-                        {/* Aircraft */}
-                        <td className="p-3.5 whitespace-nowrap">
-                          <div className="flex items-center space-x-1.5">
-                            <span className="text-slate-300 truncate max-w-[140px] block">
-                              {flight.aircraft_name || 'C172 Skyhawk'}
-                            </span>
-                            {flight.rental_fee > 0 && (
-                              <span className="px-1.5 py-0.2 rounded bg-indigo-950/80 text-indigo-300 border border-indigo-700/60 text-[9px] font-bold">
-                                LEASE
-                              </span>
-                            )}
-                          </div>
-                        </td>
-
-                        {/* Gross Payout */}
-                        <td className="p-3.5 text-right whitespace-nowrap font-semibold text-cyan-300">
-                          {flight.gross_payout > 0 ? `$${flight.gross_payout.toLocaleString()}` : '—'}
-                        </td>
-
-                        {/* Exploration Bonus */}
-                        <td className="p-3.5 text-center whitespace-nowrap">
-                          {flight.exploration_bonus > 0 ? (
-                            <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full bg-purple-950/80 text-purple-300 border border-purple-700/60 font-bold text-[10px]">
-                              <Sparkles className="w-2.5 h-2.5" />
-                              <span>+${flight.exploration_bonus}</span>
-                            </span>
-                          ) : (
-                            <span className="text-slate-600">—</span>
-                          )}
-                        </td>
-
-                        {/* Rental Fee */}
-                        <td className="p-3.5 text-right whitespace-nowrap">
-                          {flight.rental_fee > 0 ? (
-                            <span className="text-indigo-400 font-semibold block">
-                              -${flight.rental_fee.toLocaleString()}
-                            </span>
-                          ) : (
-                            <span className="text-slate-600">—</span>
-                          )}
-                        </td>
-
-                        {/* Fuel Expense */}
-                        <td className="p-3.5 text-right whitespace-nowrap">
-                          {flight.fuel_cost > 0 ? (
-                            <div>
-                              <span className="text-amber-400 font-semibold block">
-                                -${flight.fuel_cost.toFixed(2)}
-                              </span>
-                              <span className="text-[9px] text-slate-500 block">
-                                {flight.fuel_gallons} gal
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-slate-600">—</span>
-                          )}
-                        </td>
-
-                        {/* Landing Fee */}
-                        <td className="p-3.5 text-right whitespace-nowrap">
-                          {flight.landing_fee > 0 ? (
-                            <span className="text-rose-400 font-semibold">
-                              -${flight.landing_fee.toFixed(2)}
-                            </span>
-                          ) : (
-                            <span className="text-slate-600">—</span>
-                          )}
-                        </td>
-
-                        {/* Net Cash Flow */}
-                        <td className="p-3.5 text-right whitespace-nowrap">
-                          <span className="text-emerald-400 font-bold text-sm">
-                            +${flight.true_flight_net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
-                        </td>
-
-                        {/* Margin */}
-                        <td className="p-3.5 text-center whitespace-nowrap">
-                          <span
-                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                              Number(marginPct) >= 80
-                                ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/60'
-                                : Number(marginPct) >= 50
-                                ? 'bg-cyan-950/60 text-cyan-300 border border-cyan-800/60'
-                                : 'bg-slate-800 text-slate-300'
-                            }`}
-                          >
-                            {marginPct}%
-                          </span>
-                        </td>
-                      </tr>
-
-                      {/* Expanded Itemized Settlement Card */}
-                      {isExpanded && (
-                        <tr className="bg-slate-900/90 border-b border-slate-800">
-                          <td colSpan={10} className="p-4 sm:p-5">
-                            <div className="p-4 rounded-xl bg-slate-950/90 border border-slate-800/80 space-y-3">
-                              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2">
-                                <span className="font-bold text-white text-xs flex items-center space-x-2">
-                                  <Receipt className="w-3.5 h-3.5 text-cyan-400" />
-                                  <span>
-                                    SETTLEMENT BREAKDOWN: {flight.origin_icao} ➔ {flight.destination_icao} ({flight.aircraft_name})
-                                  </span>
-                                </span>
-                                <span className="text-slate-400 text-[10px]">
-                                  Recorded via {flight.source === 'airbound_dispatch' ? 'Airbound Dispatch Contract' : 'MSFS Logbook'}
-                                </span>
-                              </div>
-
-                              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
-                                <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800">
-                                  <span className="text-slate-500 text-[10px] block">GROSS PAYOUT</span>
-                                  <span className="font-bold text-cyan-400 text-sm mt-0.5 block">
-                                    ${flight.gross_payout.toLocaleString()}
-                                  </span>
-                                  {flight.exploration_bonus > 0 && (
-                                    <span className="text-[10px] text-purple-400 mt-0.5 block">
-                                      Includes +${flight.exploration_bonus} Discovery
-                                    </span>
-                                  )}
-                                </div>
-
-                                <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800">
-                                  <span className="text-slate-500 text-[10px] block">AIRCRAFT RENTAL</span>
-                                  <span className="font-bold text-indigo-400 text-sm mt-0.5 block">
-                                    {flight.rental_fee > 0 ? `-$${flight.rental_fee.toLocaleString()}` : '$0.00'}
-                                  </span>
-                                  <span className="text-[10px] text-slate-400 mt-0.5 block">
-                                    {flight.rental_fee > 0 ? 'Lease fee per flight' : 'Owned airframe ($0)'}
-                                  </span>
-                                </div>
-
-                                <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800">
-                                  <span className="text-slate-500 text-[10px] block">FUEL EXPENSE</span>
-                                  <span className="font-bold text-amber-400 text-sm mt-0.5 block">
-                                    -${flight.fuel_cost.toFixed(2)}
-                                  </span>
-                                  <span className="text-[10px] text-slate-400 mt-0.5 block">
-                                    {flight.fuel_gallons} gal burned
-                                  </span>
-                                </div>
-
-                                <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800">
-                                  <span className="text-slate-500 text-[10px] block">LANDING FEE</span>
-                                  <span className="font-bold text-rose-400 text-sm mt-0.5 block">
-                                    -${flight.landing_fee.toFixed(2)}
-                                  </span>
-                                  <span className="text-[10px] text-slate-400 mt-0.5 block">
-                                    Arrival airfield fee
-                                  </span>
-                                </div>
-
-                                <div className="p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-800/60 col-span-2 sm:col-span-1">
-                                  <span className="text-emerald-400 text-[10px] block font-semibold">NET CASH FLOW</span>
-                                  <span className="font-extrabold text-emerald-400 text-base mt-0.5 block">
-                                    +${flight.true_flight_net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                  </span>
-                                  <span className="text-[10px] text-emerald-300/80 mt-0.5 block">
-                                    Retained to bank
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+        <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800">
+          <span className="text-slate-500 text-[10px] block uppercase">FUEL REVENUE MULTIPLIER</span>
+          <span className="text-lg font-bold text-amber-400 mt-1 block">
+            {financialData.fuelMultiplier.toFixed(1)}x ROI
+          </span>
+          <span className="text-[10px] text-slate-500 mt-0.5 block">$ earned per $1 fuel burned</span>
         </div>
       </div>
     </div>
