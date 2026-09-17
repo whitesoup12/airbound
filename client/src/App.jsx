@@ -281,7 +281,13 @@ export function App() {
                         <span>{landingRatingInfo.icon}</span>
                         <span>Touchdown: <strong>{Math.round(completionBanner.touchdownFpm)} FPM</strong></span>
                         <span className={`font-bold ${landingRatingInfo.color}`}>
-                          • {landingRatingInfo.label} Landing {flightXp?.landingXp ? `(+${flightXp.landingXp} XP)` : ''}
+                          • {landingRatingInfo.label} Landing {flightXp?.landingXp !== undefined && flightXp?.landingXp !== null ? (
+                            flightXp.landingXp > 0
+                              ? `(+${flightXp.landingXp} XP)`
+                              : flightXp.landingXp < 0
+                              ? `(${flightXp.landingXp} XP)`
+                              : '(+0 XP)'
+                          ) : ''}
                         </span>
                       </span>
                     ) : null}

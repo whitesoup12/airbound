@@ -92,7 +92,7 @@ export function formatLandingRating(fpm, rating) {
       color: 'text-amber-400',
       badgeColor: 'bg-amber-500/20 border-amber-500/50 text-amber-300',
       icon: '⚡',
-      bonusXp: 25
+      bonusXp: 0
     };
   } else if (resolvedRating === 'Hard') {
     return {
@@ -101,7 +101,7 @@ export function formatLandingRating(fpm, rating) {
       color: 'text-orange-400',
       badgeColor: 'bg-orange-500/20 border-orange-500/50 text-orange-300',
       icon: '⚠️',
-      bonusXp: 0
+      bonusXp: -50
     };
   } else if (resolvedRating === 'Severe') {
     return {
@@ -110,7 +110,7 @@ export function formatLandingRating(fpm, rating) {
       color: 'text-rose-400',
       badgeColor: 'bg-rose-500/20 border-rose-500/50 text-rose-300',
       icon: '💥',
-      bonusXp: -25
+      bonusXp: -100
     };
   }
 

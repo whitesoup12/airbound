@@ -42,22 +42,22 @@ if (clean.rating !== 'Good' || clean.xpBonus !== 50) {
 console.log(`✓ -240 FPM rated as ${clean.label} (+${clean.xpBonus} XP)`);
 
 const firm = rateLandingTouchdown(-450);
-if (firm.rating !== 'Firm' || firm.xpBonus !== 25) {
+if (firm.rating !== 'Firm' || firm.xpBonus !== 0) {
   throw new Error(`Firm landing mismatch: ${JSON.stringify(firm)}`);
 }
 console.log(`✓ -450 FPM rated as ${firm.label} (+${firm.xpBonus} XP)`);
 
 const hard = rateLandingTouchdown(-650);
-if (hard.rating !== 'Hard' || hard.xpBonus !== 0) {
+if (hard.rating !== 'Hard' || hard.xpBonus !== -50) {
   throw new Error(`Hard landing mismatch: ${JSON.stringify(hard)}`);
 }
-console.log(`✓ -650 FPM rated as ${hard.label} (+${hard.xpBonus} XP)`);
+console.log(`✓ -650 FPM rated as ${hard.label} (${hard.xpBonus} XP penalty)`);
 
 const severe = rateLandingTouchdown(-900);
-if (severe.rating !== 'Severe' || severe.xpBonus !== -25) {
+if (severe.rating !== 'Severe' || severe.xpBonus !== -100) {
   throw new Error(`Severe landing mismatch: ${JSON.stringify(severe)}`);
 }
-console.log(`✓ -900 FPM rated as ${severe.label} (${severe.xpBonus} XP)`);
+console.log(`✓ -900 FPM rated as ${severe.label} (${severe.xpBonus} XP penalty)`);
 
 // 3. Test Flight XP Calculation
 console.log('3. Testing Flight XP Calculation Breakdown...');

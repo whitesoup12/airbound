@@ -101,7 +101,7 @@ export function rateLandingTouchdown(touchdownFpm) {
     return {
       rating: 'Firm',
       label: 'Firm Landing',
-      xpBonus: 25,
+      xpBonus: 0,
       color: 'amber',
       absFpm
     };
@@ -109,7 +109,7 @@ export function rateLandingTouchdown(touchdownFpm) {
     return {
       rating: 'Hard',
       label: 'Hard Landing',
-      xpBonus: 0,
+      xpBonus: -50,
       color: 'orange',
       absFpm
     };
@@ -117,7 +117,7 @@ export function rateLandingTouchdown(touchdownFpm) {
     return {
       rating: 'Severe',
       label: 'Severe Hard Landing',
-      xpBonus: -25,
+      xpBonus: -100,
       color: 'red',
       absFpm
     };

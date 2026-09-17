@@ -94,12 +94,13 @@ export function CareerProgressView({
           totalLandingBonusXp += 50;
         } else if (absFpm <= 500) {
           firmCount++;
-          totalLandingBonusXp += 25;
+          // Firm is +0 XP
         } else if (absFpm <= 750) {
           hardCount++;
+          totalLandingBonusXp -= 50;
         } else {
           severeCount++;
-          totalLandingBonusXp -= 25;
+          totalLandingBonusXp -= 100;
         }
       } else {
         // Standard clean landing baseline for imported flights
@@ -522,7 +523,7 @@ export function CareerProgressView({
                   <span>FIRM LANDING</span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">320 – 500 FPM</p>
-                <p className="text-xs text-amber-400 font-semibold mt-2">+25 XP per landing</p>
+                <p className="text-xs text-amber-400 font-semibold mt-2">+0 XP (neutral)</p>
               </div>
               <div className="text-right">
                 <span className="text-2xl font-bold text-amber-400 block">
@@ -544,7 +545,7 @@ export function CareerProgressView({
                   <span>HARD LANDING</span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">500 – 750 FPM</p>
-                <p className="text-xs text-orange-400 font-semibold mt-2">+0 XP</p>
+                <p className="text-xs text-orange-400 font-semibold mt-2">-50 XP penalty</p>
               </div>
               <div className="text-right">
                 <span className="text-2xl font-bold text-orange-400 block">
@@ -566,7 +567,7 @@ export function CareerProgressView({
                   <span>SEVERE IMPACT</span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">&gt; 750 FPM</p>
-                <p className="text-xs text-rose-400 font-semibold mt-2">-25 XP penalty</p>
+                <p className="text-xs text-rose-400 font-semibold mt-2">-100 XP penalty</p>
               </div>
               <div className="text-right">
                 <span className="text-2xl font-bold text-rose-400 block">
@@ -737,3 +738,4 @@ export function CareerProgressView({
 }
 
 export default CareerProgressView;
+
