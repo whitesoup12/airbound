@@ -15,6 +15,10 @@ import pilotRoutes from './routes/pilot.js';
 import jobsRoutes from './routes/jobs.js';
 import airportsRoutes from './routes/airports.js';
 import simulatorRoutes from './routes/simulator.js';
+import fleetRoutes from './routes/fleet.js';
+import { seedAircraftCatalog } from './seeds/seedAircraft.js';
+
+import { calculateDistanceNm } from './services/geoUtils.js';
 
 dotenv.config();
 
@@ -33,12 +37,14 @@ app.use('/api/pilot', pilotRoutes);
 app.use('/api/jobs', jobsRoutes);
 app.use('/api/airports', airportsRoutes);
 app.use('/api/simulator', simulatorRoutes);
+app.use('/api/fleet', fleetRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     simConnectConnected: simConnectBridge.isConnected,
     isMockMode: simConnectBridge.isMockMode,
+    app: simConnectBridge.appName,
     currentPhase: flightStateMachine.phase,
     activeJob: flightStateMachine.activeJob?._id || null
   });
@@ -56,13 +62,42 @@ io.on('connection', (socket) => {
   // Send immediate state to newly connected client
   socket.emit('connectionStatus', {
     connected: simConnectBridge.isConnected,
-    isMock: simConnectBridge.isMockMode
+    isMock: simConnectBridge.isMockMode,
+    app: simConnectBridge.appName || 'MSFS 2024'
   });
+
+  let initialOriginDist = null;
+  let initialDestDist = null;
+  if (flightStateMachine.activeJob && simConnectBridge.telemetry) {
+    if (flightStateMachine.originAirport?.location?.coordinates) {
+      const [oLon, oLat] = flightStateMachine.originAirport.location.coordinates;
+      initialOriginDist = calculateDistanceNm(
+        simConnectBridge.telemetry.latitude,
+        simConnectBridge.telemetry.longitude,
+        oLat,
+        oLon
+      );
+    }
+    if (flightStateMachine.destinationAirport?.location?.coordinates) {
+      const [dLon, dLat] = flightStateMachine.destinationAirport.location.coordinates;
+      initialDestDist = calculateDistanceNm(
+        simConnectBridge.telemetry.latitude,
+        simConnectBridge.telemetry.longitude,
+        dLat,
+        dLon
+      );
+    }
+  }
 
   socket.emit('telemetry', {
     telemetry: simConnectBridge.telemetry,
     phase: flightStateMachine.phase,
     activeJob: flightStateMachine.activeJob,
+    originDist: initialOriginDist,
+    destDist: initialDestDist,
+    flightSeconds: Math.round(flightStateMachine.activeFlightSeconds),
+    airborneSeconds: Math.round(flightStateMachine.airborneSeconds),
+    isPaused: flightStateMachine.isPaused,
     isMock: simConnectBridge.isMockMode
   });
 });
@@ -95,6 +130,9 @@ async function startServer() {
   try {
     await connectDB();
 
+    // Ensure dealership catalog is seeded
+    await seedAircraftCatalog();
+
     // Ensure database is seeded
     const airportCount = await Airport.countDocuments();
     if (airportCount === 0) {
@@ -112,10 +150,19 @@ async function startServer() {
     // Initialize SimConnect / Mock Bridge
     await simConnectBridge.init();
 
+    // Position initial mock telemetry at pilot's active location instead of defaulting to KLAX
+    if (!simConnectBridge.isConnected) {
+      const currentPilot = await Pilot.findOne();
+      if (currentPilot && currentPilot.current_icao) {
+        await simConnectBridge.teleportToAirport(currentPilot.current_icao);
+        console.log(`[Server] Initial telemetry synced to pilot airfield: ${currentPilot.current_icao}`);
+      }
+    }
+
     server.listen(PORT, () => {
       console.log(`====================================================`);
       console.log(`  AIRBOUND MSFS Tracker Server running on port ${PORT}`);
-      console.log(`  SimConnect Bridge: ${simConnectBridge.isMockMode ? 'MOCK TELEMETRY' : 'MSFS 2024 CONNECTED'}`);
+      console.log(`  SimConnect Bridge: ${simConnectBridge.isConnected ? (simConnectBridge.isMockMode ? 'MOCK TELEMETRY' : `${simConnectBridge.appName || 'MSFS 2024'} CONNECTED`) : 'SEARCHING FOR SIMULATOR'}`);
       console.log(`  Database: ${Airport.db.name}`);
       console.log(`====================================================`);
     });

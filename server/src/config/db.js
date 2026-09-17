@@ -2,7 +2,30 @@ import mongoose from 'mongoose';
 
 let memoryServer = null;
 
+/**
+ * Connect to 100% In-Memory isolated MongoDB (RAM only)
+ * Completely isolated from Atlas and network, zero persistence, discarded on test exit.
+ */
+export async function connectTestDB() {
+  if (mongoose.connection.readyState !== 0) {
+    await mongoose.disconnect();
+  }
+  const { MongoMemoryServer } = await import('mongodb-memory-server');
+  if (!memoryServer) {
+    memoryServer = await MongoMemoryServer.create();
+  }
+  const memUri = memoryServer.getUri();
+  await mongoose.connect(memUri);
+  console.log(`[Test Database] Connected to 100% In-Memory isolated database (RAM only) at: ${memUri}`);
+  return memUri;
+}
+
 export async function connectDB(customUri = null) {
+  // Hard guard: When running in test environment, NEVER connect to Atlas
+  if (process.env.NODE_ENV === 'test') {
+    return connectTestDB();
+  }
+
   const uri = customUri || process.env.MONGODB_URI;
 
   if (uri) {
@@ -18,16 +41,7 @@ export async function connectDB(customUri = null) {
   }
 
   // Fallback to in-memory MongoDB for instant zero-config offline development & testing
-  try {
-    const { MongoMemoryServer } = await import('mongodb-memory-server');
-    memoryServer = await MongoMemoryServer.create();
-    const memUri = memoryServer.getUri();
-    await mongoose.connect(memUri);
-    console.log(`[Database] Connected to In-Memory MongoDB at: ${memUri}`);
-  } catch (err) {
-    console.error(`[Database] Could not start In-Memory MongoDB:`, err.message);
-    throw err;
-  }
+  return connectTestDB();
 }
 
 export async function disconnectDB() {

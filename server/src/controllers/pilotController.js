@@ -4,6 +4,7 @@ import Airport from '../models/Airport.js';
 import flightStateMachine from '../services/stateMachine.js';
 import simConnectBridge from '../services/simconnect.js';
 import { generateJobsForAirport } from '../services/jobGenerator.js';
+import { normalizeTo4CharIcao } from '../utils/icaoUtils.js';
 
 export async function getPilot(req, res) {
   try {
@@ -15,8 +16,95 @@ export async function getPilot(req, res) {
         current_icao: 'KLAX',
         visited_airports: ['KLAX'],
         visited_countries: ['US'],
-        flight_log: []
+        flight_log: [],
+        active_aircraft: {
+          model_id: 'c172',
+          name: 'Cessna 172 Skyhawk',
+          tail_number: 'N172AB',
+          category: 'single_prop',
+          cruise_speed_kts: 120,
+          max_range_nm: 500,
+          max_cargo_lbs: 500,
+          max_pax: 3,
+          min_runway_ft: 1600,
+          fuel_type: '100LL',
+          fuel_burn_gph: 9.0
+        },
+        fleet: [
+          {
+            model_id: 'c172',
+            name: 'Cessna 172 Skyhawk',
+            tail_number: 'N172AB',
+            category: 'single_prop',
+            is_rental: false,
+            purchased_at: new Date(),
+            flight_hours: 0
+          }
+        ]
       });
+    } else {
+      let needsSave = false;
+
+      // Auto-heal current_icao if 3 characters (e.g. JLN -> KJLN)
+      const normCurrent = await normalizeTo4CharIcao(pilot.current_icao);
+      if (normCurrent && normCurrent !== pilot.current_icao) {
+        pilot.current_icao = normCurrent;
+        needsSave = true;
+      }
+
+      // Auto-heal visited_airports if any 3-char aliases exist
+      if (pilot.visited_airports && pilot.visited_airports.length > 0) {
+        const normalizedVisited = [];
+        const seenVisited = new Set();
+        for (const code of pilot.visited_airports) {
+          const norm = await normalizeTo4CharIcao(code);
+          if (!seenVisited.has(norm)) {
+            seenVisited.add(norm);
+            normalizedVisited.push(norm);
+          }
+        }
+        if (
+          normalizedVisited.length !== pilot.visited_airports.length ||
+          normalizedVisited.some((c, idx) => c !== pilot.visited_airports[idx])
+        ) {
+          pilot.visited_airports = normalizedVisited;
+          needsSave = true;
+        }
+      }
+
+      if (!pilot.active_aircraft || !pilot.active_aircraft.model_id) {
+        pilot.active_aircraft = {
+          model_id: 'c172',
+          name: 'Cessna 172 Skyhawk',
+          tail_number: 'N172AB',
+          category: 'single_prop',
+          cruise_speed_kts: 120,
+          max_range_nm: 500,
+          max_cargo_lbs: 500,
+          max_pax: 3,
+          min_runway_ft: 1600,
+          fuel_type: '100LL',
+          fuel_burn_gph: 9.0
+        };
+        needsSave = true;
+      }
+      if (!pilot.fleet || pilot.fleet.length === 0) {
+        pilot.fleet = [
+          {
+            model_id: 'c172',
+            name: 'Cessna 172 Skyhawk',
+            tail_number: 'N172AB',
+            category: 'single_prop',
+            is_rental: false,
+            purchased_at: new Date(),
+            flight_hours: 0
+          }
+        ];
+        needsSave = true;
+      }
+      if (needsSave) {
+        await pilot.save();
+      }
     }
 
     // Check for an active accepted job
@@ -25,10 +113,16 @@ export async function getPilot(req, res) {
     // Airport details for current airport
     const currentAirport = await Airport.findOne({ icao: pilot.current_icao });
 
+    // Full details for all visited airports
+    const visitedAirportsDetails = await Airport.find({
+      icao: { $in: pilot.visited_airports || [] }
+    }).lean();
+
     res.json({
       pilot,
       activeJob,
       currentAirport,
+      visitedAirportsDetails,
       phase: flightStateMachine.phase
     });
   } catch (err) {
@@ -38,22 +132,81 @@ export async function getPilot(req, res) {
 
 export async function resetPilot(req, res) {
   try {
+    const { homeBase, icao, startingBalance } = req.body || {};
+    let targetIcao = ((homeBase || icao || 'KXNA') + '').trim().toUpperCase();
+    targetIcao = await normalizeTo4CharIcao(targetIcao);
+
+    // Check airport
+    let airport = await Airport.findOne({ icao: targetIcao });
+    if (!airport) {
+      if (homeBase || icao) {
+        return res.status(404).json({ error: `Airport '${targetIcao}' not found in database.` });
+      }
+      airport = await Airport.findOne();
+      if (airport) {
+        targetIcao = airport.icao;
+      }
+    }
+
     let pilot = await Pilot.findOne();
     if (!pilot) {
       pilot = new Pilot();
     }
-    pilot.callsign = 'James';
-    pilot.balance = 15000;
-    pilot.current_icao = 'KLAX';
-    pilot.visited_airports = ['KLAX'];
-    pilot.visited_countries = ['US'];
-    pilot.flight_log = [];
+    pilot.callsign = pilot.callsign || 'James';
+    pilot.balance = startingBalance !== undefined && !isNaN(Number(startingBalance)) ? Number(startingBalance) : 15000;
+    pilot.current_icao = targetIcao;
+    if (!pilot.visited_airports || pilot.visited_airports.length === 0) {
+      pilot.visited_airports = [targetIcao];
+    } else if (!pilot.visited_airports.includes(targetIcao)) {
+      pilot.visited_airports.push(targetIcao);
+    }
+    if (airport?.country) {
+      if (!pilot.visited_countries || pilot.visited_countries.length === 0) {
+        pilot.visited_countries = [airport.country];
+      } else if (!pilot.visited_countries.includes(airport.country)) {
+        pilot.visited_countries.push(airport.country);
+      }
+    }
+    // Flight logs are permanently preserved across career resets
+    pilot.flight_log = pilot.flight_log || [];
+    pilot.active_aircraft = {
+      model_id: 'c172',
+      name: 'Cessna 172 Skyhawk',
+      tail_number: 'N172AB',
+      category: 'single_prop',
+      cruise_speed_kts: 120,
+      max_range_nm: 500,
+      max_cargo_lbs: 500,
+      max_pax: 3,
+      min_runway_ft: 1600,
+      fuel_type: '100LL',
+      fuel_burn_gph: 9.0
+    };
+    pilot.fleet = [
+      {
+        model_id: 'c172',
+        name: 'Cessna 172 Skyhawk',
+        tail_number: 'N172AB',
+        category: 'single_prop',
+        is_rental: false,
+        purchased_at: new Date(),
+        flight_hours: 0
+      }
+    ];
     await pilot.save();
 
     await Job.deleteMany({});
     await flightStateMachine.clearActiveJob();
 
-    res.json({ message: 'Pilot career reset successfully', pilot });
+    try {
+      await simConnectBridge.teleportToAirport(targetIcao);
+    } catch (e) {
+      console.warn('[Pilot Reset] Teleport note:', e.message);
+    }
+
+    await generateJobsForAirport(targetIcao, { aircraft: pilot.active_aircraft });
+
+    res.json({ message: 'Pilot career reset successfully', pilot, currentAirport: airport });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -67,7 +220,7 @@ export async function updateBaseAirport(req, res) {
     const { icao } = req.body;
     if (!icao) return res.status(400).json({ error: 'ICAO is required' });
 
-    const targetIcao = icao.trim().toUpperCase();
+    const targetIcao = await normalizeTo4CharIcao(icao.trim().toUpperCase());
     const airport = await Airport.findOne({ icao: targetIcao });
     if (!airport) {
       return res.status(404).json({ error: `Airport '${targetIcao}' not found in database.` });
@@ -98,8 +251,8 @@ export async function updateBaseAirport(req, res) {
     // Teleport aircraft to new airport
     await simConnectBridge.teleportToAirport(targetIcao);
 
-    // Generate fresh jobs for new base airport
-    const newJobs = await generateJobsForAirport(targetIcao);
+    // Generate fresh jobs for new base airport scaled to active aircraft
+    const newJobs = await generateJobsForAirport(targetIcao, { aircraft: pilot.active_aircraft });
 
     res.json({
       message: `Base airport updated to ${targetIcao}`,
@@ -108,6 +261,19 @@ export async function updateBaseAirport(req, res) {
       jobs: newJobs,
       telemetry: simConnectBridge.telemetry
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+/**
+ * Import MSFS 2024 flights into pilot's career logbook
+ */
+export async function importMsfsLogs(req, res) {
+  try {
+    const { importMsfsLogbook } = await import('../scripts/importMsfsLogbook.js');
+    const result = await importMsfsLogbook({ closeConnection: false });
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

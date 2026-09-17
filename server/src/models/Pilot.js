@@ -30,9 +30,38 @@ const FlightRecordSchema = new mongoose.Schema(
     },
     payout: {
       type: Number,
-      required: true
+      default: 0
+    },
+    // Financial operating expenses
+    gross_payout: {
+      type: Number,
+      default: 0
+    },
+    fuel_cost: {
+      type: Number,
+      default: 0
+    },
+    fuel_gallons: {
+      type: Number,
+      default: 0
+    },
+    landing_fee: {
+      type: Number,
+      default: 0
+    },
+    net_payout: {
+      type: Number,
+      default: 0
+    },
+    aircraft_name: {
+      type: String,
+      default: 'Cessna 172 Skyhawk'
     },
     duration_seconds: {
+      type: Number,
+      default: 0
+    },
+    airborne_seconds: {
       type: Number,
       default: 0
     },
@@ -42,6 +71,68 @@ const FlightRecordSchema = new mongoose.Schema(
     completed_at: {
       type: Date,
       default: Date.now
+    },
+    source: {
+      type: String,
+      enum: ['airbound_dispatch', 'msfs_import'],
+      default: 'airbound_dispatch'
+    },
+    is_external: {
+      type: Boolean,
+      default: false
+    },
+    external_flight_number: {
+      type: Number
+    }
+  },
+  { _id: true }
+);
+
+const OwnedAircraftSchema = new mongoose.Schema(
+  {
+    aircraft_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Aircraft'
+    },
+    model_id: {
+      type: String,
+      required: true
+    },
+    name: {
+      type: String,
+      required: true
+    },
+    tail_number: {
+      type: String,
+      required: true
+    },
+    category: {
+      type: String,
+      default: 'single_prop'
+    },
+    is_rental: {
+      type: Boolean,
+      default: false
+    },
+    rental_price_per_flight: {
+      type: Number,
+      default: 0
+    },
+    rental_flights_paid: {
+      type: Number,
+      default: 0
+    },
+    is_loaner: {
+      type: Boolean,
+      default: false
+    },
+    purchased_at: {
+      type: Date,
+      default: Date.now
+    },
+    flight_hours: {
+      type: Number,
+      default: 0
     }
   },
   { _id: true }
@@ -73,6 +164,38 @@ const PilotSchema = new mongoose.Schema(
       type: [String],
       default: ['US']
     },
+    // Active flying aircraft
+    active_aircraft: {
+      model_id: { type: String, default: 'c172' },
+      name: { type: String, default: 'Cessna 172 Skyhawk' },
+      tail_number: { type: String, default: 'N172AB' },
+      category: { type: String, default: 'single_prop' },
+      is_rental: { type: Boolean, default: false },
+      rental_price_per_flight: { type: Number, default: 0 },
+      rental_flights_paid: { type: Number, default: 0 },
+      is_loaner: { type: Boolean, default: false },
+      cruise_speed_kts: { type: Number, default: 120 },
+      max_range_nm: { type: Number, default: 500 },
+      max_cargo_lbs: { type: Number, default: 500 },
+      max_pax: { type: Number, default: 3 },
+      min_runway_ft: { type: Number, default: 1600 },
+      fuel_type: { type: String, default: '100LL' },
+      fuel_burn_gph: { type: Number, default: 9.0 }
+    },
+    fleet: {
+      type: [OwnedAircraftSchema],
+      default: [
+        {
+          model_id: 'c172',
+          name: 'Cessna 172 Skyhawk',
+          tail_number: 'N172AB',
+          category: 'single_prop',
+          is_rental: false,
+          purchased_at: new Date(),
+          flight_hours: 0
+        }
+      ]
+    },
     flight_log: {
       type: [FlightRecordSchema],
       default: []
@@ -85,4 +208,3 @@ const PilotSchema = new mongoose.Schema(
 
 export const Pilot = mongoose.model('Pilot', PilotSchema);
 export default Pilot;
-

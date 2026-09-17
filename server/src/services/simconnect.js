@@ -7,6 +7,7 @@ export class SimConnectBridge extends EventEmitter {
     super();
     this.isConnected = false;
     this.isMockMode = false;
+    this.appName = null;
     this.pollInterval = null;
     this.reconnectTimer = null;
     this.simConnectHandle = null;
@@ -22,6 +23,9 @@ export class SimConnectBridge extends EventEmitter {
       groundSpeed: 0, // knots
       parkingBrake: true,
       engineRunning: true,
+      simAircraftTitle: '',
+      simAircraftModel: '',
+      isPaused: false,
       timestamp: Date.now()
     };
 
@@ -39,7 +43,7 @@ export class SimConnectBridge extends EventEmitter {
     const forceMock = options.forceMock || process.env.USE_MOCK_SIMCONNECT === 'true';
 
     if (forceMock) {
-      console.log('[SimConnect] Starting in MOCK Telemetry mode.');
+      console.log('[SimConnect] Starting in MOCK Telemetry mode (forced).');
       this.startMockTelemetry();
       return;
     }
@@ -50,15 +54,31 @@ export class SimConnectBridge extends EventEmitter {
   async tryConnectSimConnect() {
     try {
       // Dynamically import node-simconnect
-      const { open, Protocol, SimConnectDataType, Period, Flags } = await import('node-simconnect');
+      const { open, Protocol, SimConnectDataType, SimConnectPeriod, DataRequestFlag } = await import('node-simconnect');
 
       console.log('[SimConnect] Attempting connection to MSFS 2024 via SimConnect...');
       const { handle, recvOpen } = await open('Airbound MSFS Tracker', Protocol.FSX_SP2);
       this.simConnectHandle = handle;
       this.isConnected = true;
       this.isMockMode = false;
-      console.log(`[SimConnect] Connected to simulator: ${recvOpen?.applicationName || 'MSFS'}`);
-      this.emit('connectionStatus', { connected: true, isMock: false, app: recvOpen?.applicationName });
+      this.appName = recvOpen?.applicationName === 'SunRise' ? 'MSFS 2024' : (recvOpen?.applicationName || 'MSFS 2024');
+
+      // Clear any running mock simulation interval & reconnection timer
+      if (this.pollInterval) {
+        clearInterval(this.pollInterval);
+        this.pollInterval = null;
+      }
+      if (this.reconnectTimer) {
+        clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = null;
+      }
+
+      console.log(`[SimConnect] Connected to simulator: ${this.appName}`);
+      this.emit('connectionStatus', {
+        connected: true,
+        isMock: false,
+        app: this.appName
+      });
 
       // Define SimVars definition
       const DEF_ID = 1;
@@ -73,23 +93,65 @@ export class SimConnectBridge extends EventEmitter {
       handle.addToDataDefinition(DEF_ID, 'GROUND VELOCITY', 'knots', SimConnectDataType.FLOAT64);
       handle.addToDataDefinition(DEF_ID, 'BRAKE PARKING POSITION', 'bool', SimConnectDataType.INT32);
       handle.addToDataDefinition(DEF_ID, 'ENG COMBUSTION:1', 'bool', SimConnectDataType.INT32);
+      handle.addToDataDefinition(DEF_ID, 'TITLE', null, SimConnectDataType.STRING256);
+      handle.addToDataDefinition(DEF_ID, 'ATC MODEL', null, SimConnectDataType.STRING64);
+      handle.addToDataDefinition(DEF_ID, 'IS SIM PAUSED', 'bool', SimConnectDataType.INT32);
 
       // Request continuous telemetry data at 1 Hz
-      handle.requestDataOnSimObject(REQ_ID, DEF_ID, 0, Period.SECOND, Flags.DEFAULT);
+      handle.requestDataOnSimObject(
+        REQ_ID,
+        DEF_ID,
+        0,
+        SimConnectPeriod.SECOND,
+        DataRequestFlag.DATA_REQUEST_FLAG_DEFAULT
+      );
 
       handle.on('simObjectData', (recvSimObjectData) => {
         if (recvSimObjectData.requestID === REQ_ID) {
           const data = recvSimObjectData.data;
+          const lat = data.readFloat64(0);
+          const lon = data.readFloat64(8);
+          const alt = data.readFloat64(16);
+          const hdg = data.readFloat64(24);
+          const onGround = Boolean(data.readInt32(32));
+          const tas = data.readFloat64(36);
+          const gs = data.readFloat64(44);
+          const brake = Boolean(data.readInt32(52));
+          const eng = Boolean(data.readInt32(56));
+
+          let simTitle = this.telemetry.simAircraftTitle || '';
+          let simModel = this.telemetry.simAircraftModel || '';
+          try {
+            const rawTitle = data.readString256(60);
+            if (rawTitle) simTitle = rawTitle.replace(/\0.*$/, '').trim();
+            const rawModel = data.readString64(316);
+            if (rawModel) simModel = rawModel.replace(/\0.*$/, '').trim();
+          } catch {
+            // RawBuffer safety fallback
+          }
+
+          let isPaused = false;
+          try {
+            if (data.byteLength >= 384) {
+              isPaused = Boolean(data.readInt32(380));
+            }
+          } catch {
+            // Buffer boundary safety fallback
+          }
+
           this.telemetry = {
-            latitude: data.readFloat64(0),
-            longitude: data.readFloat64(8),
-            altitude: Math.round(data.readFloat64(16)),
-            heading: Math.round(data.readFloat64(24)),
-            simOnGround: Boolean(data.readInt32(32)),
-            airspeedTrue: Math.round(data.readFloat64(36)),
-            groundSpeed: Math.round(data.readFloat64(44)),
-            parkingBrake: Boolean(data.readInt32(52)),
-            engineRunning: Boolean(data.readInt32(56)),
+            latitude: Number.isFinite(lat) ? lat : this.telemetry.latitude,
+            longitude: Number.isFinite(lon) ? lon : this.telemetry.longitude,
+            altitude: Number.isFinite(alt) ? Math.round(alt) : this.telemetry.altitude,
+            heading: Number.isFinite(hdg) ? Math.round(hdg) : this.telemetry.heading,
+            simOnGround: onGround,
+            airspeedTrue: Number.isFinite(tas) ? Math.max(0, Math.round(tas)) : 0,
+            groundSpeed: Number.isFinite(gs) ? Math.max(0, Math.round(gs)) : 0,
+            parkingBrake: brake,
+            engineRunning: eng,
+            simAircraftTitle: simTitle,
+            simAircraftModel: simModel,
+            isPaused: isPaused,
             timestamp: Date.now()
           };
 
@@ -98,9 +160,11 @@ export class SimConnectBridge extends EventEmitter {
       });
 
       handle.on('close', () => {
-        console.warn('[SimConnect] Connection to MSFS closed. Falling back to retry/mock.');
+        console.warn('[SimConnect] Connection to MSFS closed. Reconnecting in background...');
         this.isConnected = false;
-        this.emit('connectionStatus', { connected: false, isMock: this.isMockMode });
+        this.simConnectHandle = null;
+        this.appName = null;
+        this.emit('connectionStatus', { connected: false, isMock: false, app: null });
         this._scheduleReconnect();
       });
 
@@ -108,8 +172,11 @@ export class SimConnectBridge extends EventEmitter {
         console.warn('[SimConnect] Error:', err.message);
       });
     } catch (err) {
-      console.log(`[SimConnect] MSFS 2024 not detected (${err.message}). Activating Mock Mode for companion UI testing.`);
-      this.startMockTelemetry();
+      this.isConnected = false;
+      this.simConnectHandle = null;
+      this.appName = null;
+      console.log(`[SimConnect] MSFS 2024 not detected (${err.message}). Retrying in 5s...`);
+      this.emit('connectionStatus', { connected: false, isMock: this.isMockMode, app: null });
       this._scheduleReconnect();
     }
   }
@@ -117,15 +184,19 @@ export class SimConnectBridge extends EventEmitter {
   _scheduleReconnect() {
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     this.reconnectTimer = setTimeout(() => {
-      if (!this.isConnected && !this.isMockMode) {
+      if (!this.isConnected) {
         this.tryConnectSimConnect();
       }
-    }, 10000);
+    }, 5000);
   }
 
   startMockTelemetry() {
     this.isMockMode = true;
-    this.emit('connectionStatus', { connected: true, isMock: true, app: 'Simulated MSFS Bridge' });
+    this.isConnected = true;
+    this.appName = 'Simulated MSFS Bridge';
+    this.telemetry.simAircraftTitle = this.telemetry.simAircraftTitle || 'Cessna 172 Skyhawk (Mock)';
+    this.telemetry.simAircraftModel = this.telemetry.simAircraftModel || 'C172';
+    this.emit('connectionStatus', { connected: true, isMock: true, app: this.appName });
 
     if (this.pollInterval) clearInterval(this.pollInterval);
 
@@ -204,14 +275,18 @@ export class SimConnectBridge extends EventEmitter {
 
   async _broadcastTelemetry() {
     // Pass telemetry to state machine
-    const stateResult = await flightStateMachine.processTelemetry(this.telemetry);
+    const stateResult = await flightStateMachine.processTelemetry(this.telemetry, { isMockMode: this.isMockMode });
 
-    // Emit event with telemetry and updated flight phase
+    // Emit event with telemetry, updated flight phase, and aircraft validation
     this.emit('telemetry', {
       telemetry: this.telemetry,
       phase: stateResult.phase,
       originDist: stateResult.originDist,
       destDist: stateResult.destDist,
+      aircraftValidation: stateResult.aircraftValidation,
+      flightSeconds: stateResult.flightSeconds || 0,
+      airborneSeconds: stateResult.airborneSeconds || 0,
+      isPaused: Boolean(stateResult.isPaused),
       isMock: this.isMockMode
     });
   }

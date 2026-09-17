@@ -382,6 +382,14 @@
     "country": "MX",
     "longest_runway_ft": 13074,
     "location": { "type": "Point", "coordinates": [-99.072098, 19.436302] }
+  },
+  {
+    "icao": "KXNA",
+    "name": "Northwest Arkansas National Airport",
+    "city": "Fayetteville/Springdale/Rogers",
+    "country": "US",
+    "longest_runway_ft": 8801,
+    "location": { "type": "Point", "coordinates": [-94.306811, 36.281861] }
   }
 ]
 

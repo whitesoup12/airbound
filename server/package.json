@@ -9,9 +9,14 @@
     "dev": "node --watch src/server.js",
     "seed": "node src/seeds/seedCommercialAirports.js",
     "seed:curated": "node src/seeds/seedAirports.js",
-    "seed:full": "node src/seeds/seedAirports.js --full",
-    "test": "node tests/runAllTests.js",
-    "test:e2e": "node tests/e2eTest.js"
+    "test": "node tests/runAllTests.js && node tests/testRentalAndValidation.js",
+    "test:fleet": "node tests/fleetEconomyTest.js",
+    "test:rental": "node tests/testRentalAndValidation.js",
+    "test:all": "node tests/runAllTests.js && node tests/testRentalAndValidation.js && node tests/fleetEconomyTest.js",
+    "test:e2e": "node tests/e2eTest.js",
+    "export:msfs": "node src/scripts/exportMsfsLogbook.js",
+    "import:msfs": "node src/scripts/importMsfsLogbook.js",
+    "import:ourairports": "node src/scripts/importOurAirports.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

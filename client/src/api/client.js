@@ -6,9 +6,25 @@ export async function fetchPilot() {
   return res.json();
 }
 
-export async function resetPilot() {
-  const res = await fetch(`${API_BASE}/pilot/reset`, { method: 'POST' });
-  if (!res.ok) throw new Error('Failed to reset pilot');
+export async function resetPilot(data = {}) {
+  const res = await fetch(`${API_BASE}/pilot/reset`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to reset pilot');
+  }
+  return res.json();
+}
+
+export async function importMsfsLogbookApi() {
+  const res = await fetch(`${API_BASE}/pilot/import-msfs`, { method: 'POST' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to import MSFS logbook');
+  }
   return res.json();
 }
 
@@ -103,5 +119,85 @@ export async function updateBaseAirport(icao) {
   }
   return res.json();
 }
+
+// Fleet & Dealership API
+export async function fetchAircraftCatalog() {
+  const res = await fetch(`${API_BASE}/fleet/catalog`);
+  if (!res.ok) throw new Error('Failed to fetch aircraft catalog');
+  return res.json();
+}
+
+export async function fetchHangar() {
+  const res = await fetch(`${API_BASE}/fleet/hangar`);
+  if (!res.ok) throw new Error('Failed to fetch hangar fleet');
+  return res.json();
+}
+
+export async function buyAircraft(modelId, tailNumber = '') {
+  const res = await fetch(`${API_BASE}/fleet/buy`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ modelId, tailNumber })
+  });
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || 'Failed to purchase aircraft');
+  }
+  return res.json();
+}
+
+export async function rentAircraft(modelId) {
+  const res = await fetch(`${API_BASE}/fleet/rent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ modelId })
+  });
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || 'Failed to rent aircraft');
+  }
+  return res.json();
+}
+
+export async function selectActiveAircraft(modelId, tailNumber = '') {
+  const res = await fetch(`${API_BASE}/fleet/select`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ modelId, tailNumber })
+  });
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || 'Failed to select active aircraft');
+  }
+  return res.json();
+}
+
+export async function sellAircraft(tailNumber) {
+  const res = await fetch(`${API_BASE}/fleet/sell`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tailNumber })
+  });
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || 'Failed to sell aircraft');
+  }
+  return res.json();
+}
+
+export async function returnAircraft(tailNumber) {
+  const res = await fetch(`${API_BASE}/fleet/return`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tailNumber })
+  });
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.error || 'Failed to return leased aircraft');
+  }
+  return res.json();
+}
+
+
 
 

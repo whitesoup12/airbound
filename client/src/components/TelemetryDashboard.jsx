@@ -10,8 +10,12 @@ import {
   Users,
   Navigation,
   DollarSign,
-  AlertCircle
+  AlertCircle,
+  Fuel,
+  Clock,
+  MapPin
 } from 'lucide-react';
+import { calculateNavEstimates } from '../utils/navigation.js';
 
 const PHASE_CONFIG = {
   STANDBY: {
@@ -46,42 +50,53 @@ const PHASE_CONFIG = {
   }
 };
 
-export function TelemetryDashboard({ telemetry, phase, activeJob, onCancelJob }) {
+export function TelemetryDashboard({
+  telemetry,
+  phase,
+  activeJob,
+  aircraftValidation = null,
+  destDist = null,
+  originDist = null,
+  onCancelJob,
+  pilot,
+  allAirports = []
+}) {
   const phaseInfo = PHASE_CONFIG[phase] || PHASE_CONFIG.STANDBY;
 
-  // Compute contract progress if active
-  let progressPct = 0;
-  let remainingNm = 0;
+  const activeAircraft = pilot?.active_aircraft || {
+    name: 'Cessna 172 Skyhawk',
+    cruise_speed_kts: 120,
+    fuel_burn_gph: 9.0,
+    fuel_type: '100LL'
+  };
+
+  let estimatedFuelGallons = 0;
+  let estimatedFuelCost = 0;
+  let estimatedLandingFee = 0;
+  let estimatedNetProfit = 0;
+
   if (activeJob) {
-    const totalDist = activeJob.distance_nm || 1;
-    if (phase === 'IDLE') {
-      progressPct = 0;
-      remainingNm = totalDist;
-    } else if (phase === 'COMPLETED') {
-      progressPct = 100;
-      remainingNm = 0;
-    } else {
-      // Approximate progress based on destination distance
-      const destCoords = activeJob.destination_airport?.location?.coordinates ||
-        activeJob.destination_location?.coordinates;
-      if (destCoords && telemetry.latitude) {
-        // Compute distance to destination
-        const dLon = destCoords[0];
-        const dLat = destCoords[1];
-        const R = 3440.065;
-        const dLatRad = ((dLat - telemetry.latitude) * Math.PI) / 180;
-        const dLonRad = ((dLon - telemetry.longitude) * Math.PI) / 180;
-        const a =
-          Math.sin(dLatRad / 2) * Math.sin(dLatRad / 2) +
-          Math.cos((telemetry.latitude * Math.PI) / 180) *
-            Math.cos((dLat * Math.PI) / 180) *
-            Math.sin(dLonRad / 2) *
-            Math.sin(dLonRad / 2);
-        remainingNm = Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10) / 10;
-        progressPct = Math.min(100, Math.max(0, Math.round(((totalDist - remainingNm) / totalDist) * 100)));
-      }
-    }
+    const estHours = Math.max(0.08, activeJob.distance_nm / (activeAircraft.cruise_speed_kts || 120));
+    estimatedFuelGallons = Math.round(estHours * (activeAircraft.fuel_burn_gph || 9) * 10) / 10;
+    const fuelPrice = activeAircraft.fuel_type === 'Jet-A' ? 5.60 : 6.40;
+    estimatedFuelCost = Math.round(estimatedFuelGallons * fuelPrice * 100) / 100;
+    const runwayFt = activeJob.destination_airport?.longest_runway_ft || activeJob.destination_runway_ft || 5000;
+    estimatedLandingFee = runwayFt >= 9500 ? 350 : (runwayFt >= 5000 ? 120 : 35);
+    estimatedNetProfit = Math.max(0, Math.round(activeJob.payout - estimatedFuelCost - estimatedLandingFee));
   }
+
+  // Compute live navigation estimates (Distance Remaining, Bearing, Closure Rate, ETE & ETA)
+  const navEstimates = calculateNavEstimates({
+    telemetry,
+    activeJob,
+    phase,
+    activeAircraft,
+    allAirports,
+    destDistOverride: destDist
+  });
+
+  const remainingNm = navEstimates.remainingNm;
+  const progressPct = navEstimates.progressPct;
 
   return (
     <div className="space-y-4">
@@ -100,8 +115,15 @@ export function TelemetryDashboard({ telemetry, phase, activeJob, onCancelJob })
             <div className="flex items-center space-x-2">
               <span className="text-xs uppercase font-mono tracking-widest text-slate-400">FLIGHT PHASE:</span>
               <span className="font-mono font-bold tracking-wider text-base sm:text-lg">{phaseInfo.label}</span>
+              {telemetry?.isPaused && (
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500 text-slate-950 font-bold animate-pulse shadow-sm">
+                  PAUSED
+                </span>
+              )}
             </div>
-            <p className="text-xs text-slate-300/80">{phaseInfo.description}</p>
+            <p className="text-xs text-slate-300/80">
+              {telemetry?.isPaused ? 'Simulation paused in MSFS (flight timer frozen).' : phaseInfo.description}
+            </p>
           </div>
         </div>
 
@@ -131,9 +153,46 @@ export function TelemetryDashboard({ telemetry, phase, activeJob, onCancelJob })
         </div>
       </div>
 
-      {/* Flight Telemetry Gauges Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {/* Ground Speed */}
+      {/* Airframe Mismatch Alert Banner (Takes priority when mismatch is detected) */}
+      {activeJob && aircraftValidation && !aircraftValidation.matches && (
+        <div className="glass-panel rounded-2xl p-4 border border-rose-500/80 bg-gradient-to-r from-rose-950/80 via-red-950/60 to-slate-900/80 text-rose-200 shadow-xl shadow-rose-950/50">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-start space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-950 border border-rose-500 flex items-center justify-center text-rose-400 flex-shrink-0 mt-0.5 sm:mt-0">
+                <ShieldAlert className="w-6 h-6 animate-pulse" />
+              </div>
+              <div>
+                <div className="flex items-center space-x-2">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-rose-900/80 text-rose-200 border border-rose-700 uppercase font-bold">
+                    TAKEOFF BLOCKED
+                  </span>
+                  <h4 className="text-sm sm:text-base font-bold font-mono text-rose-200">
+                    AIRFRAME MISMATCH DETECTED
+                  </h4>
+                </div>
+                <p className="text-xs text-rose-300 mt-1 font-mono">
+                  Contract requires: <strong className="text-white underline">{aircraftValidation.expectedAircraft}</strong> | Detected in MSFS: <strong className="text-amber-300">{aircraftValidation.simAircraftTitle || 'Unknown Airframe'}</strong>
+                </p>
+                <p className="text-[11px] text-rose-300/80 mt-0.5">
+                  Please return to the MSFS main menu and load the designated aircraft to fly this contract.
+                </p>
+              </div>
+            </div>
+            <div className="text-left sm:text-right sm:flex-shrink-0">
+              <span className="text-[10px] font-mono text-rose-400 uppercase tracking-wide block">
+                FLIGHT PHASE LOCKED
+              </span>
+              <span className="text-xs font-mono font-bold text-rose-300">
+                GATED IN IDLE
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Flight Telemetry Gauges Grid (8 Primary Avionics Instruments) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+        {/* 1. Ground Speed */}
         <div className="glass-panel rounded-xl p-3 border border-slate-800/80 bg-slate-900/60">
           <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
             <span>GROUND SPEED</span>
@@ -145,23 +204,12 @@ export function TelemetryDashboard({ telemetry, phase, activeJob, onCancelJob })
             </span>
             <span className="text-xs font-mono text-slate-400">KTS</span>
           </div>
-        </div>
-
-        {/* True Airspeed */}
-        <div className="glass-panel rounded-xl p-3 border border-slate-800/80 bg-slate-900/60">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
-            <span>TRUE AIRSPEED</span>
-            <ArrowUpRight className="w-4 h-4 text-cyan-400" />
-          </div>
-          <div className="mt-2 flex items-baseline space-x-1">
-            <span className="text-2xl font-bold font-mono text-white">
-              {Math.round(telemetry?.airspeedTrue || 0)}
-            </span>
-            <span className="text-xs font-mono text-slate-400">KTS</span>
+          <div className="mt-1 text-[10px] font-mono text-slate-400 truncate">
+            TAS: {Math.round(telemetry?.airspeedTrue || 0)} KTS
           </div>
         </div>
 
-        {/* Altitude */}
+        {/* 2. Altitude */}
         <div className="glass-panel rounded-xl p-3 border border-slate-800/80 bg-slate-900/60">
           <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
             <span>ALTITUDE</span>
@@ -173,13 +221,16 @@ export function TelemetryDashboard({ telemetry, phase, activeJob, onCancelJob })
             </span>
             <span className="text-xs font-mono text-slate-400">FT</span>
           </div>
+          <div className="mt-1 text-[10px] font-mono text-slate-400 truncate">
+            MSL Elevation
+          </div>
         </div>
 
-        {/* Heading */}
+        {/* 3. Heading & Direct Bearing */}
         <div className="glass-panel rounded-xl p-3 border border-slate-800/80 bg-slate-900/60">
           <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
             <span>HEADING</span>
-            <Compass className="w-4 h-4 text-blue-400" />
+            <Compass className="w-4 h-4 text-cyan-400" />
           </div>
           <div className="mt-2 flex items-baseline space-x-1">
             <span className="text-2xl font-bold font-mono text-white">
@@ -187,9 +238,71 @@ export function TelemetryDashboard({ telemetry, phase, activeJob, onCancelJob })
             </span>
             <span className="text-xs font-mono text-slate-400">°</span>
           </div>
+          <div className="mt-1 text-[10px] font-mono text-cyan-400 truncate">
+            {navEstimates.bearing !== null ? `BRG: ${navEstimates.bearing.toString().padStart(3, '0')}°` : 'TRUE NORTH'}
+          </div>
         </div>
 
-        {/* Surface State: SIM ON GROUND */}
+        {/* 4. Distance Remaining to Destination */}
+        <div className="glass-panel rounded-xl p-3 border border-cyan-800/60 bg-gradient-to-b from-slate-900/80 to-cyan-950/20">
+          <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
+            <span className="text-cyan-300 font-semibold">DIST REMAINING</span>
+            <MapPin className="w-4 h-4 text-cyan-400" />
+          </div>
+          <div className="mt-2 flex items-baseline space-x-1">
+            <span className="text-2xl font-bold font-mono text-cyan-300">
+              {activeJob ? navEstimates.remainingNm : '--'}
+            </span>
+            <span className="text-xs font-mono text-cyan-400/80">NM</span>
+          </div>
+          <div className="mt-1 text-[10px] font-mono text-slate-400 truncate">
+            {activeJob ? `DEST: ${activeJob.destination_icao}` : 'NO ACTIVE JOB'}
+          </div>
+        </div>
+
+        {/* 5. Estimated Time En Route (ETE) */}
+        <div className="glass-panel rounded-xl p-3 border border-emerald-800/60 bg-gradient-to-b from-slate-900/80 to-emerald-950/20">
+          <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
+            <span className="text-emerald-300 font-semibold">EST. TIME (ETE)</span>
+            <Clock className="w-4 h-4 text-emerald-400" />
+          </div>
+          <div className="mt-2 flex items-baseline space-x-1">
+            <span className={`text-2xl font-bold font-mono ${navEstimates.isDiverging ? 'text-amber-400' : 'text-emerald-300'}`}>
+              {activeJob ? navEstimates.formattedEte : '--'}
+            </span>
+          </div>
+          <div className="mt-1 text-[10px] font-mono text-slate-400 truncate">
+            {navEstimates.formattedEta && navEstimates.formattedEta !== 'N/A'
+              ? `ETA: ${navEstimates.formattedEta}`
+              : navEstimates.isDiverging
+              ? 'Off-track / Diverging'
+              : navEstimates.isCruiseEst
+              ? 'Cruise Plan Est'
+              : 'Standby'}
+          </div>
+        </div>
+
+        {/* 6. Track Advice & Closure Rate (VMG) */}
+        <div className="glass-panel rounded-xl p-3 border border-slate-800/80 bg-slate-900/60">
+          <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
+            <span>TRACK ADVICE</span>
+            <Navigation className="w-4 h-4 text-amber-400" />
+          </div>
+          <div className="mt-2 flex items-baseline space-x-1">
+            <span className={`text-base font-bold font-mono truncate ${
+              navEstimates.turnAdvice === 'ON TRACK'
+                ? 'text-emerald-400'
+                : 'text-amber-300'
+            }`}>
+              {activeJob ? navEstimates.turnAdvice : '--'}
+            </span>
+          </div>
+          <div className="mt-1 text-[10px] font-mono text-slate-400 truncate">
+            {activeJob ? `VMG: ${navEstimates.closureRate} KTS` : 'Straight Flight'}
+          </div>
+        </div>
+
+        {/* 7. Surface State: SIM ON GROUND */}
         <div className="glass-panel rounded-xl p-3 border border-slate-800/80 bg-slate-900/60">
           <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
             <span>SURFACE</span>
@@ -208,9 +321,12 @@ export function TelemetryDashboard({ telemetry, phase, activeJob, onCancelJob })
               {telemetry?.simOnGround ? 'ON GROUND' : 'AIRBORNE'}
             </span>
           </div>
+          <div className="mt-1 text-[10px] font-mono text-slate-400 truncate">
+            {phase} Phase
+          </div>
         </div>
 
-        {/* Parking Brake & Engine Status */}
+        {/* 8. Systems: Parking Brake & Engine Status */}
         <div className="glass-panel rounded-xl p-3 border border-slate-800/80 bg-slate-900/60">
           <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
             <span>SYSTEMS</span>
@@ -290,11 +406,11 @@ export function TelemetryDashboard({ telemetry, phase, activeJob, onCancelJob })
               </div>
             </div>
 
-            {/* Progress & Cancel button */}
-            <div className="w-full lg:w-48 flex flex-col justify-center">
+            {/* Progress & Live ETE Guidance */}
+            <div className="w-full lg:w-60 flex flex-col justify-center">
               <div className="flex justify-between text-xs font-mono mb-1 text-slate-400">
-                <span>REMAINING</span>
-                <span className="text-cyan-400 font-bold">{remainingNm} NM</span>
+                <span>DIST REMAINING</span>
+                <span className="text-cyan-300 font-bold">{remainingNm} NM</span>
               </div>
               <div className="w-full h-2.5 rounded-full bg-slate-800 overflow-hidden">
                 <div
@@ -302,6 +418,33 @@ export function TelemetryDashboard({ telemetry, phase, activeJob, onCancelJob })
                   style={{ width: `${progressPct}%` }}
                 />
               </div>
+
+              {/* Live ETE and Clock ETA */}
+              <div className="flex justify-between items-center text-[11px] font-mono mt-1.5 text-slate-400">
+                <div className="flex items-center space-x-1">
+                  <Clock className="w-3 h-3 text-emerald-400" />
+                  <span>EST. TIME:</span>
+                </div>
+                <div className="flex items-center space-x-1.5">
+                  <span className={`font-bold ${navEstimates.isDiverging ? 'text-amber-400' : 'text-emerald-400'}`}>
+                    {navEstimates.formattedEte}
+                  </span>
+                  {navEstimates.formattedEta && navEstimates.formattedEta !== 'N/A' && (
+                    <span className="text-[10px] text-slate-400 font-normal">({navEstimates.formattedEta})</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Direct Bearing & Heading Deviation */}
+              {navEstimates.bearing !== null && (
+                <div className="flex justify-between items-center text-[10px] font-mono mt-0.5 text-slate-400">
+                  <span>DIRECT BRG:</span>
+                  <span className="text-cyan-400 font-medium">
+                    {navEstimates.bearing.toString().padStart(3, '0')}°
+                    {navEstimates.turnAdvice ? ` (${navEstimates.turnAdvice})` : ''}
+                  </span>
+                </div>
+              )}
 
               {phase === 'IDLE' && onCancelJob && (
                 <button
@@ -311,6 +454,43 @@ export function TelemetryDashboard({ telemetry, phase, activeJob, onCancelJob })
                   Cancel Contract
                 </button>
               )}
+            </div>
+          </div>
+
+          {/* Operating Expenses & Estimated Net Payout Strip */}
+          <div className="mt-3 pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between text-[11px] font-mono gap-2 text-slate-400">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-slate-400 flex items-center space-x-1.5">
+                <span>Aircraft:</span>
+                <strong className={aircraftValidation && !aircraftValidation.matches ? 'text-rose-400' : 'text-cyan-300'}>
+                  {activeAircraft.name}
+                </strong>
+                {aircraftValidation && (
+                  <span
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-mono ${
+                      aircraftValidation.matches
+                        ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-700/60'
+                        : 'bg-rose-950/80 text-rose-300 border border-rose-700/60'
+                    }`}
+                  >
+                    {aircraftValidation.matches
+                      ? `✓ MSFS: ${aircraftValidation.simAircraftTitle}`
+                      : `✗ MSFS: ${aircraftValidation.simAircraftTitle || 'Mismatch'}`}
+                  </span>
+                )}
+              </span>
+              <span className="flex items-center space-x-1">
+                <Fuel className="w-3 h-3 text-amber-400" />
+                <span>Est. Fuel: <strong className="text-amber-300">~{estimatedFuelGallons} gal (${estimatedFuelCost.toFixed(2)})</strong></span>
+              </span>
+              <span>
+                Est. Landing Fee: <strong className="text-rose-400">${estimatedLandingFee}</strong>
+              </span>
+            </div>
+
+            <div className="flex items-center space-x-1.5 bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-emerald-800/50">
+              <span className="text-emerald-400 font-bold">EST. NET PROFIT:</span>
+              <span className="text-emerald-300 font-bold text-xs">${estimatedNetProfit.toLocaleString()}</span>
             </div>
           </div>
         </div>

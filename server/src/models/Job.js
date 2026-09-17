@@ -47,6 +47,27 @@ const JobSchema = new mongoose.Schema(
     },
     completed_at: {
       type: Date
+    },
+    rental_fee_charged: {
+      type: Number,
+      default: 0
+    },
+    tier: {
+      type: String,
+      enum: ['short', 'medium', 'long'],
+      default: 'short'
+    },
+    is_unvisited: {
+      type: Boolean,
+      default: false
+    },
+    is_featured_destination: {
+      type: Boolean,
+      default: false
+    },
+    exploration_bonus: {
+      type: Number,
+      default: 0
     }
   },
   {

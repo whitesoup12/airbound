@@ -1,3 +1,4 @@
+import './setupTestEnv.js';
 import assert from 'assert';
 import http from 'http';
 import { io as ClientIO } from 'socket.io-client';
@@ -126,10 +127,11 @@ async function runE2E() {
   const updatedPilotRes = await fetch(`${baseUrl}/api/pilot`).then((r) => r.json());
   const updatedPilot = updatedPilotRes.pilot;
 
+  const netEarned = updatedPilot.flight_log[0]?.net_payout ?? jobToAccept.payout;
   assert.strictEqual(
     updatedPilot.balance,
-    pilotRes.pilot.balance + jobToAccept.payout,
-    'Pilot balance should be incremented by job payout'
+    pilotRes.pilot.balance + netEarned,
+    'Pilot balance should be incremented by job net payout'
   );
   assert.strictEqual(
     updatedPilot.current_icao,
