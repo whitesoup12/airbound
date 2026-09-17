@@ -72,9 +72,9 @@ export function CareerProgressView({
     let totalLandingBonusXp = 0;
 
     for (const f of flightLog) {
-      if (f.touchdown_fpm !== undefined && f.touchdown_fpm !== null) {
-        const fpm = Math.round(f.touchdown_fpm);
-        const absFpm = Math.abs(fpm);
+      if (f.touchdown_fpm !== null && f.touchdown_fpm !== undefined) {
+        const fpm = Number(f.touchdown_fpm);
+        const absFpm = Math.abs(Math.round(fpm));
         totalFpmSum += absFpm;
         recordedLandingsCount++;
 
@@ -88,24 +88,15 @@ export function CareerProgressView({
 
         if (absFpm <= 160) {
           butterCount++;
-          totalLandingBonusXp += 100;
         } else if (absFpm <= 320) {
           cleanCount++;
-          totalLandingBonusXp += 50;
         } else if (absFpm <= 500) {
           firmCount++;
-          // Firm is +0 XP
         } else if (absFpm <= 750) {
           hardCount++;
-          totalLandingBonusXp -= 50;
         } else {
           severeCount++;
-          totalLandingBonusXp -= 100;
         }
-      } else {
-        // Standard clean landing baseline for imported flights
-        cleanCount++;
-        totalLandingBonusXp += 50;
       }
     }
 
@@ -122,7 +113,7 @@ export function CareerProgressView({
       totalLandings,
       avgFpm,
       bestTouchdown,
-      totalLandingBonusXp
+      totalLandingBonusXp: 0
     };
   }, [flightLog]);
 
@@ -131,7 +122,6 @@ export function CareerProgressView({
     const distanceXp = Math.round(totalNm);
     const arrivalsXp = flightLog.length * 50;
     const explorationXp = (pilot?.visited_airports?.length || 1) * 100;
-    const landingBonusXp = landingStats.totalLandingBonusXp;
     const runwayXp = flightLog.reduce(
       (acc, f) => acc + (f.destination_runway_ft && f.destination_runway_ft < 4000 ? 75 : 0),
       0
@@ -141,10 +131,9 @@ export function CareerProgressView({
       distanceXp,
       arrivalsXp,
       explorationXp,
-      landingBonusXp,
       runwayXp
     };
-  }, [totalNm, flightLog, pilot?.visited_airports, landingStats.totalLandingBonusXp]);
+  }, [totalNm, flightLog, pilot?.visited_airports]);
 
   const activeAircraft = pilot?.active_aircraft || {
     name: 'Cessna 172 Skyhawk',
@@ -461,11 +450,11 @@ export function CareerProgressView({
                 </h3>
               </div>
               <p className="text-xs text-slate-400 mt-0.5 font-mono">
-                SimConnect vertical speed captured at touchdown threshold (3 NM of destination).
+                SimConnect vertical speed captured at touchdown threshold (telemetry tracking only).
               </p>
             </div>
             <span className="text-xs font-mono text-cyan-300 bg-cyan-950/60 border border-cyan-800/60 px-2.5 py-1 rounded-lg">
-              {landingStats.totalLandings} Flights Analyzed
+              {landingStats.recordedLandingsCount} Touchdowns Logged
             </span>
           </div>
 
@@ -479,16 +468,16 @@ export function CareerProgressView({
                   <span>BUTTER / GREASER</span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">|FPM| ≤ 160</p>
-                <p className="text-xs text-emerald-400 font-semibold mt-2">+100 XP per landing</p>
+                <p className="text-xs text-emerald-400 font-semibold mt-2">Smooth Touchdown</p>
               </div>
               <div className="text-right">
                 <span className="text-2xl font-bold text-emerald-400 block">
                   {landingStats.butterCount}
                 </span>
                 <span className="text-[10px] text-slate-500">
-                  {landingStats.totalLandings > 0
-                    ? `${Math.round((landingStats.butterCount / landingStats.totalLandings) * 100)}%`
-                    : '0%'}
+                  {landingStats.recordedLandingsCount > 0
+                    ? `${Math.round((landingStats.butterCount / landingStats.recordedLandingsCount) * 100)}%`
+                    : '—'}
                 </span>
               </div>
             </div>
@@ -501,16 +490,16 @@ export function CareerProgressView({
                   <span>CLEAN LANDING</span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">160 – 320 FPM</p>
-                <p className="text-xs text-cyan-400 font-semibold mt-2">+50 XP per landing</p>
+                <p className="text-xs text-cyan-400 font-semibold mt-2">Clean Touchdown</p>
               </div>
               <div className="text-right">
                 <span className="text-2xl font-bold text-cyan-400 block">
                   {landingStats.cleanCount}
                 </span>
                 <span className="text-[10px] text-slate-500">
-                  {landingStats.totalLandings > 0
-                    ? `${Math.round((landingStats.cleanCount / landingStats.totalLandings) * 100)}%`
-                    : '0%'}
+                  {landingStats.recordedLandingsCount > 0
+                    ? `${Math.round((landingStats.cleanCount / landingStats.recordedLandingsCount) * 100)}%`
+                    : '—'}
                 </span>
               </div>
             </div>
@@ -523,16 +512,16 @@ export function CareerProgressView({
                   <span>FIRM LANDING</span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">320 – 500 FPM</p>
-                <p className="text-xs text-amber-400 font-semibold mt-2">+0 XP (neutral)</p>
+                <p className="text-xs text-amber-400 font-semibold mt-2">Firm Contact</p>
               </div>
               <div className="text-right">
                 <span className="text-2xl font-bold text-amber-400 block">
                   {landingStats.firmCount}
                 </span>
                 <span className="text-[10px] text-slate-500">
-                  {landingStats.totalLandings > 0
-                    ? `${Math.round((landingStats.firmCount / landingStats.totalLandings) * 100)}%`
-                    : '0%'}
+                  {landingStats.recordedLandingsCount > 0
+                    ? `${Math.round((landingStats.firmCount / landingStats.recordedLandingsCount) * 100)}%`
+                    : '—'}
                 </span>
               </div>
             </div>
@@ -545,16 +534,16 @@ export function CareerProgressView({
                   <span>HARD LANDING</span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">500 – 750 FPM</p>
-                <p className="text-xs text-orange-400 font-semibold mt-2">-50 XP penalty</p>
+                <p className="text-xs text-orange-400 font-semibold mt-2">Hard Contact</p>
               </div>
               <div className="text-right">
                 <span className="text-2xl font-bold text-orange-400 block">
                   {landingStats.hardCount}
                 </span>
                 <span className="text-[10px] text-slate-500">
-                  {landingStats.totalLandings > 0
-                    ? `${Math.round((landingStats.hardCount / landingStats.totalLandings) * 100)}%`
-                    : '0%'}
+                  {landingStats.recordedLandingsCount > 0
+                    ? `${Math.round((landingStats.hardCount / landingStats.recordedLandingsCount) * 100)}%`
+                    : '—'}
                 </span>
               </div>
             </div>
@@ -567,35 +556,37 @@ export function CareerProgressView({
                   <span>SEVERE IMPACT</span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">&gt; 750 FPM</p>
-                <p className="text-xs text-rose-400 font-semibold mt-2">-100 XP penalty</p>
+                <p className="text-xs text-rose-400 font-semibold mt-2">High Impact</p>
               </div>
               <div className="text-right">
                 <span className="text-2xl font-bold text-rose-400 block">
                   {landingStats.severeCount}
                 </span>
                 <span className="text-[10px] text-slate-500">
-                  {landingStats.totalLandings > 0
-                    ? `${Math.round((landingStats.severeCount / landingStats.totalLandings) * 100)}%`
-                    : '0%'}
+                  {landingStats.recordedLandingsCount > 0
+                    ? `${Math.round((landingStats.severeCount / landingStats.recordedLandingsCount) * 100)}%`
+                    : '—'}
                 </span>
               </div>
             </div>
 
-            {/* Cumulative Landing Bonus XP */}
+            {/* Touchdown Telemetry Logging Status */}
             <div className="p-3.5 rounded-xl bg-purple-950/40 border border-purple-800/60 flex items-start justify-between">
               <div>
                 <div className="flex items-center space-x-1.5 text-purple-300 font-bold text-sm">
-                  <Award className="w-4 h-4 text-purple-400" />
-                  <span>TOTAL BONUS XP</span>
+                  <Gauge className="w-4 h-4 text-purple-400" />
+                  <span>TOUCHDOWN LOGS</span>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1">Landing Smoothness</p>
-                <p className="text-xs text-purple-400 font-semibold mt-2">Career quality bonus</p>
+                <p className="text-[11px] text-slate-400 mt-1">Telemetry Sensor</p>
+                <p className="text-xs text-purple-400 font-semibold mt-2">Active logging</p>
               </div>
               <div className="text-right">
                 <span className="text-2xl font-bold text-purple-300 block">
-                  +{landingStats.totalLandingBonusXp.toLocaleString()}
+                  {landingStats.recordedLandingsCount}
                 </span>
-                <span className="text-[10px] text-slate-500">XP Points</span>
+                <span className="text-[10px] text-slate-500">
+                  {landingStats.recordedLandingsCount === 1 ? 'Flight' : 'Flights'}
+                </span>
               </div>
             </div>
           </div>
@@ -671,7 +662,7 @@ export function CareerProgressView({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 font-mono text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 font-mono text-xs">
           {/* Distance XP */}
           <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800">
             <div className="flex items-center space-x-1.5 text-cyan-400 font-bold">
@@ -682,18 +673,6 @@ export function CareerProgressView({
               +{xpSources.distanceXp.toLocaleString()} XP
             </span>
             <p className="text-[10px] text-slate-400 mt-1">1 XP earned per nautical mile flown across all routes.</p>
-          </div>
-
-          {/* Landing Quality XP */}
-          <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800">
-            <div className="flex items-center space-x-1.5 text-emerald-400 font-bold">
-              <Gauge className="w-4 h-4" />
-              <span>TOUCHDOWN QUALITY</span>
-            </div>
-            <span className="text-2xl font-bold text-emerald-400 mt-2 block">
-              +{xpSources.landingBonusXp.toLocaleString()} XP
-            </span>
-            <p className="text-[10px] text-slate-400 mt-1">Awarded for Greaser (+100) and Clean (+50) soft arrivals.</p>
           </div>
 
           {/* Airport Exploration XP */}

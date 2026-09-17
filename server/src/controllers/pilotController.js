@@ -103,16 +103,16 @@ export async function getPilot(req, res) {
         ];
         needsSave = true;
       }
-      // Auto-compute retroactive career XP if pilot has flights logged but xp is uninitialized
-      if ((!pilot.xp || pilot.xp === 0) && pilot.flight_log && pilot.flight_log.length > 0) {
+      // Auto-compute/recalibrate career XP from flight log
+      if (pilot.flight_log && pilot.flight_log.length > 0) {
         const retroXp = calculateRetroactiveXp(pilot.flight_log);
-        if (retroXp > 0) {
+        if (retroXp !== pilot.xp) {
           pilot.xp = retroXp;
           const r = getPilotRank(pilot.xp);
           pilot.level = r.level;
           pilot.rank_title = r.title;
           needsSave = true;
-          console.log(`[Pilot] Calculated retroactive career XP: ${retroXp} XP -> Level ${r.level} (${r.title})`);
+          console.log(`[Pilot] Recalibrated career XP: ${retroXp} XP -> Level ${r.level} (${r.title})`);
         }
       }
 

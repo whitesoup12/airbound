@@ -73,7 +73,7 @@ export function rateLandingTouchdown(touchdownFpm) {
     return {
       rating: 'Good',
       label: 'Standard Landing',
-      xpBonus: 50,
+      xpBonus: 0,
       color: 'cyan',
       absFpm: null
     };
@@ -85,7 +85,7 @@ export function rateLandingTouchdown(touchdownFpm) {
     return {
       rating: 'Butter',
       label: 'Butter / Greaser',
-      xpBonus: 100,
+      xpBonus: 0,
       color: 'emerald',
       absFpm
     };
@@ -93,7 +93,7 @@ export function rateLandingTouchdown(touchdownFpm) {
     return {
       rating: 'Good',
       label: 'Clean Landing',
-      xpBonus: 50,
+      xpBonus: 0,
       color: 'cyan',
       absFpm
     };
@@ -109,7 +109,7 @@ export function rateLandingTouchdown(touchdownFpm) {
     return {
       rating: 'Hard',
       label: 'Hard Landing',
-      xpBonus: -50,
+      xpBonus: 0,
       color: 'orange',
       absFpm
     };
@@ -117,7 +117,7 @@ export function rateLandingTouchdown(touchdownFpm) {
     return {
       rating: 'Severe',
       label: 'Severe Hard Landing',
-      xpBonus: -100,
+      xpBonus: 0,
       color: 'red',
       absFpm
     };
@@ -149,7 +149,7 @@ export function calculateFlightXp(params = {}) {
 
   const totalXp = Math.max(
     10,
-    distanceXp + landing.xpBonus + explorationXp + runwayChallengeXp + arrivalXp
+    distanceXp + explorationXp + runwayChallengeXp + arrivalXp
   );
 
   return {
@@ -157,7 +157,7 @@ export function calculateFlightXp(params = {}) {
     distanceXp,
     landingRating: landing.rating,
     landingLabel: landing.label,
-    landingXp: landing.xpBonus,
+    landingXp: 0,
     explorationXp,
     runwayChallengeXp,
     arrivalXp
@@ -186,12 +186,10 @@ export function calculateRetroactiveXp(flightLog = []) {
     const isUnvisited = dest && !seenAirports.has(dest);
     if (dest) seenAirports.add(dest);
 
-    // If entry has a recorded touchdown_fpm, use it; otherwise standard clean arrival
-    const landing = rateLandingTouchdown(entry.touchdown_fpm);
     const exploration = isUnvisited ? 100 : 0;
     const arrival = 50;
 
-    totalXp += dist + landing.xpBonus + exploration + arrival;
+    totalXp += dist + exploration + arrival;
   }
 
   return Math.max(0, Math.round(totalXp));

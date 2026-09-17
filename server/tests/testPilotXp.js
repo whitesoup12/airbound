@@ -30,34 +30,34 @@ console.log(`✓ 1,500,000 XP correctly resolves to Level ${l10.level}: ${l10.ti
 // 2. Test Landing Touchdown Ratings
 console.log('2. Testing Landing Touchdown Ratings...');
 const butter = rateLandingTouchdown(-120);
-if (butter.rating !== 'Butter' || butter.xpBonus !== 100) {
+if (butter.rating !== 'Butter' || butter.xpBonus !== 0) {
   throw new Error(`Butter landing mismatch: ${JSON.stringify(butter)}`);
 }
-console.log(`✓ -120 FPM rated as ${butter.label} (+${butter.xpBonus} XP)`);
+console.log(`✓ -120 FPM rated as ${butter.label} (${butter.xpBonus} XP, telemetry tracking)`);
 
 const clean = rateLandingTouchdown(-240);
-if (clean.rating !== 'Good' || clean.xpBonus !== 50) {
+if (clean.rating !== 'Good' || clean.xpBonus !== 0) {
   throw new Error(`Clean landing mismatch: ${JSON.stringify(clean)}`);
 }
-console.log(`✓ -240 FPM rated as ${clean.label} (+${clean.xpBonus} XP)`);
+console.log(`✓ -240 FPM rated as ${clean.label} (${clean.xpBonus} XP)`);
 
 const firm = rateLandingTouchdown(-450);
 if (firm.rating !== 'Firm' || firm.xpBonus !== 0) {
   throw new Error(`Firm landing mismatch: ${JSON.stringify(firm)}`);
 }
-console.log(`✓ -450 FPM rated as ${firm.label} (+${firm.xpBonus} XP)`);
+console.log(`✓ -450 FPM rated as ${firm.label} (${firm.xpBonus} XP)`);
 
 const hard = rateLandingTouchdown(-650);
-if (hard.rating !== 'Hard' || hard.xpBonus !== -50) {
+if (hard.rating !== 'Hard' || hard.xpBonus !== 0) {
   throw new Error(`Hard landing mismatch: ${JSON.stringify(hard)}`);
 }
-console.log(`✓ -650 FPM rated as ${hard.label} (${hard.xpBonus} XP penalty)`);
+console.log(`✓ -650 FPM rated as ${hard.label} (${hard.xpBonus} XP)`);
 
 const severe = rateLandingTouchdown(-900);
-if (severe.rating !== 'Severe' || severe.xpBonus !== -100) {
+if (severe.rating !== 'Severe' || severe.xpBonus !== 0) {
   throw new Error(`Severe landing mismatch: ${JSON.stringify(severe)}`);
 }
-console.log(`✓ -900 FPM rated as ${severe.label} (${severe.xpBonus} XP penalty)`);
+console.log(`✓ -900 FPM rated as ${severe.label} (${severe.xpBonus} XP)`);
 
 // 3. Test Flight XP Calculation
 console.log('3. Testing Flight XP Calculation Breakdown...');
@@ -68,10 +68,13 @@ const flightXp = calculateFlightXp({
   destRunwayFt: 3500
 });
 
-if (flightXp.totalXp !== 150 + 100 + 100 + 75 + 50) { // 475 XP
+if (flightXp.totalXp !== 150 + 100 + 75 + 50) { // 375 XP (no landing XP)
   throw new Error(`Flight XP breakdown calculation mismatch: ${JSON.stringify(flightXp)}`);
 }
-console.log(`✓ 150 NM flight with Butter Landing (-130 FPM), Discovery, Short Runway & Arrival awarded ${flightXp.totalXp} XP.`);
+if (flightXp.landingXp !== 0) {
+  throw new Error(`Expected landingXp to be 0, got ${flightXp.landingXp}`);
+}
+console.log(`✓ 150 NM flight with Discovery, Short Runway & Arrival awarded ${flightXp.totalXp} XP (landing XP: 0).`);
 
 // 4. Test Retroactive XP Calculation for User Career
 console.log('4. Testing Retroactive XP Calculation...');
@@ -81,13 +84,13 @@ const mockFlightLog = [
   { distance_nm: 50, destination_icao: 'KLAX', is_external: false, xp_earned: 120 }
 ];
 const retroXp = calculateRetroactiveXp(mockFlightLog);
-// Flight 1: 100 dist + 50 (clean landing) + 100 (unvisited KSFO) + 50 arrival = 300
-// Flight 2: 250 dist + 50 (clean landing) + 0 (already seen KSFO) + 50 arrival = 350
+// Flight 1: 100 dist + 100 (unvisited KSFO) + 50 arrival = 250
+// Flight 2: 250 dist + 0 (already seen KSFO) + 50 arrival = 300
 // Flight 3: recorded xp_earned = 120
-// Expected total = 300 + 350 + 120 = 770
-if (retroXp !== 770) {
-  throw new Error(`Retroactive XP mismatch: expected 770, got ${retroXp}`);
+// Expected total = 250 + 300 + 120 = 670
+if (retroXp !== 670) {
+  throw new Error(`Retroactive XP mismatch: expected 670, got ${retroXp}`);
 }
-console.log(`✓ Retroactive XP calculation accurately summed past career flights: ${retroXp} XP.`);
+console.log(`✓ Retroactive XP calculation accurately summed past career flights without landing XP: ${retroXp} XP.`);
 
 console.log('✅ ALL PILOT XP TESTS PASSED SUCCESSFULLY!');
