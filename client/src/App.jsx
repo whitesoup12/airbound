@@ -3,6 +3,7 @@ import Navbar from './components/Navbar.jsx';
 import FlightDeckView from './components/views/FlightDeckView.jsx';
 import DispatchView from './components/views/DispatchView.jsx';
 import FleetView from './components/views/FleetView.jsx';
+import CashFlowView from './components/views/CashFlowView.jsx';
 import CareerLogbookView from './components/views/CareerLogbookView.jsx';
 import CareerProgressView from './components/views/CareerProgressView.jsx';
 import ChangeBaseModal from './components/ChangeBaseModal.jsx';
@@ -23,8 +24,10 @@ import { formatLandingRating } from './utils/xpUtils.js';
 
 function getInitialTab() {
   const hash = window.location.hash.replace('#', '');
-  if (['flight-deck', 'dispatch', 'fleet', 'progression', 'logbook', 'career'].includes(hash)) {
-    return hash === 'career' ? 'progression' : hash;
+  if (['flight-deck', 'dispatch', 'fleet', 'cash-flow', 'finances', 'progression', 'logbook', 'career'].includes(hash)) {
+    if (hash === 'career') return 'progression';
+    if (hash === 'finances') return 'cash-flow';
+    return hash;
   }
   return 'flight-deck';
 }
@@ -46,8 +49,10 @@ export function App() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '');
-      if (['flight-deck', 'dispatch', 'fleet', 'progression', 'logbook', 'career'].includes(hash)) {
-        setCurrentTab(hash === 'career' ? 'progression' : hash);
+      if (['flight-deck', 'dispatch', 'fleet', 'cash-flow', 'finances', 'progression', 'logbook', 'career'].includes(hash)) {
+        if (hash === 'career') setCurrentTab('progression');
+        else if (hash === 'finances') setCurrentTab('cash-flow');
+        else setCurrentTab(hash);
       }
     };
     window.addEventListener('hashchange', handleHashChange);
@@ -372,6 +377,15 @@ export function App() {
           <FleetView
             pilot={pilot}
             onAircraftChanged={handleAircraftChanged}
+          />
+        )}
+
+        {(currentTab === 'cash-flow' || currentTab === 'finances') && (
+          <CashFlowView
+            pilot={pilot}
+            allAirports={allAirports}
+            onSwitchToDispatch={() => handleTabChange('dispatch')}
+            onSwitchToFleet={() => handleTabChange('fleet')}
           />
         )}
 

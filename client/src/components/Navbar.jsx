@@ -57,6 +57,14 @@ export function Navbar({
       badgeColor: 'bg-amber-950/60 text-amber-300 border-amber-800/60'
     },
     {
+      id: 'cash-flow',
+      label: 'CASH FLOW',
+      icon: DollarSign,
+      badge: `$${(pilot?.balance || 0).toLocaleString()}`,
+      badgeColor: 'bg-emerald-950/80 text-emerald-300 border-emerald-700/70',
+      isMatched: (t) => t === 'cash-flow' || t === 'finances'
+    },
+    {
       id: 'progression',
       label: 'CAREER',
       icon: Award,
@@ -181,12 +189,17 @@ export function Navbar({
           </button>
 
           {/* Wallet Balance Pill */}
-          <div className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-emerald-950/50 border border-emerald-800/40 text-xs font-mono">
-            <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="text-emerald-400 font-bold">
+          <button
+            type="button"
+            onClick={() => onTabChange && onTabChange('cash-flow')}
+            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-emerald-950/50 hover:bg-emerald-950/80 border border-emerald-800/40 hover:border-emerald-500/80 text-xs font-mono transition cursor-pointer group"
+            title="Click to view Cash Flow & Financial Ledger"
+          >
+            <DollarSign className="w-3.5 h-3.5 text-emerald-400 group-hover:scale-110 transition-transform" />
+            <span className="text-emerald-400 font-bold group-hover:text-emerald-300 transition-colors">
               {(pilot?.balance || 0).toLocaleString()}
             </span>
-          </div>
+          </button>
 
           {/* Reset Career Button */}
           {onResetPilot && (

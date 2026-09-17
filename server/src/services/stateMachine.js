@@ -527,6 +527,7 @@ export class FlightStateMachine {
         fuel_gallons: settlement.fuelGallons,
         landing_fee: settlement.landingFee,
         net_payout: settlement.netPayout,
+        exploration_bonus: this.activeJob.exploration_bonus || 0,
         aircraft_name: settlement.aircraftName,
         duration_seconds: durationSeconds,
         airborne_seconds: airborneSeconds,

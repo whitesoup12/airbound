@@ -114,6 +114,29 @@ export async function getPilot(req, res) {
           needsSave = true;
           console.log(`[Pilot] Recalibrated career XP: ${retroXp} XP -> Level ${r.level} (${r.title})`);
         }
+
+        // Backfill exploration_bonus from completed Job records if missing
+        const missingBonusFlights = pilot.flight_log.filter(
+          (f) => f.job_id && (f.exploration_bonus === undefined || f.exploration_bonus === 0)
+        );
+        if (missingBonusFlights.length > 0) {
+          const jobIds = missingBonusFlights.map((f) => f.job_id);
+          const bonusJobs = await Job.find({
+            _id: { $in: jobIds },
+            exploration_bonus: { $gt: 0 }
+          }).select('_id exploration_bonus');
+          if (bonusJobs.length > 0) {
+            const bonusMap = new Map(bonusJobs.map((j) => [j._id.toString(), j.exploration_bonus]));
+            for (const f of missingBonusFlights) {
+              const bonus = bonusMap.get(f.job_id?.toString());
+              if (bonus) {
+                f.exploration_bonus = bonus;
+                needsSave = true;
+                console.log(`[Pilot] Backfilled exploration bonus of $${bonus} for flight ${f.origin_icao} -> ${f.destination_icao}`);
+              }
+            }
+          }
+        }
       }
 
       if (needsSave) {
