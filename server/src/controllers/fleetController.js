@@ -33,6 +33,7 @@ export async function getHangar(req, res) {
       const planeObj = plane.toObject ? plane.toObject() : { ...plane };
       const model = catalogMap.get(plane.model_id);
       if (model) {
+        planeObj.category = model.category || planeObj.category;
         planeObj.catalog_purchase_price = model.purchase_price;
         if (!plane.is_rental) {
           const resale = calculateAircraftResaleValue(model.purchase_price, plane.flight_hours || 0);
@@ -47,9 +48,17 @@ export async function getHangar(req, res) {
       return planeObj;
     });
 
+    let activeAircraft = pilot.active_aircraft;
+    if (activeAircraft && activeAircraft.model_id) {
+      const activeModel = catalogMap.get(activeAircraft.model_id);
+      if (activeModel && activeAircraft.category !== activeModel.category) {
+        activeAircraft.category = activeModel.category;
+      }
+    }
+
     res.json({
       fleet: enrichedFleet,
-      activeAircraft: pilot.active_aircraft,
+      activeAircraft,
       balance: pilot.balance || 0
     });
   } catch (err) {

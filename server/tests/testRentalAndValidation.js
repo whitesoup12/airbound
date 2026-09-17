@@ -51,7 +51,7 @@ async function setup() {
     {
       model_id: 'da62',
       name: 'Diamond DA62',
-      category: 'single_prop',
+      category: 'twin_prop',
       purchase_price: 1450000,
       rental_price_per_flight: 950,
       cruise_speed_kts: 192,
@@ -281,10 +281,11 @@ async function runTests() {
   const pilotWithDa62 = await Pilot.findOne();
   assert.strictEqual(pilotWithDa62.active_aircraft.model_id, 'da62');
   assert.strictEqual(pilotWithDa62.active_aircraft.name, 'Diamond DA62');
+  assert.strictEqual(pilotWithDa62.active_aircraft.category, 'twin_prop');
   assert.strictEqual(pilotWithDa62.active_aircraft.is_rental, true);
   assert.strictEqual(pilotWithDa62.active_aircraft.rental_price_per_flight, 950);
   assert.strictEqual(pilotWithDa62.balance, 3000 - 950, 'DA62 rental fee $950 deducted from balance');
-  console.log('✓ Diamond DA62 ($950/flight) rental verified successfully.');
+  console.log('✓ Diamond DA62 ($950/flight, Twin Prop) rental verified successfully.');
 
   console.log('\n✅ ALL RENTAL AND AIRFRAME VALIDATION TESTS PASSED!');
   await mongoose.disconnect();

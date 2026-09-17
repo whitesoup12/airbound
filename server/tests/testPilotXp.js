@@ -42,7 +42,7 @@ if (c172Clean.rating !== 'Good' || c172Clean.aircraftClass !== 'light') {
 console.log(`✓ Light GA (C172): -85 FPM is Butter (+100 XP), -150 FPM is Clean (+50 XP).`);
 
 // 2b. Twin / Turboprop (Diamond DA62 & King Air: ideal ≤ 135 FPM)
-const da62Butter = rateLandingTouchdown(-129, { category: 'single_prop', aircraftName: 'Diamond DA62' });
+const da62Butter = rateLandingTouchdown(-129, { category: 'twin_prop', aircraftName: 'Diamond DA62' });
 if (da62Butter.rating !== 'Butter' || da62Butter.aircraftClass !== 'turboprop') {
   throw new Error(`DA62 Butter mismatch: ${JSON.stringify(da62Butter)}`);
 }

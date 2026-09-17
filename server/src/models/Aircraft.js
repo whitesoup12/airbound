@@ -21,7 +21,7 @@ const AircraftSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ['single_prop', 'turboprop', 'jet', 'airliner'],
+      enum: ['single_prop', 'twin_prop', 'turboprop', 'jet', 'airliner'],
       default: 'single_prop'
     },
     purchase_price: {

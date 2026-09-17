@@ -77,19 +77,22 @@ async function runFleetEconomyTests() {
   // 2. Test Category Payout Scaling
   console.log('\n2. Testing Category Payout Scaling...');
   const singlePropPayout = calculatePayout(200, 400, 2, 6000, 'single_prop');
+  const twinPropPayout = calculatePayout(200, 400, 2, 6000, 'twin_prop');
   const turbopropPayout = calculatePayout(200, 400, 2, 6000, 'turboprop');
   const jetPayout = calculatePayout(200, 400, 2, 6000, 'jet');
   const airlinerPayout = calculatePayout(200, 400, 2, 6000, 'airliner');
 
   console.log(`  Single Prop: $${singlePropPayout}`);
+  console.log(`  Twin Prop:   $${twinPropPayout}`);
   console.log(`  Turboprop:   $${turbopropPayout}`);
   console.log(`  Jet:         $${jetPayout}`);
   console.log(`  Airliner:    $${airlinerPayout}`);
 
-  assert(turbopropPayout > singlePropPayout, 'Turboprop payouts should scale above single prop');
+  assert(twinPropPayout > singlePropPayout, 'Twin prop payouts should scale above single prop');
+  assert(turbopropPayout > twinPropPayout, 'Turboprop payouts should scale above twin prop');
   assert(jetPayout > turbopropPayout, 'Jet VIP payouts should scale above turboprop');
   assert(airlinerPayout > turbopropPayout, 'Airliner payouts should scale above turboprop');
-  console.log('  ✓ Category payout scaling confirmed across single_prop, turboprop, jet, airliner');
+  console.log('  ✓ Category payout scaling confirmed across single_prop, twin_prop, turboprop, jet, airliner');
 
   // 3. Test REST API Endpoints with Ephemeral In-Memory Server
   console.log('\n3. Testing REST API Endpoints on 100% In-Memory Test Server...');

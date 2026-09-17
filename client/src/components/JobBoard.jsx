@@ -40,6 +40,12 @@ function getDistanceTiers(category = 'single_prop') {
         medium: { min: 180, max: 450, label: 'Medium (180–450 NM)' },
         long: { min: 450, max: 1200, label: 'Long (450+ NM)' }
       };
+    case 'twin_prop':
+      return {
+        short: { min: 30, max: 130, label: 'Short (< 130 NM)' },
+        medium: { min: 130, max: 320, label: 'Medium (130–320 NM)' },
+        long: { min: 320, max: 800, label: 'Long (320+ NM)' }
+      };
     case 'single_prop':
     default:
       return {

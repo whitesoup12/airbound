@@ -121,6 +121,7 @@ export function resolveAircraftClass(params = {}) {
   // 3. Turboprops & Twin-Engine Props
   if (
     cat === 'turboprop' ||
+    cat === 'twin_prop' ||
     /da62|da42|twin|baron|seneca|seminole|king\s?air|tbm|caravan|pc-?12|atr|dash|dhc-?8|q400|beechcraft\s?99|c90/i.test(name)
   ) {
     return 'turboprop';

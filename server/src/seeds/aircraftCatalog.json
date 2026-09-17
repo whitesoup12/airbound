@@ -67,7 +67,7 @@
     "model_id": "da62",
     "name": "Diamond DA62",
     "manufacturer": "Diamond Aircraft",
-    "category": "single_prop",
+    "category": "twin_prop",
     "purchase_price": 1450000,
     "rental_price_per_flight": 950,
     "cruise_speed_kts": 192,

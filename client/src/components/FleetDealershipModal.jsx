@@ -262,7 +262,7 @@ export function FleetDealershipModal({ isOpen, onClose, pilot, onAircraftChanged
           {/* Dealership Category Filter */}
           {activeTab === 'dealership' && (
             <div className="hidden sm:flex items-center space-x-1 text-[11px] font-mono">
-              {['all', 'single_prop', 'turboprop', 'jet', 'airliner'].map((cat) => (
+              {['all', 'single_prop', 'twin_prop', 'turboprop', 'jet', 'airliner'].map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setCategoryFilter(cat)}
@@ -272,7 +272,7 @@ export function FleetDealershipModal({ isOpen, onClose, pilot, onAircraftChanged
                       : 'text-slate-500 hover:text-slate-300'
                   }`}
                 >
-                  {cat === 'single_prop' ? 'Piston Prop' : cat.replace('_', ' ')}
+                  {cat === 'all' ? 'All' : cat.replace('_', ' ')}
                 </button>
               ))}
             </div>
