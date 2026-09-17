@@ -50,6 +50,19 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// 404 Fallback for unknown API routes (returns JSON, never HTML)
+app.all('/api/*', (req, res) => {
+  res.status(404).json({ error: `API route ${req.method} ${req.originalUrl} not found` });
+});
+
+// Global Express error handler to guarantee valid JSON responses
+app.use((err, req, res, next) => {
+  console.error('[API Server Error]:', err);
+  if (!res.headersSent) {
+    res.status(500).json({ error: err.message || 'Internal server error' });
+  }
+});
+
 // Setup Socket.IO for real-time telemetry stream (1-2 Hz)
 const io = new SocketIOServer(server, {
   cors: {

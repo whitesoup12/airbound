@@ -202,12 +202,20 @@ export function App() {
   };
 
   const handleAircraftChanged = async (updatedPilot) => {
-    setPilot(updatedPilot);
-    const jobData = await fetchJobs(updatedPilot?.current_icao);
-    const newJobs = jobData.jobs || [];
-    setJobs(newJobs);
-    if (newJobs.length > 0) {
-      setPreviewJob(newJobs[0]);
+    setPilot((prev) => ({
+      ...prev,
+      ...updatedPilot,
+      flight_log: updatedPilot?.flight_log || prev?.flight_log || []
+    }));
+    try {
+      const jobData = await fetchJobs(updatedPilot?.current_icao);
+      const newJobs = jobData.jobs || [];
+      setJobs(newJobs);
+      if (newJobs.length > 0) {
+        setPreviewJob(newJobs[0]);
+      }
+    } catch (err) {
+      console.warn('[App] Could not refresh jobs after aircraft change:', err.message);
     }
   };
 

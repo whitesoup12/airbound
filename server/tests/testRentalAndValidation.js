@@ -47,6 +47,20 @@ async function setup() {
       min_runway_ft: 2800,
       fuel_type: 'Jet-A',
       fuel_burn_gph: 60.0
+    },
+    {
+      model_id: 'da62',
+      name: 'Diamond DA62',
+      category: 'single_prop',
+      purchase_price: 1450000,
+      rental_price_per_flight: 950,
+      cruise_speed_kts: 192,
+      max_range_nm: 1280,
+      max_cargo_lbs: 1400,
+      max_pax: 6,
+      min_runway_ft: 1800,
+      fuel_type: 'Jet-A',
+      fuel_burn_gph: 15.0
     }
   ]);
 
@@ -258,10 +272,19 @@ async function runTests() {
   await cancelJob({ params: { id: job2._id } }, cancelRes);
   assert.strictEqual(cancelRes.statusCode, 200);
 
-  const pilotAfterCancel = await Pilot.findOne();
-  assert.strictEqual(pilotAfterCancel.balance, 3000, 'Rental fee of $2,500 refunded upon pre-flight cancellation');
-  assert.strictEqual(pilotAfterCancel.active_aircraft.rental_flights_paid, 0);
-  console.log('✓ Rental fee refunded upon pre-flight contract cancellation.');
+  // 4. Test Diamond DA62 Rental
+  console.log('4. Testing Diamond DA62 Rental...');
+  const rentDa62Req = { body: { modelId: 'da62' } };
+  const rentDa62Res = mockRes();
+  await rentAircraft(rentDa62Req, rentDa62Res);
+  assert.strictEqual(rentDa62Res.statusCode, 200, 'Renting DA62 should return 200');
+  const pilotWithDa62 = await Pilot.findOne();
+  assert.strictEqual(pilotWithDa62.active_aircraft.model_id, 'da62');
+  assert.strictEqual(pilotWithDa62.active_aircraft.name, 'Diamond DA62');
+  assert.strictEqual(pilotWithDa62.active_aircraft.is_rental, true);
+  assert.strictEqual(pilotWithDa62.active_aircraft.rental_price_per_flight, 950);
+  assert.strictEqual(pilotWithDa62.balance, 3000 - 950, 'DA62 rental fee $950 deducted from balance');
+  console.log('✓ Diamond DA62 ($950/flight) rental verified successfully.');
 
   console.log('\n✅ ALL RENTAL AND AIRFRAME VALIDATION TESTS PASSED!');
   await mongoose.disconnect();

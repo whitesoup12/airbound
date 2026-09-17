@@ -130,7 +130,11 @@ export async function buyAircraft(req, res) {
     await pilot.save();
 
     // Regenerate jobs scaled to new aircraft
-    await generateJobsForAirport(pilot.current_icao, { aircraft: pilot.active_aircraft });
+    try {
+      await generateJobsForAirport(pilot.current_icao, { aircraft: pilot.active_aircraft });
+    } catch (jobErr) {
+      console.warn('[Fleet] Warning: Failed to regenerate jobs for airport after purchase:', jobErr.message);
+    }
 
     res.json({
       message: `Successfully purchased ${model.name} (${resolvedTailNumber})! Set as active flight aircraft.`,
@@ -210,7 +214,11 @@ export async function rentAircraft(req, res) {
     await pilot.save();
 
     // Regenerate jobs scaled to new aircraft
-    await generateJobsForAirport(pilot.current_icao, { aircraft: pilot.active_aircraft });
+    try {
+      await generateJobsForAirport(pilot.current_icao, { aircraft: pilot.active_aircraft });
+    } catch (jobErr) {
+      console.warn('[Fleet] Warning: Failed to regenerate jobs for airport after rental:', jobErr.message);
+    }
 
     res.json({
       message: `Rented ${model.name} (${rentalTail}) for this flight. $${model.rental_price_per_flight.toLocaleString()} deducted.`,
@@ -277,7 +285,11 @@ export async function selectActiveAircraft(req, res) {
     await pilot.save();
 
     // Regenerate jobs scaled to new aircraft
-    await generateJobsForAirport(pilot.current_icao, { aircraft: pilot.active_aircraft });
+    try {
+      await generateJobsForAirport(pilot.current_icao, { aircraft: pilot.active_aircraft });
+    } catch (jobErr) {
+      console.warn('[Fleet] Warning: Failed to regenerate jobs for airport after aircraft selection:', jobErr.message);
+    }
 
     res.json({
       message: `Active aircraft switched to ${model.name} (${fleetPlane.tail_number}).`,
@@ -423,7 +435,11 @@ export async function sellAircraft(req, res) {
     await pilot.save();
 
     // Regenerate jobs for current base with the active aircraft
-    await generateJobsForAirport(pilot.current_icao, { aircraft: pilot.active_aircraft });
+    try {
+      await generateJobsForAirport(pilot.current_icao, { aircraft: pilot.active_aircraft });
+    } catch (jobErr) {
+      console.warn('[Fleet] Warning: Failed to regenerate jobs for airport after aircraft sale:', jobErr.message);
+    }
 
     const message = loanerProvided
       ? `Successfully sold ${plane.name} (${cleanTail}) for $${resale.resaleValue.toLocaleString()}! Airbound Operations provided a free rented Cessna 172 Skyhawk loaner (${pilot.active_aircraft.tail_number}) for your hangar.`
@@ -541,7 +557,11 @@ export async function returnAircraft(req, res) {
     await pilot.save();
 
     // Regenerate jobs for current base with the active aircraft
-    await generateJobsForAirport(pilot.current_icao, { aircraft: pilot.active_aircraft });
+    try {
+      await generateJobsForAirport(pilot.current_icao, { aircraft: pilot.active_aircraft });
+    } catch (jobErr) {
+      console.warn('[Fleet] Warning: Failed to regenerate jobs for airport after returning aircraft:', jobErr.message);
+    }
 
     let message;
     if (resale) {
