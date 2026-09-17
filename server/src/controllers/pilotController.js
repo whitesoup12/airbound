@@ -137,6 +137,26 @@ export async function getPilot(req, res) {
             }
           }
         }
+
+        // Backfill rental_fee for flights flown in rental aircraft
+        const rentalPlanes = (pilot.fleet || []).filter((p) => p.is_rental && !p.is_loaner);
+        if (rentalPlanes.length > 0) {
+          for (const f of pilot.flight_log) {
+            if (f.source === 'airbound_dispatch' && (!f.rental_fee || f.rental_fee === 0)) {
+              const matchedRental = rentalPlanes.find((rp) =>
+                f.aircraft_name && (
+                  f.aircraft_name.toLowerCase().includes(rp.model_id.toLowerCase()) ||
+                  rp.name.toLowerCase().includes(f.aircraft_name.toLowerCase())
+                )
+              );
+              if (matchedRental && matchedRental.rental_price_per_flight > 0) {
+                f.rental_fee = matchedRental.rental_price_per_flight;
+                needsSave = true;
+                console.log(`[Pilot] Backfilled rental fee of $${matchedRental.rental_price_per_flight} for flight ${f.origin_icao} -> ${f.destination_icao} in ${f.aircraft_name}`);
+              }
+            }
+          }
+        }
       }
 
       if (needsSave) {

@@ -57,6 +57,10 @@ const FlightRecordSchema = new mongoose.Schema(
       type: Number,
       default: 0
     },
+    rental_fee: {
+      type: Number,
+      default: 0
+    },
     aircraft_name: {
       type: String,
       default: 'Cessna 172 Skyhawk'

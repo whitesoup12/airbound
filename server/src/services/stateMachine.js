@@ -528,6 +528,7 @@ export class FlightStateMachine {
         landing_fee: settlement.landingFee,
         net_payout: settlement.netPayout,
         exploration_bonus: this.activeJob.exploration_bonus || 0,
+        rental_fee: this.activeJob.rental_fee_charged || (activeAircraft.is_rental && !activeAircraft.is_loaner ? (activeAircraft.rental_price_per_flight || 0) : 0),
         aircraft_name: settlement.aircraftName,
         duration_seconds: durationSeconds,
         airborne_seconds: airborneSeconds,
