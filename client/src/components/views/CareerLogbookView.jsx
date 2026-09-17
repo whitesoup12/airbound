@@ -5,14 +5,12 @@ import {
   Compass,
   Clock,
   Globe,
-  MapPin,
   Calendar,
   Package,
   Users,
   DollarSign,
   Plane,
   Fuel,
-  ShieldCheck,
   CheckCircle2,
   FileText,
   Search,
@@ -24,7 +22,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import VisitedAirportsMap from '../VisitedAirportsMap.jsx';
-import { formatLandingRating, getPilotRank } from '../../utils/xpUtils.js';
+import { formatLandingRating } from '../../utils/xpUtils.js';
 
 const regionNames = new Intl.DisplayNames(['en'], { type: 'region' });
 function getFullCountryName(code) {
@@ -53,12 +51,8 @@ export function CareerLogbookView({
   const [expandedCountries, setExpandedCountries] = useState(() => new Set());
 
   const flightLog = pilot?.flight_log || [];
-  const totalEarnings = flightLog.reduce((acc, f) => acc + (f.net_payout || f.payout || 0), 0);
-  const totalNm = flightLog.reduce((acc, f) => acc + (f.distance_nm || 0), 0);
-  const totalDurationSec = flightLog.reduce((acc, f) => acc + (f.duration_seconds || 0), 0);
   const visitedAirports = pilot?.visited_airports || [];
   const visitedCountries = pilot?.visited_countries || [];
-  const rankInfo = useMemo(() => getPilotRank(pilot?.xp || 0), [pilot?.xp]);
 
   // Lookup map for airport details
   const airportInfoMap = useMemo(() => {
@@ -280,115 +274,6 @@ export function CareerLogbookView({
 
   return (
     <div className="space-y-6 animate-fadeIn">
-      {/* Pilot Profile & Milestones Header */}
-      <div className="glass-panel rounded-2xl p-5 border border-slate-800/90 bg-slate-900/60 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-center space-x-4">
-          <div className="w-12 h-12 rounded-xl bg-cyan-950/80 border border-cyan-800 flex items-center justify-center text-cyan-400 shadow-lg shadow-cyan-950/50">
-            <ShieldCheck className="w-6 h-6" />
-          </div>
-          <div>
-            <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-              <span
-                onClick={onSwitchToProgression}
-                className={`px-2 py-0.5 rounded bg-purple-950/80 text-purple-300 border border-purple-800/80 text-[10px] font-mono font-bold flex items-center space-x-1 shadow-sm ${
-                  onSwitchToProgression ? 'cursor-pointer hover:bg-purple-900/80 hover:border-purple-600 transition' : ''
-                }`}
-                title={onSwitchToProgression ? 'View Career Progression & Rank Roadmap' : undefined}
-              >
-                <Award className="w-3 h-3 text-purple-400" />
-                <span>LEVEL {rankInfo.level}: {rankInfo.title.toUpperCase()}</span>
-                {rankInfo.bonusPercent > 0 && (
-                  <span className="text-amber-300 ml-1">(+{rankInfo.bonusPercent}% BONUS)</span>
-                )}
-              </span>
-            </div>
-            <h2 className="text-xl font-bold text-white font-mono tracking-wide">
-              {pilot?.callsign || 'James'}
-            </h2>
-            <div className="flex items-center space-x-2 text-xs font-mono text-slate-400">
-              <MapPin className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Base: <strong className="text-cyan-300">{pilot?.current_icao}</strong></span>
-              {currentAirport && <span className="hidden sm:inline">({currentAirport.name})</span>}
-              {onOpenChangeBase && (
-                <button
-                  onClick={onOpenChangeBase}
-                  className="text-[10px] text-cyan-400 hover:text-cyan-300 px-1.5 py-0.2 rounded bg-slate-800 border border-slate-700 hover:border-cyan-500 transition"
-                  title="Change home base airport"
-                >
-                  Change Base
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Career Earnings */}
-        <div className="flex items-center space-x-3 w-full md:w-auto justify-between md:justify-end">
-          <div className="bg-emerald-950/60 border border-emerald-800/50 px-4 py-2.5 rounded-xl font-mono">
-            <span className="text-slate-400 text-[10px] block">FLIGHT CONTRACT EARNINGS</span>
-            <span className="text-emerald-400 font-bold text-lg">
-              ${totalEarnings.toLocaleString()}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Career Milestones Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 font-mono text-xs">
-        <div className="glass-panel p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
-          <span className="text-slate-400 block text-[11px]">FLIGHTS COMPLETED</span>
-          <span className="text-2xl font-bold text-white mt-1 block">{flightLog.length}</span>
-          <span className="text-[10px] text-slate-500 mt-1 block">
-            {dispatchedFlights.length} Dispatched • {importedFlights.length} MSFS Logs
-          </span>
-        </div>
-
-        <div className="glass-panel p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
-          <span className="text-slate-400 block text-[11px]">TOTAL AIR MILES</span>
-          <span className="text-2xl font-bold text-cyan-400 mt-1 block">
-            {Math.round(totalNm).toLocaleString()} NM
-          </span>
-          <span className="text-[10px] text-slate-500 mt-1 block">Airborne logged distance</span>
-        </div>
-
-        <div className="glass-panel p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
-          <span className="text-slate-400 block text-[11px]">TIME IN FLIGHT</span>
-          <span className="text-2xl font-bold text-amber-400 mt-1 block">
-            {formatDuration(totalDurationSec)}
-          </span>
-          <span className="text-[10px] text-slate-500 mt-1 block">Total flight time logged</span>
-        </div>
-
-        <div
-          onClick={onSwitchToProgression}
-          className={`glass-panel p-4 rounded-2xl bg-slate-900/60 border border-slate-800 transition ${
-            onSwitchToProgression ? 'cursor-pointer hover:border-purple-500/60 hover:bg-slate-900/90' : ''
-          }`}
-          title={onSwitchToProgression ? 'View Career Progression & Rank Roadmap' : undefined}
-        >
-          <div className="flex items-center justify-between text-slate-400 text-[11px]">
-            <span>CAREER XP & RANK</span>
-            <Award className="w-3 h-3 text-purple-400" />
-          </div>
-          <span className="text-2xl font-bold text-purple-300 mt-1 block">
-            {(pilot?.xp || 0).toLocaleString()} XP
-          </span>
-          <span className="text-[10px] text-slate-500 mt-1 block truncate" title={`${rankInfo.title} (Level ${rankInfo.level})`}>
-            L{rankInfo.level} {rankInfo.title} &rarr;
-          </span>
-        </div>
-
-        <div className="glass-panel p-4 rounded-2xl bg-slate-900/60 border border-slate-800 col-span-2 sm:col-span-1">
-          <span className="text-slate-400 block text-[11px]">AVAILABLE BALANCE</span>
-          <span className="text-2xl font-bold text-emerald-400 mt-1 block">
-            ${(pilot?.balance || 0).toLocaleString()}
-          </span>
-          <span className="text-[10px] text-slate-500 mt-1 block">Liquid funds (Flights & Fleet)</span>
-        </div>
-      </div>
-
-      {/* Visited Airports & Flight Network Map (Hidden for now until DB airport coverage expanded) */}
-
       {/* Cleaned Exploration Hub - Grouped by Country */}
       <div className="glass-panel p-5 rounded-2xl border border-slate-800/80 bg-slate-900/40 space-y-4 font-mono text-xs">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
