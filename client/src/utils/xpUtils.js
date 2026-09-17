@@ -56,15 +56,105 @@ export function getPilotRank(xp = 0) {
   };
 }
 
-export function formatLandingRating(fpm, rating) {
+export const LANDING_CLASS_CONFIGS = {
+  light: {
+    id: 'light',
+    label: 'Light GA',
+    butterMax: 90,
+    cleanMax: 200,
+    firmMax: 350,
+    hardMax: 500
+  },
+  turboprop: {
+    id: 'turboprop',
+    label: 'Twin / Turboprop',
+    butterMax: 135,
+    cleanMax: 250,
+    firmMax: 400,
+    hardMax: 550
+  },
+  airliner: {
+    id: 'airliner',
+    label: 'Airliner / Jet',
+    butterMax: 180,
+    cleanMax: 300,
+    firmMax: 450,
+    hardMax: 600
+  },
+  heavy: {
+    id: 'heavy',
+    label: 'Heavy Widebody',
+    butterMax: 240,
+    cleanMax: 360,
+    firmMax: 500,
+    hardMax: 650
+  }
+};
+
+export function resolveAircraftClass(params = {}) {
+  const { category = '', aircraftName = '', approachKts = null, landingClass = '' } = params;
+
+  if (landingClass && LANDING_CLASS_CONFIGS[landingClass]) {
+    return landingClass;
+  }
+
+  const name = (aircraftName || '').toLowerCase();
+  const cat = (category || '').toLowerCase();
+
+  // 1. Heavy widebody detection
+  if (
+    /747|777|787|a350|a380|a340|dc-?10|md-?11|an-?124|an-?225|c-5|c-17|galaxy|globemaster/i.test(name) ||
+    (approachKts !== null && approachKts >= 155 && (cat === 'airliner' || cat === 'jet'))
+  ) {
+    return 'heavy';
+  }
+
+  // 2. Airliners & Mid-size Business Jets
+  if (
+    cat === 'airliner' ||
+    cat === 'jet' ||
+    /airbus|a319|a320|a321|boeing|737|727|717|crj|erj|embraer|citation|longitude|cj4|phenom|learjet|challenger|global/i.test(name)
+  ) {
+    return 'airliner';
+  }
+
+  // 3. Turboprops & Twin-Engine Props
+  if (
+    cat === 'turboprop' ||
+    /da62|da42|twin|baron|seneca|seminole|king\s?air|tbm|caravan|pc-?12|atr|dash|dhc-?8|q400|beechcraft\s?99|c90/i.test(name)
+  ) {
+    return 'turboprop';
+  }
+
+  // 4. Approach Speed Threshold fallback
+  if (approachKts != null && !isNaN(approachKts) && approachKts > 0) {
+    if (approachKts < 75) return 'light';
+    if (approachKts <= 115) return 'turboprop';
+    if (approachKts <= 155) return 'airliner';
+    return 'heavy';
+  }
+
+  // 5. Default single-engine pistons to Light GA
+  if (cat === 'single_prop') {
+    return 'light';
+  }
+
+  return 'turboprop';
+}
+
+export function formatLandingRating(fpm, rating, options = {}) {
   let resolvedRating = rating;
+  const opts = typeof options === 'string' ? { category: options } : (options || {});
+  const resolvedClass = resolveAircraftClass(opts);
+  const cfg = LANDING_CLASS_CONFIGS[resolvedClass] || LANDING_CLASS_CONFIGS.turboprop;
+
   if (!resolvedRating && fpm != null && !isNaN(fpm)) {
     const abs = Math.abs(Math.round(fpm));
     if (abs === 0) resolvedRating = 'Unrecorded';
-    else if (abs <= 160) resolvedRating = 'Butter';
-    else if (abs <= 320) resolvedRating = 'Good';
-    else if (abs <= 500) resolvedRating = 'Firm';
-    else if (abs <= 750) resolvedRating = 'Hard';
+    else if (abs <= cfg.butterMax) resolvedRating = 'Butter';
+    else if (abs <= cfg.cleanMax) resolvedRating = 'Good';
+    else if (abs <= cfg.firmMax) resolvedRating = 'Firm';
+    else if (abs <= cfg.hardMax) resolvedRating = 'Hard';
     else resolvedRating = 'Severe';
   }
 
@@ -75,7 +165,9 @@ export function formatLandingRating(fpm, rating) {
       color: 'text-slate-400',
       badgeColor: 'bg-slate-800/60 border-slate-700 text-slate-400',
       icon: '⚪',
-      bonusXp: 0
+      bonusXp: 0,
+      aircraftClass: cfg.id,
+      aircraftClassLabel: cfg.label
     };
   }
 
@@ -86,7 +178,9 @@ export function formatLandingRating(fpm, rating) {
       color: 'text-emerald-400',
       badgeColor: 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300',
       icon: '🧈',
-      bonusXp: 100
+      bonusXp: 100,
+      aircraftClass: cfg.id,
+      aircraftClassLabel: cfg.label
     };
   } else if (resolvedRating === 'Good') {
     return {
@@ -95,7 +189,9 @@ export function formatLandingRating(fpm, rating) {
       color: 'text-cyan-400',
       badgeColor: 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300',
       icon: '✈️',
-      bonusXp: 50
+      bonusXp: 50,
+      aircraftClass: cfg.id,
+      aircraftClassLabel: cfg.label
     };
   } else if (resolvedRating === 'Firm') {
     return {
@@ -104,7 +200,9 @@ export function formatLandingRating(fpm, rating) {
       color: 'text-amber-400',
       badgeColor: 'bg-amber-500/20 border-amber-500/50 text-amber-300',
       icon: '⚡',
-      bonusXp: 0
+      bonusXp: 0,
+      aircraftClass: cfg.id,
+      aircraftClassLabel: cfg.label
     };
   } else if (resolvedRating === 'Hard') {
     return {
@@ -113,7 +211,9 @@ export function formatLandingRating(fpm, rating) {
       color: 'text-orange-400',
       badgeColor: 'bg-orange-500/20 border-orange-500/50 text-orange-300',
       icon: '⚠️',
-      bonusXp: -50
+      bonusXp: -50,
+      aircraftClass: cfg.id,
+      aircraftClassLabel: cfg.label
     };
   } else if (resolvedRating === 'Severe') {
     return {
@@ -122,7 +222,9 @@ export function formatLandingRating(fpm, rating) {
       color: 'text-rose-400',
       badgeColor: 'bg-rose-500/20 border-rose-500/50 text-rose-300',
       icon: '💥',
-      bonusXp: -100
+      bonusXp: -100,
+      aircraftClass: cfg.id,
+      aircraftClassLabel: cfg.label
     };
   }
 
@@ -132,12 +234,16 @@ export function formatLandingRating(fpm, rating) {
     color: 'text-slate-300',
     badgeColor: 'bg-slate-800 border-slate-700 text-slate-300',
     icon: '🛬',
-    bonusXp: 0
+    bonusXp: 0,
+    aircraftClass: cfg.id,
+    aircraftClassLabel: cfg.label
   };
 }
 
 export default {
   PILOT_RANKS,
+  LANDING_CLASS_CONFIGS,
+  resolveAircraftClass,
   getPilotRank,
   formatLandingRating
 };

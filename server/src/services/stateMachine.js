@@ -37,6 +37,9 @@ export class FlightStateMachine {
     this.isPaused = false;
     this.touchdownFpm = null;
     this.landingRating = '';
+    this.approachSpeedKts = null;
+    this.landingClass = '';
+    this.landingClassLabel = '';
     this.airborneSamples = []; // High-resolution flare descent rate buffer
     this.isMockMode = false;
   }
@@ -67,6 +70,9 @@ export class FlightStateMachine {
       this.isPaused = false;
       this.touchdownFpm = null;
       this.landingRating = '';
+      this.approachSpeedKts = null;
+      this.landingClass = '';
+      this.landingClassLabel = '';
       this.airborneSamples = [];
       console.log(`[StateMachine] Active Job loaded: ${job.origin_icao} -> ${job.destination_icao}, phase set to IDLE`);
     } else {
@@ -81,6 +87,9 @@ export class FlightStateMachine {
       this.isPaused = false;
       this.touchdownFpm = null;
       this.landingRating = '';
+      this.approachSpeedKts = null;
+      this.landingClass = '';
+      this.landingClassLabel = '';
       this.airborneSamples = [];
     }
 
@@ -101,6 +110,9 @@ export class FlightStateMachine {
     this.isPaused = false;
     this.touchdownFpm = null;
     this.landingRating = '';
+    this.approachSpeedKts = null;
+    this.landingClass = '';
+    this.landingClassLabel = '';
     this.airborneSamples = [];
     if (this.onPhaseChangeCallback) {
       this.onPhaseChangeCallback(this.phase, null);
@@ -125,6 +137,8 @@ export class FlightStateMachine {
           : null;
         const landingRate = rateLandingTouchdown(this.touchdownFpm);
         this.landingRating = landingRate.rating;
+        this.landingClass = landingRate.aircraftClass;
+        this.landingClassLabel = landingRate.aircraftClassLabel;
       }
     } else if (newPhase === FLIGHT_PHASES.COMPLETED) {
       await this._handleFlightCompleted(telemetry);
@@ -183,7 +197,9 @@ export class FlightStateMachine {
         time: now,
         vs: Math.round(telemetry.verticalSpeed),
         alt: Math.round(telemetry.altitude || 0),
-        agl: Number.isFinite(telemetry.altAboveGround) ? Math.round(telemetry.altAboveGround) : null
+        agl: Number.isFinite(telemetry.altAboveGround) ? Math.round(telemetry.altAboveGround) : null,
+        tas: Number.isFinite(telemetry.airspeedTrue) ? Math.round(telemetry.airspeedTrue) : null,
+        gs: Number.isFinite(telemetry.groundSpeed) ? Math.round(telemetry.groundSpeed) : null
       });
       if (this.airborneSamples.length > 50) {
         this.airborneSamples.shift();
@@ -262,14 +278,14 @@ export class FlightStateMachine {
           }
         } else if (!this.previousSimOnGround && simOnGround && destDist <= 3.0) {
           // Short hop / circuit touchdown directly from DEPARTED
-          this._handleTouchdown(telemetry, destDist, now);
+          await this._handleTouchdown(telemetry, destDist, now);
         }
         break;
 
       case FLIGHT_PHASES.EN_ROUTE:
         // TOUCHDOWN: SIM ON GROUND changes from false to true within 3 NM of destination ICAO
         if (!this.previousSimOnGround && simOnGround && destDist <= 3.0) {
-          this._handleTouchdown(telemetry, destDist, now);
+          await this._handleTouchdown(telemetry, destDist, now);
         }
         break;
 
@@ -362,14 +378,39 @@ export class FlightStateMachine {
     return instantVs;
   }
 
-  _handleTouchdown(telemetry, destDist, now) {
+  _determineApproachSpeed(now) {
+    const recent = this.airborneSamples.filter((s) => now - s.time <= 3500);
+    if (recent.length > 0) {
+      const speeds = recent.map((s) => s.tas || s.gs).filter((s) => s != null && s > 25);
+      if (speeds.length > 0) {
+        const sum = speeds.reduce((acc, v) => acc + v, 0);
+        return Math.round(sum / speeds.length);
+      }
+    }
+    return null;
+  }
+
+  async _handleTouchdown(telemetry, destDist, now) {
     this.phase = FLIGHT_PHASES.TOUCHDOWN;
     this.touchdownAt = new Date();
     this.touchdownFpm = this._determineTouchdownFpm(telemetry, now);
-    const landingRate = rateLandingTouchdown(this.touchdownFpm);
+    this.approachSpeedKts = this._determineApproachSpeed(now);
+
+    const pilot = await Pilot.findOne();
+    const activeAircraft = pilot?.active_aircraft || null;
+
+    const landingRate = rateLandingTouchdown(this.touchdownFpm, {
+      category: activeAircraft?.category,
+      aircraftName: activeAircraft?.name || telemetry.simAircraftTitle,
+      approachKts: this.approachSpeedKts
+    });
+
     this.landingRating = landingRate.rating;
+    this.landingClass = landingRate.aircraftClass;
+    this.landingClassLabel = landingRate.aircraftClassLabel;
+
     console.log(
-      `[StateMachine] TOUCHDOWN: Touched down at ${this.touchdownFpm !== null ? this.touchdownFpm + ' FPM' : 'normal'} (${landingRate.label}) within ${destDist.toFixed(1)} NM of destination`
+      `[StateMachine] TOUCHDOWN: Touched down at ${this.touchdownFpm !== null ? this.touchdownFpm + ' FPM' : 'normal'} (${landingRate.label} [${landingRate.aircraftClassLabel}]) within ${destDist.toFixed(1)} NM of destination`
     );
   }
 
@@ -431,7 +472,11 @@ export class FlightStateMachine {
         distanceNm: this.activeJob.distance_nm,
         isUnvisited,
         destRunwayFt,
-        touchdownFpm: this.touchdownFpm
+        touchdownFpm: this.touchdownFpm,
+        category: activeAircraft.category,
+        aircraftName: activeAircraft.name,
+        approachKts: this.approachSpeedKts,
+        landingClass: this.landingClass
       });
 
       // 1. Update Job status to 'completed' with touchdown and XP metadata
@@ -440,6 +485,8 @@ export class FlightStateMachine {
         completed_at: completedAt,
         touchdown_fpm: this.touchdownFpm,
         landing_rating: flightXp.landingRating,
+        landing_class: flightXp.aircraftClass,
+        approach_speed_kts: this.approachSpeedKts,
         xp_reward: flightXp.totalXp
       });
 
@@ -462,6 +509,8 @@ export class FlightStateMachine {
         airborne_seconds: airborneSeconds,
         touchdown_fpm: this.touchdownFpm,
         landing_rating: flightXp.landingRating,
+        landing_class: flightXp.aircraftClass,
+        approach_speed_kts: this.approachSpeedKts,
         xp_earned: flightXp.totalXp,
         departed_at: departedAt,
         completed_at: completedAt

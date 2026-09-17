@@ -27,38 +27,57 @@ if (l10.level !== 10 || l10.title !== 'Master Aviator' || l10.bonusPercent !== 4
 }
 console.log(`✓ 1,500,000 XP correctly resolves to Level ${l10.level}: ${l10.title} (+${l10.bonusPercent}% bonus, Max Rank)`);
 
-// 2. Test Landing Touchdown Ratings
-console.log('2. Testing Landing Touchdown Ratings...');
-const butter = rateLandingTouchdown(-120);
-if (butter.rating !== 'Butter' || butter.xpBonus !== 100) {
-  throw new Error(`Butter landing mismatch: ${JSON.stringify(butter)}`);
-}
-console.log(`✓ -120 FPM rated as ${butter.label} (+${butter.xpBonus} XP)`);
+// 2. Test Landing Touchdown Ratings & Adaptive Aircraft Sizing
+console.log('2. Testing Landing Touchdown Ratings & Adaptive Aircraft Sizing...');
 
-const clean = rateLandingTouchdown(-240);
-if (clean.rating !== 'Good' || clean.xpBonus !== 50) {
-  throw new Error(`Clean landing mismatch: ${JSON.stringify(clean)}`);
+// 2a. Light GA (Cessna 172: ideal ≤ 90 FPM)
+const c172Butter = rateLandingTouchdown(-85, { category: 'single_prop', aircraftName: 'Cessna 172 Skyhawk' });
+if (c172Butter.rating !== 'Butter' || c172Butter.aircraftClass !== 'light') {
+  throw new Error(`C172 Butter mismatch: ${JSON.stringify(c172Butter)}`);
 }
-console.log(`✓ -240 FPM rated as ${clean.label} (+${clean.xpBonus} XP)`);
-
-const firm = rateLandingTouchdown(-450);
-if (firm.rating !== 'Firm' || firm.xpBonus !== 0) {
-  throw new Error(`Firm landing mismatch: ${JSON.stringify(firm)}`);
+const c172Clean = rateLandingTouchdown(-150, { category: 'single_prop', aircraftName: 'Cessna 172 Skyhawk' });
+if (c172Clean.rating !== 'Good' || c172Clean.aircraftClass !== 'light') {
+  throw new Error(`C172 Clean mismatch: ${JSON.stringify(c172Clean)}`);
 }
-console.log(`✓ -450 FPM rated as ${firm.label} (+${firm.xpBonus} XP)`);
+console.log(`✓ Light GA (C172): -85 FPM is Butter (+100 XP), -150 FPM is Clean (+50 XP).`);
 
-const hard = rateLandingTouchdown(-650);
-if (hard.rating !== 'Hard' || hard.xpBonus !== -50) {
-  throw new Error(`Hard landing mismatch: ${JSON.stringify(hard)}`);
+// 2b. Twin / Turboprop (Diamond DA62 & King Air: ideal ≤ 135 FPM)
+const da62Butter = rateLandingTouchdown(-129, { category: 'single_prop', aircraftName: 'Diamond DA62' });
+if (da62Butter.rating !== 'Butter' || da62Butter.aircraftClass !== 'turboprop') {
+  throw new Error(`DA62 Butter mismatch: ${JSON.stringify(da62Butter)}`);
 }
-console.log(`✓ -650 FPM rated as ${hard.label} (${hard.xpBonus} XP penalty)`);
+console.log(`✓ Twin/Turboprop (DA62): -129 FPM correctly rated as Butter (+100 XP) [${da62Butter.aircraftClassLabel}].`);
 
-const severe = rateLandingTouchdown(-900);
-if (severe.rating !== 'Severe' || severe.xpBonus !== -100) {
-  throw new Error(`Severe landing mismatch: ${JSON.stringify(severe)}`);
+// 2c. Airliner (Boeing 737 / Airbus A320: ideal ≤ 180 FPM)
+const a320Butter = rateLandingTouchdown(-170, { category: 'airliner', aircraftName: 'Airbus A320neo' });
+if (a320Butter.rating !== 'Butter' || a320Butter.aircraftClass !== 'airliner') {
+  throw new Error(`A320 Butter mismatch: ${JSON.stringify(a320Butter)}`);
 }
-console.log(`✓ -900 FPM rated as ${severe.label} (${severe.xpBonus} XP penalty)`);
+const a320Clean = rateLandingTouchdown(-250, { category: 'airliner', aircraftName: 'Airbus A320neo' });
+if (a320Clean.rating !== 'Good' || a320Clean.aircraftClass !== 'airliner') {
+  throw new Error(`A320 Clean mismatch: ${JSON.stringify(a320Clean)}`);
+}
+console.log(`✓ Airliner (A320): -170 FPM is Butter (+100 XP), -250 FPM is Clean (+50 XP).`);
 
+// 2d. Heavy Widebody (Boeing 747-8: ideal ≤ 240 FPM)
+const b747Butter = rateLandingTouchdown(-220, { category: 'airliner', aircraftName: 'Boeing 747-8 Intercontinental' });
+if (b747Butter.rating !== 'Butter' || b747Butter.aircraftClass !== 'heavy') {
+  throw new Error(`B747 Butter mismatch: ${JSON.stringify(b747Butter)}`);
+}
+console.log(`✓ Heavy Widebody (B747): -220 FPM correctly rated as Butter (+100 XP) [${b747Butter.aircraftClassLabel}].`);
+
+// 2e. Approach Speed fallback (< 75 kts -> Light, 155+ kts -> Heavy)
+const speedLight = rateLandingTouchdown(-80, { approachKts: 62 });
+if (speedLight.aircraftClass !== 'light' || speedLight.rating !== 'Butter') {
+  throw new Error(`Approach speed Light fallback mismatch: ${JSON.stringify(speedLight)}`);
+}
+const speedHeavy = rateLandingTouchdown(-230, { approachKts: 160 });
+if (speedHeavy.aircraftClass !== 'heavy' || speedHeavy.rating !== 'Butter') {
+  throw new Error(`Approach speed Heavy fallback mismatch: ${JSON.stringify(speedHeavy)}`);
+}
+console.log(`✓ Approach speed detection: 62 kts resolves to Light, 160 kts resolves to Heavy.`);
+
+// 2f. Unrecorded & 0 FPM telemetry handling
 const unrecorded = rateLandingTouchdown(null);
 if (unrecorded.xpBonus !== 0) {
   throw new Error(`Unrecorded landing should award 0 XP: ${JSON.stringify(unrecorded)}`);

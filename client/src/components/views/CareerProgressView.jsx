@@ -79,27 +79,37 @@ export function CareerProgressView({
         totalFpmSum += absFpm;
         recordedLandingsCount++;
 
+        const ratingInfo = formatLandingRating(fpm, f.landing_rating, {
+          category: f.category,
+          aircraftName: f.aircraft_name,
+          approachKts: f.approach_speed_kts,
+          landingClass: f.landing_class
+        });
+
         if (!bestTouchdown || absFpm < Math.abs(bestTouchdown.fpm)) {
           bestTouchdown = {
             fpm,
             airport: f.destination_icao,
-            date: f.completed_at
+            date: f.completed_at,
+            aircraft: f.aircraft_name,
+            aircraftClassLabel: ratingInfo.aircraftClassLabel,
+            ratingLabel: ratingInfo.label
           };
         }
 
-        if (absFpm <= 160) {
+        if (ratingInfo.label === 'Butter') {
           butterCount++;
           totalLandingBonusXp += 100;
-        } else if (absFpm <= 320) {
+        } else if (ratingInfo.label === 'Clean') {
           cleanCount++;
           totalLandingBonusXp += 50;
-        } else if (absFpm <= 500) {
+        } else if (ratingInfo.label === 'Firm') {
           firmCount++;
           // Firm is 0 XP
-        } else if (absFpm <= 750) {
+        } else if (ratingInfo.label === 'Hard') {
           hardCount++;
           totalLandingBonusXp -= 50;
-        } else {
+        } else if (ratingInfo.label === 'Severe') {
           severeCount++;
           totalLandingBonusXp -= 100;
         }
@@ -459,6 +469,9 @@ export function CareerProgressView({
               {landingStats.recordedLandingsCount} Touchdowns Logged
             </span>
           </div>
+          <div className="text-xs text-slate-400 font-mono">
+            Adaptive scoring calibrated by airframe class & approach airspeed
+          </div>
 
           {/* 5 Rating Categories Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 font-mono text-xs">
@@ -469,7 +482,7 @@ export function CareerProgressView({
                   <span>🧈</span>
                   <span>BUTTER / GREASER</span>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1">|FPM| ≤ 160</p>
+                <p className="text-[11px] text-slate-400 mt-1">Light ≤90 · Twin ≤135 · Jet ≤180 · Heavy ≤240</p>
                 <p className="text-xs text-emerald-400 font-semibold mt-2">+100 XP per landing</p>
               </div>
               <div className="text-right">
@@ -491,7 +504,7 @@ export function CareerProgressView({
                   <span>✈️</span>
                   <span>CLEAN LANDING</span>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1">160 – 320 FPM</p>
+                <p className="text-[11px] text-slate-400 mt-1">Light ≤200 · Twin ≤250 · Jet ≤300 · Heavy ≤360</p>
                 <p className="text-xs text-cyan-400 font-semibold mt-2">+50 XP per landing</p>
               </div>
               <div className="text-right">
@@ -513,7 +526,7 @@ export function CareerProgressView({
                   <span>⚡</span>
                   <span>FIRM LANDING</span>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1">320 – 500 FPM</p>
+                <p className="text-[11px] text-slate-400 mt-1">Light ≤350 · Twin ≤400 · Jet ≤450 · Heavy ≤500</p>
                 <p className="text-xs text-amber-400 font-semibold mt-2">+0 XP (neutral)</p>
               </div>
               <div className="text-right">
@@ -535,7 +548,7 @@ export function CareerProgressView({
                   <span>⚠️</span>
                   <span>HARD LANDING</span>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1">500 – 750 FPM</p>
+                <p className="text-[11px] text-slate-400 mt-1">Light ≤500 · Twin ≤550 · Jet ≤600 · Heavy ≤650</p>
                 <p className="text-xs text-orange-400 font-semibold mt-2">-50 XP penalty</p>
               </div>
               <div className="text-right">
@@ -557,7 +570,7 @@ export function CareerProgressView({
                   <span>💥</span>
                   <span>SEVERE IMPACT</span>
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1">&gt; 750 FPM</p>
+                <p className="text-[11px] text-slate-400 mt-1">Hard impact beyond class maximum limits</p>
                 <p className="text-xs text-rose-400 font-semibold mt-2">-100 XP penalty</p>
               </div>
               <div className="text-right">
@@ -613,18 +626,37 @@ export function CareerProgressView({
               <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800">
                 <span className="text-slate-500 block text-[10px] uppercase">CAREER BEST TOUCHDOWN</span>
                 {landingStats.bestTouchdown ? (
-                  <div className="mt-1 flex items-baseline justify-between">
-                    <span className="text-2xl font-bold text-emerald-400">
-                      {landingStats.bestTouchdown.fpm} FPM
-                    </span>
-                    <span className="text-xs text-cyan-300 font-bold">
-                      at {landingStats.bestTouchdown.airport}
-                    </span>
+                  <div className="mt-1">
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-2xl font-bold text-emerald-400">
+                        {landingStats.bestTouchdown.fpm} FPM
+                      </span>
+                      <span className="text-xs text-cyan-300 font-bold">
+                        at {landingStats.bestTouchdown.airport}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-emerald-500/20 border border-emerald-500/50 text-emerald-300">
+                        {landingStats.bestTouchdown.ratingLabel || 'Butter'}
+                      </span>
+                      {landingStats.bestTouchdown.aircraftClassLabel && (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-cyan-950 border border-cyan-800/70 text-cyan-300 font-bold">
+                          {landingStats.bestTouchdown.aircraftClassLabel}
+                        </span>
+                      )}
+                      {landingStats.bestTouchdown.aircraft && (
+                        <span className="text-[10px] text-slate-400 truncate max-w-[150px]">
+                          {landingStats.bestTouchdown.aircraft}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <span className="text-slate-400 mt-1 block">Telemetry logging active</span>
                 )}
-                <span className="text-[10px] text-slate-500 mt-1 block">Butter / Greaser threshold (≤ 160 FPM)</span>
+                <span className="text-[10px] text-slate-500 mt-1.5 block">
+                  Adaptive V/S scoring calibrated for aircraft size & approach speed
+                </span>
               </div>
 
               {/* Average Touchdown Rate */}

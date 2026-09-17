@@ -95,6 +95,14 @@ const FlightRecordSchema = new mongoose.Schema(
     landing_rating: {
       type: String,
       default: ''
+    },
+    landing_class: {
+      type: String,
+      default: ''
+    },
+    approach_speed_kts: {
+      type: Number,
+      default: null
     }
   },
   { _id: true }

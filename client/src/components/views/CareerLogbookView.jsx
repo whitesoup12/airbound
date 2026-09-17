@@ -681,11 +681,16 @@ export function CareerLogbookView({
                           {/* Touchdown Vertical Speed & Rating */}
                           <td className="p-3 text-right whitespace-nowrap">
                             {record.touchdown_fpm !== undefined && record.touchdown_fpm !== null && Math.abs(record.touchdown_fpm) > 0 ? (() => {
-                              const rating = formatLandingRating(record.touchdown_fpm, record.landing_rating);
+                              const rating = formatLandingRating(record.touchdown_fpm, record.landing_rating, {
+                                category: record.category,
+                                aircraftName: record.aircraft_name,
+                                approachKts: record.approach_speed_kts,
+                                landingClass: record.landing_class
+                              });
                               return (
                                 <span
                                   className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${rating.badgeColor} inline-flex items-center space-x-1`}
-                                  title={`${rating.fullLabel} (${Math.round(record.touchdown_fpm)} FPM)`}
+                                  title={`${rating.fullLabel} (${Math.round(record.touchdown_fpm)} FPM) [${rating.aircraftClassLabel}]`}
                                 >
                                   <span>{rating.icon}</span>
                                   <span>{Math.round(record.touchdown_fpm)} FPM</span>
@@ -772,13 +777,19 @@ export function CareerLogbookView({
                                 <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800/80 text-xs font-mono">
                                   <div className="flex flex-wrap items-center gap-3">
                                     {record.touchdown_fpm !== null && record.touchdown_fpm !== undefined && Math.abs(record.touchdown_fpm) > 0 ? (() => {
-                                      const rating = formatLandingRating(record.touchdown_fpm, record.landing_rating);
+                                      const rating = formatLandingRating(record.touchdown_fpm, record.landing_rating, {
+                                        category: record.category,
+                                        aircraftName: record.aircraft_name,
+                                        approachKts: record.approach_speed_kts,
+                                        landingClass: record.landing_class
+                                      });
                                       return (
                                         <span className="flex items-center space-x-1.5 text-slate-300">
                                           <span className="text-slate-500">Landing Touchdown:</span>
                                           <span className={`px-2 py-0.5 rounded border ${rating.badgeColor} font-bold inline-flex items-center space-x-1`}>
                                             <span>{rating.icon}</span>
                                             <span>{Math.round(record.touchdown_fpm)} FPM ({rating.fullLabel})</span>
+                                            <span className="text-[10px] text-slate-400 font-normal">[{rating.aircraftClassLabel}]</span>
                                           </span>
                                         </span>
                                       );

@@ -63,19 +63,117 @@ export function getPilotRank(xp = 0) {
   };
 }
 
+export const LANDING_CLASS_CONFIGS = {
+  light: {
+    id: 'light',
+    label: 'Light GA',
+    butterMax: 90,
+    cleanMax: 200,
+    firmMax: 350,
+    hardMax: 500
+  },
+  turboprop: {
+    id: 'turboprop',
+    label: 'Twin / Turboprop',
+    butterMax: 135,
+    cleanMax: 250,
+    firmMax: 400,
+    hardMax: 550
+  },
+  airliner: {
+    id: 'airliner',
+    label: 'Airliner / Jet',
+    butterMax: 180,
+    cleanMax: 300,
+    firmMax: 450,
+    hardMax: 600
+  },
+  heavy: {
+    id: 'heavy',
+    label: 'Heavy Widebody',
+    butterMax: 240,
+    cleanMax: 360,
+    firmMax: 500,
+    hardMax: 650
+  }
+};
+
 /**
- * Rates the landing touchdown vertical speed (FPM).
- * @param {number|null} touchdownFpm Touchdown vertical speed in feet per minute (usually negative)
- * @returns {object} { rating, label, xpBonus, color, absFpm }
+ * Resolves aircraft landing evaluation class from category, model name, and/or approach airspeed.
+ * @param {object} params
+ * @param {string} [params.category] 'single_prop' | 'turboprop' | 'jet' | 'airliner'
+ * @param {string} [params.aircraftName] Aircraft name or title (e.g. 'Diamond DA62', 'Boeing 747-8')
+ * @param {number} [params.approachKts] Measured approach airspeed (knots)
+ * @param {string} [params.landingClass] Explicit class override
+ * @returns {string} 'light' | 'turboprop' | 'airliner' | 'heavy'
  */
-export function rateLandingTouchdown(touchdownFpm) {
+export function resolveAircraftClass(params = {}) {
+  const { category = '', aircraftName = '', approachKts = null, landingClass = '' } = params;
+
+  if (landingClass && LANDING_CLASS_CONFIGS[landingClass]) {
+    return landingClass;
+  }
+
+  const name = (aircraftName || '').toLowerCase();
+  const cat = (category || '').toLowerCase();
+
+  // 1. Heavy widebody detection (B747, B777, B787, A350, A380, An-124, DC-10, MD-11, etc.)
+  if (
+    /747|777|787|a350|a380|a340|dc-?10|md-?11|an-?124|an-?225|c-5|c-17|galaxy|globemaster/i.test(name) ||
+    (approachKts !== null && approachKts >= 155 && (cat === 'airliner' || cat === 'jet'))
+  ) {
+    return 'heavy';
+  }
+
+  // 2. Airliners & Mid-size Business Jets (A320, B737, CRJ, ERJ, CJ4, Longitude)
+  if (
+    cat === 'airliner' ||
+    cat === 'jet' ||
+    /airbus|a319|a320|a321|boeing|737|727|717|crj|erj|embraer|citation|longitude|cj4|phenom|learjet|challenger|global/i.test(name)
+  ) {
+    return 'airliner';
+  }
+
+  // 3. Turboprops & Twin-Engine Props (DA62, DA42, King Air, TBM, Caravan, PC-12, Baron, Seneca)
+  if (
+    cat === 'turboprop' ||
+    /da62|da42|twin|baron|seneca|seminole|king\s?air|tbm|caravan|pc-?12|atr|dash|dhc-?8|q400|beechcraft\s?99|c90/i.test(name)
+  ) {
+    return 'turboprop';
+  }
+
+  // 4. Approach Speed Threshold fallback if available
+  if (approachKts != null && !isNaN(approachKts) && approachKts > 0) {
+    if (approachKts < 75) return 'light';
+    if (approachKts <= 115) return 'turboprop';
+    if (approachKts <= 155) return 'airliner';
+    return 'heavy';
+  }
+
+  // 5. Default single-engine pistons to Light GA
+  if (cat === 'single_prop') {
+    return 'light';
+  }
+
+  return 'turboprop';
+}
+
+/**
+ * Rates the landing touchdown vertical speed (FPM) adaptively based on aircraft size/speed.
+ * @param {number|null} touchdownFpm Touchdown vertical speed in feet per minute (usually negative)
+ * @param {object|string} [options] Aircraft category, name, or { category, aircraftName, approachKts, landingClass }
+ * @returns {object} { rating, label, xpBonus, color, absFpm, aircraftClass, aircraftClassLabel }
+ */
+export function rateLandingTouchdown(touchdownFpm, options = {}) {
   if (touchdownFpm == null || isNaN(touchdownFpm)) {
     return {
       rating: 'Unrecorded',
       label: 'Unrecorded Landing',
       xpBonus: 0,
       color: 'slate',
-      absFpm: null
+      absFpm: null,
+      aircraftClass: 'turboprop',
+      aircraftClassLabel: 'Standard'
     };
   }
 
@@ -87,41 +185,59 @@ export function rateLandingTouchdown(touchdownFpm) {
       label: 'Unrecorded Landing',
       xpBonus: 0,
       color: 'slate',
-      absFpm: null
+      absFpm: null,
+      aircraftClass: 'turboprop',
+      aircraftClassLabel: 'Standard'
     };
   }
 
-  if (absFpm <= 160) {
+  // Support passing category string directly or options object
+  const resolvedOpts = typeof options === 'string'
+    ? { category: options }
+    : (options || {});
+
+  const resolvedClass = resolveAircraftClass(resolvedOpts);
+  const cfg = LANDING_CLASS_CONFIGS[resolvedClass] || LANDING_CLASS_CONFIGS.turboprop;
+
+  if (absFpm <= cfg.butterMax) {
     return {
       rating: 'Butter',
       label: 'Butter / Greaser',
       xpBonus: 100,
       color: 'emerald',
-      absFpm
+      absFpm,
+      aircraftClass: cfg.id,
+      aircraftClassLabel: cfg.label
     };
-  } else if (absFpm <= 320) {
+  } else if (absFpm <= cfg.cleanMax) {
     return {
       rating: 'Good',
       label: 'Clean Landing',
       xpBonus: 50,
       color: 'cyan',
-      absFpm
+      absFpm,
+      aircraftClass: cfg.id,
+      aircraftClassLabel: cfg.label
     };
-  } else if (absFpm <= 500) {
+  } else if (absFpm <= cfg.firmMax) {
     return {
       rating: 'Firm',
       label: 'Firm Landing',
       xpBonus: 0,
       color: 'amber',
-      absFpm
+      absFpm,
+      aircraftClass: cfg.id,
+      aircraftClassLabel: cfg.label
     };
-  } else if (absFpm <= 750) {
+  } else if (absFpm <= cfg.hardMax) {
     return {
       rating: 'Hard',
       label: 'Hard Landing',
       xpBonus: -50,
       color: 'orange',
-      absFpm
+      absFpm,
+      aircraftClass: cfg.id,
+      aircraftClassLabel: cfg.label
     };
   } else {
     return {
@@ -129,7 +245,9 @@ export function rateLandingTouchdown(touchdownFpm) {
       label: 'Severe Hard Landing',
       xpBonus: -100,
       color: 'red',
-      absFpm
+      absFpm,
+      aircraftClass: cfg.id,
+      aircraftClassLabel: cfg.label
     };
   }
 }
@@ -148,11 +266,20 @@ export function calculateFlightXp(params = {}) {
     distanceNm = 0,
     isUnvisited = false,
     destRunwayFt = 5000,
-    touchdownFpm = null
+    touchdownFpm = null,
+    category = '',
+    aircraftName = '',
+    approachKts = null,
+    landingClass = ''
   } = params;
 
   const distanceXp = Math.max(1, Math.round(distanceNm));
-  const landing = rateLandingTouchdown(touchdownFpm);
+  const landing = rateLandingTouchdown(touchdownFpm, {
+    category,
+    aircraftName,
+    approachKts,
+    landingClass
+  });
   const explorationXp = isUnvisited ? 100 : 0;
   const runwayChallengeXp = destRunwayFt < 4000 ? 75 : 0;
   const arrivalXp = 50; // Successful arrival and shutdown
@@ -168,6 +295,8 @@ export function calculateFlightXp(params = {}) {
     landingRating: landing.rating,
     landingLabel: landing.label,
     landingXp: landing.xpBonus,
+    aircraftClass: landing.aircraftClass,
+    aircraftClassLabel: landing.aircraftClassLabel,
     explorationXp,
     runwayChallengeXp,
     arrivalXp
@@ -199,7 +328,12 @@ export function calculateRetroactiveXp(flightLog = []) {
     // Only award landing XP if touchdown data was actually captured; otherwise 0 XP
     let landingXp = 0;
     if (entry.touchdown_fpm != null && !isNaN(entry.touchdown_fpm)) {
-      const landing = rateLandingTouchdown(entry.touchdown_fpm);
+      const landing = rateLandingTouchdown(entry.touchdown_fpm, {
+        category: entry.category,
+        aircraftName: entry.aircraft_name,
+        approachKts: entry.approach_speed_kts,
+        landingClass: entry.landing_class
+      });
       landingXp = landing.xpBonus;
     }
 
@@ -214,6 +348,8 @@ export function calculateRetroactiveXp(flightLog = []) {
 
 export default {
   PILOT_RANKS,
+  LANDING_CLASS_CONFIGS,
+  resolveAircraftClass,
   getPilotRank,
   rateLandingTouchdown,
   calculateFlightXp,
