@@ -108,7 +108,12 @@ export function calculateNavEstimates({
   let headingDiff = 0;
   let turnAdvice = 'ON TRACK';
 
-  if (destCoords && Number.isFinite(currentLat) && Number.isFinite(currentLon)) {
+  const hasValidPosition =
+    Number.isFinite(currentLat) &&
+    Number.isFinite(currentLon) &&
+    !(Math.abs(currentLat) < 0.05 && Math.abs(currentLon) < 0.05);
+
+  if (destCoords && hasValidPosition) {
     const destLon = destCoords[0];
     const destLat = destCoords[1];
 

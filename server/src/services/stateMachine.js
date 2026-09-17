@@ -229,6 +229,29 @@ export class FlightStateMachine {
     }
     this.lastTelemetryTime = now;
 
+    // Guard against uninitialized coordinates from simulator main menu (e.g. Null Island ~0, 0)
+    const hasValidCoords =
+      telemetry.hasValidLocation !== undefined
+        ? Boolean(telemetry.hasValidLocation)
+        : Number.isFinite(latitude) &&
+          Number.isFinite(longitude) &&
+          !(Math.abs(latitude) < 0.05 && Math.abs(longitude) < 0.05);
+
+    if (!hasValidCoords) {
+      this.previousSimOnGround = simOnGround;
+      return {
+        phase: this.phase,
+        activeJob: this.activeJob,
+        aircraftValidation,
+        originDist: null,
+        destDist: null,
+        flightSeconds: Math.round(this.activeFlightSeconds),
+        airborneSeconds: Math.round(this.airborneSeconds),
+        isPaused: this.isPaused,
+        hasValidLocation: false
+      };
+    }
+
     let originDist = 99999;
     let destDist = 99999;
 

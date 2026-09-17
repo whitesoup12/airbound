@@ -166,9 +166,17 @@ export class SimConnectBridge extends EventEmitter {
             // RawBuffer boundary safety fallback
           }
 
+          const isValidLoc =
+            Number.isFinite(lat) &&
+            Number.isFinite(lon) &&
+            !(Math.abs(lat) < 0.05 && Math.abs(lon) < 0.05) &&
+            lat >= -90 && lat <= 90 &&
+            lon >= -180 && lon <= 180;
+
           this.telemetry = {
-            latitude: Number.isFinite(lat) ? lat : this.telemetry.latitude,
-            longitude: Number.isFinite(lon) ? lon : this.telemetry.longitude,
+            latitude: isValidLoc ? lat : this.telemetry.latitude,
+            longitude: isValidLoc ? lon : this.telemetry.longitude,
+            hasValidLocation: isValidLoc,
             altitude: Number.isFinite(alt) ? Math.round(alt) : this.telemetry.altitude,
             altAboveGround: Number.isFinite(agl) ? Math.round(agl) : 0,
             heading: Number.isFinite(hdg) ? Math.round(hdg) : this.telemetry.heading,

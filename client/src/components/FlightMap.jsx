@@ -34,7 +34,7 @@ function MapRecenter({ center, followAircraft }) {
 }
 
 // Controller to execute explicit pan/zoom actions from toolbar
-function MapActionsController({ actionTrigger, origCoords, destCoords, aircraftPos, routeBounds }) {
+function MapActionsController({ actionTrigger, origCoords, destCoords, aircraftPos, routeBounds, baseCoords }) {
   const map = useMap();
   useEffect(() => {
     if (!actionTrigger) return;
@@ -46,9 +46,23 @@ function MapActionsController({ actionTrigger, origCoords, destCoords, aircraftP
       map.setView([destCoords[1], destCoords[0]], Math.max(map.getZoom(), 11), { animate: true });
     } else if (actionTrigger.type === 'centerPlane' && aircraftPos) {
       map.setView(aircraftPos, Math.max(map.getZoom(), 10), { animate: true });
+    } else if (actionTrigger.type === 'panBase' && baseCoords) {
+      map.setView(baseCoords, Math.max(map.getZoom(), 10), { animate: true });
     }
-  }, [actionTrigger, map, origCoords, destCoords, aircraftPos, routeBounds]);
+  }, [actionTrigger, map, origCoords, destCoords, aircraftPos, routeBounds, baseCoords]);
   return null;
+}
+
+// Validates whether coordinates represent real in-flight/on-ground aircraft position
+// rather than uninitialized main-menu telemetry (e.g. Null Island at 0, 0)
+export function isValidSimCoordinates(lat, lon) {
+  if (lat == null || lon == null) return false;
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return false;
+  // Null Island check: MSFS sends coordinates near (0, 0) when in main menu
+  if (Math.abs(lat) < 0.05 && Math.abs(lon) < 0.05) return false;
+  // Valid Earth latitude and longitude boundaries
+  if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return false;
+  return true;
 }
 
 // Custom Leaflet DivIcon for the aircraft with dynamic heading rotation
@@ -146,22 +160,51 @@ export function FlightMap({
   activeAircraft = null,
   heightClass = 'h-[620px]'
 }) {
-  const [followAircraft, setFollowAircraft] = useState(true);
-  const [actionTrigger, setActionTrigger] = useState(null);
+  // Determine active route vs preview route
+  const displayedJob = activeJob || previewJob;
+  const isPreview = !activeJob && Boolean(previewJob);
 
-  const aircraftPos = [telemetry?.latitude || 33.9425, telemetry?.longitude || -118.4081];
+  // Resolve base airport position [latitude, longitude]
+  let baseCoords = null;
+  if (currentAirport?.location?.coordinates && currentAirport.location.coordinates.length >= 2) {
+    baseCoords = [currentAirport.location.coordinates[1], currentAirport.location.coordinates[0]];
+  } else if (displayedJob?.origin_airport?.location?.coordinates) {
+    baseCoords = [
+      displayedJob.origin_airport.location.coordinates[1],
+      displayedJob.origin_airport.location.coordinates[0]
+    ];
+  } else if (allAirports && allAirports.length > 0) {
+    const baseIcao = (currentAirport?.icao || displayedJob?.origin_icao || 'KLAX').toUpperCase();
+    const matched = allAirports.find((a) => a.icao === baseIcao);
+    if (matched?.location?.coordinates) {
+      baseCoords = [matched.location.coordinates[1], matched.location.coordinates[0]];
+    }
+  }
+  if (!baseCoords) {
+    baseCoords = [33.9425, -118.4081]; // Default KLAX
+  }
+
+  // Detect whether telemetry provides valid live aircraft coordinates or uninitialized sim state (Null Island ~0, 0)
+  const hasValidSimLocation =
+    isValidSimCoordinates(telemetry?.latitude, telemetry?.longitude) &&
+    telemetry?.hasValidLocation !== false;
+
+  // Default aircraft marker to current base airport when in MSFS main menu or location is invalid
+  const aircraftPos = hasValidSimLocation
+    ? [telemetry.latitude, telemetry.longitude]
+    : baseCoords;
+
   const aircraftHeading = telemetry?.heading || 0;
-  const isAirborne = !telemetry?.simOnGround;
+  const isAirborne = hasValidSimLocation && !telemetry?.simOnGround;
+
+  const [followAircraft, setFollowAircraft] = useState(!isPreview && hasValidSimLocation);
+  const [actionTrigger, setActionTrigger] = useState(null);
 
   // Performance & Fuel Consumption estimates for displayedJob
   const cruiseSpeed = activeAircraft?.cruise_speed_kts || 120;
   const fuelBurnGph = activeAircraft?.fuel_burn_gph || 9.0;
   const fuelType = activeAircraft?.fuel_type || '100LL';
   const fuelPrice = fuelType === 'Jet-A' ? 5.60 : 6.40;
-
-  // Determine active route vs preview route
-  const displayedJob = activeJob || previewJob;
-  const isPreview = !activeJob && Boolean(previewJob);
 
   const distance = displayedJob?.distance_nm || 0;
   const flightHours = distance / cruiseSpeed;
@@ -190,8 +233,8 @@ export function FlightMap({
 
   if (!origCoords) {
     origCoords = currentAirport?.location?.coordinates || [
-      telemetry?.longitude || -118.408,
-      telemetry?.latitude || 33.942
+      baseCoords[1],
+      baseCoords[0]
     ];
   }
 
@@ -236,18 +279,33 @@ export function FlightMap({
 
     routeBounds = [
       [origCoords[1], origCoords[0]],
-      [destCoords[1], destCoords[0]],
-      aircraftPos
+      [destCoords[1], destCoords[0]]
     ];
 
-    // Magenta Direct-To vector from plane to destination
-    if (aircraftPos && aircraftPos[0] && aircraftPos[1]) {
+    // Only include aircraft position in route bounding box if telemetry is live/valid
+    if (hasValidSimLocation) {
+      routeBounds.push(aircraftPos);
+    }
+
+    // Magenta Direct-To vector from plane to destination: only when flying with valid location
+    if (hasValidSimLocation && !isPreview && destCoords) {
       directToLine = [
         aircraftPos,
         [destCoords[1], destCoords[0]]
       ];
     }
   }
+
+  // Auto-fit route whenever selected or previewed job changes
+  const displayedJobId = displayedJob?._id;
+  useEffect(() => {
+    if (displayedJobId && routeBounds && routeBounds.length >= 2) {
+      setFollowAircraft(false);
+      setActionTrigger({ type: 'fitRoute', ts: Date.now() });
+    } else if (!displayedJobId && baseCoords) {
+      setActionTrigger({ type: 'panBase', ts: Date.now() });
+    }
+  }, [displayedJobId]);
 
   // Filter visited airports from all airports list
   const visitedAirportObjects = allAirports.filter((a) =>
@@ -267,7 +325,7 @@ export function FlightMap({
               const next = !followAircraft;
               setFollowAircraft(next);
               if (next) {
-                setActionTrigger({ type: 'centerPlane', ts: Date.now() });
+                setActionTrigger({ type: hasValidSimLocation ? 'centerPlane' : 'panBase', ts: Date.now() });
               }
             }}
             className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg font-bold transition shadow-sm ${
@@ -276,8 +334,14 @@ export function FlightMap({
                 : 'bg-slate-800 text-slate-300 hover:text-white border border-slate-700'
             }`}
           >
-            <Navigation className={`w-3.5 h-3.5 ${followAircraft ? 'text-slate-950 animate-spin' : 'text-slate-400'}`} />
-            <span>{followAircraft ? 'LOCKED ON AIRCRAFT' : 'FREE CAM'}</span>
+            <Navigation className={`w-3.5 h-3.5 ${followAircraft && hasValidSimLocation ? 'text-slate-950 animate-spin' : 'text-slate-400'}`} />
+            <span>
+              {hasValidSimLocation
+                ? followAircraft
+                  ? 'LOCKED ON AIRCRAFT'
+                  : 'FREE CAM'
+                : `BASE: ${currentAirport?.icao || 'PARKED'}`}
+            </span>
           </button>
 
           {/* Fit Entire Route Button */}
@@ -387,6 +451,7 @@ export function FlightMap({
             destCoords={destCoords}
             aircraftPos={aircraftPos}
             routeBounds={routeBounds}
+            baseCoords={baseCoords}
           />
 
           {/* Live Aircraft Marker */}
@@ -397,12 +462,24 @@ export function FlightMap({
           >
             <Popup className="avionics-popup">
               <div className="p-1 font-mono text-xs text-slate-900">
-                <p className="font-bold text-cyan-700">AIRCRAFT POSITION</p>
-                <p>Alt: {Math.round(telemetry?.altitude || 0).toLocaleString()} FT</p>
-                <p>GS: {Math.round(telemetry?.groundSpeed || 0)} KTS</p>
-                <p>HDG: {Math.round(telemetry?.heading || 0).toString().padStart(3, '0')}°</p>
-                <p>Lat: {telemetry?.latitude?.toFixed(4)}</p>
-                <p>Lon: {telemetry?.longitude?.toFixed(4)}</p>
+                <p className="font-bold text-cyan-700">
+                  {hasValidSimLocation ? 'AIRCRAFT POSITION' : 'PARKED AT BASE'}
+                </p>
+                {!hasValidSimLocation ? (
+                  <>
+                    <p className="font-bold text-slate-800">{currentAirport?.name || 'Home Base Airfield'}</p>
+                    <p className="text-slate-600 text-[10px] mt-0.5">MSFS Main Menu • Standing by</p>
+                    <p className="text-slate-500 text-[10px]">ICAO: {currentAirport?.icao || 'KLAX'}</p>
+                  </>
+                ) : (
+                  <>
+                    <p>Alt: {Math.round(telemetry?.altitude || 0).toLocaleString()} FT</p>
+                    <p>GS: {Math.round(telemetry?.groundSpeed || 0)} KTS</p>
+                    <p>HDG: {Math.round(telemetry?.heading || 0).toString().padStart(3, '0')}°</p>
+                    <p>Lat: {telemetry?.latitude?.toFixed(4)}</p>
+                    <p>Lon: {telemetry?.longitude?.toFixed(4)}</p>
+                  </>
+                )}
               </div>
             </Popup>
           </Marker>
