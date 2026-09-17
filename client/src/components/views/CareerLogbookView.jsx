@@ -288,12 +288,6 @@ export function CareerLogbookView({
           </div>
           <div>
             <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-              <span className="text-[10px] font-mono uppercase text-slate-400 tracking-wider">
-                PILOT IN COMMAND PROFILE
-              </span>
-              <span className="px-1.5 py-0.2 rounded bg-cyan-950 text-cyan-400 border border-cyan-800/60 text-[10px] font-mono">
-                COMMERCIAL
-              </span>
               <span
                 onClick={onSwitchToProgression}
                 className={`px-2 py-0.5 rounded bg-purple-950/80 text-purple-300 border border-purple-800/80 text-[10px] font-mono font-bold flex items-center space-x-1 shadow-sm ${

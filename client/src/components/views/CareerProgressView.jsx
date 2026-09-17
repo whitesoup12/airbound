@@ -175,12 +175,6 @@ export function CareerProgressView({
 
             <div className="space-y-1.5">
               <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-                <span className="text-xs font-mono uppercase text-slate-400 tracking-wider font-semibold">
-                  PILOT COMMAND PROFILE
-                </span>
-                <span className="px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800/60 text-[10px] font-mono font-bold">
-                  COMMERCIAL PILOT
-                </span>
                 <span className="px-2 py-0.5 rounded-full bg-purple-950 text-purple-300 border border-purple-700/60 text-[10px] font-mono font-bold flex items-center space-x-1 shadow-sm">
                   <Sparkles className="w-3 h-3 text-purple-400" />
                   <span>+{rankInfo.bonusPercent}% SENIORITY PAYOUT</span>
