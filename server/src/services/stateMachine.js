@@ -6,6 +6,7 @@ import { generateJobsForAirport } from './jobGenerator.js';
 import { computeFlightSettlement } from './economyService.js';
 import { validateAircraftMatch } from '../utils/aircraftValidator.js';
 import { normalizeTo4CharIcao } from '../utils/icaoUtils.js';
+import { calculateFlightXp, rateLandingTouchdown, getPilotRank } from './xpService.js';
 
 export const FLIGHT_PHASES = {
   STANDBY: 'STANDBY',
@@ -34,6 +35,8 @@ export class FlightStateMachine {
     this.pausedSeconds = 0; // Total paused time during flight
     this.lastTelemetryTime = null;
     this.isPaused = false;
+    this.touchdownFpm = null;
+    this.landingRating = '';
   }
 
   setCallbacks({ onPhaseChange, onFlightCompleted }) {
@@ -60,6 +63,8 @@ export class FlightStateMachine {
       this.pausedSeconds = 0;
       this.lastTelemetryTime = null;
       this.isPaused = false;
+      this.touchdownFpm = null;
+      this.landingRating = '';
       console.log(`[StateMachine] Active Job loaded: ${job.origin_icao} -> ${job.destination_icao}, phase set to IDLE`);
     } else {
       this.activeJob = null;
@@ -71,6 +76,8 @@ export class FlightStateMachine {
       this.pausedSeconds = 0;
       this.lastTelemetryTime = null;
       this.isPaused = false;
+      this.touchdownFpm = null;
+      this.landingRating = '';
     }
 
     if (this.onPhaseChangeCallback) {
@@ -88,6 +95,8 @@ export class FlightStateMachine {
     this.pausedSeconds = 0;
     this.lastTelemetryTime = null;
     this.isPaused = false;
+    this.touchdownFpm = null;
+    this.landingRating = '';
     if (this.onPhaseChangeCallback) {
       this.onPhaseChangeCallback(this.phase, null);
     }
@@ -233,7 +242,14 @@ export class FlightStateMachine {
         if (!this.previousSimOnGround && simOnGround && destDist <= 3.0) {
           this.phase = FLIGHT_PHASES.TOUCHDOWN;
           this.touchdownAt = new Date();
-          console.log(`[StateMachine] TOUCHDOWN: Touched down within ${destDist.toFixed(1)} NM of destination`);
+          this.touchdownFpm = telemetry.verticalSpeed != null && !isNaN(telemetry.verticalSpeed)
+            ? Math.round(telemetry.verticalSpeed)
+            : null;
+          const landingRate = rateLandingTouchdown(this.touchdownFpm);
+          this.landingRating = landingRate.rating;
+          console.log(
+            `[StateMachine] TOUCHDOWN: Touched down at ${this.touchdownFpm !== null ? this.touchdownFpm + ' FPM' : 'normal'} (${landingRate.label}) within ${destDist.toFixed(1)} NM of destination`
+          );
         }
         break;
 
@@ -331,13 +347,28 @@ export class FlightStateMachine {
         aircraftName: activeAircraft.name || 'Cessna 172 Skyhawk'
       });
 
-      // 1. Update Job status to 'completed'
-      await Job.findByIdAndUpdate(this.activeJob._id, {
-        status: 'completed',
-        completed_at: completedAt
+      const isUnvisited = Boolean(
+        this.activeJob.is_unvisited ||
+        (pilot && !pilot.visited_airports.includes(destIcao))
+      );
+
+      const flightXp = calculateFlightXp({
+        distanceNm: this.activeJob.distance_nm,
+        isUnvisited,
+        destRunwayFt,
+        touchdownFpm: this.touchdownFpm
       });
 
-      // 2. Flight summary for logbook with detailed financial ledger
+      // 1. Update Job status to 'completed' with touchdown and XP metadata
+      await Job.findByIdAndUpdate(this.activeJob._id, {
+        status: 'completed',
+        completed_at: completedAt,
+        touchdown_fpm: this.touchdownFpm,
+        landing_rating: flightXp.landingRating,
+        xp_reward: flightXp.totalXp
+      });
+
+      // 2. Flight summary for logbook with detailed financial ledger and XP
       const flightSummary = {
         job_id: this.activeJob._id,
         origin_icao: this.activeJob.origin_icao,
@@ -354,6 +385,9 @@ export class FlightStateMachine {
         aircraft_name: settlement.aircraftName,
         duration_seconds: durationSeconds,
         airborne_seconds: airborneSeconds,
+        touchdown_fpm: this.touchdownFpm,
+        landing_rating: flightXp.landingRating,
+        xp_earned: flightXp.totalXp,
         departed_at: departedAt,
         completed_at: completedAt
       };
@@ -363,8 +397,11 @@ export class FlightStateMachine {
       // Set pilot.current_icao to destination airport
       // Append destination ICAO and country code using $addToSet (preventing duplicates)
       // Append flight summary to flight_log
+      // Increment career XP, recalculate level, and detect promotion
       let insufficientRentalFunds = false;
       let rentalPrice = 0;
+      let leveledUp = false;
+      let rankInfo = null;
 
       if (pilot) {
         // Increment flight hours for the flown aircraft in pilot's fleet if matching
@@ -385,6 +422,13 @@ export class FlightStateMachine {
             fleetPlane.rental_flights_paid = 0;
           }
         }
+
+        const prevLevel = pilot.level || 1;
+        pilot.xp = (pilot.xp || 0) + flightXp.totalXp;
+        rankInfo = getPilotRank(pilot.xp);
+        pilot.level = rankInfo.level;
+        pilot.rank_title = rankInfo.title;
+        leveledUp = pilot.level > prevLevel;
 
         pilot.balance = Math.max(0, (pilot.balance || 0) + settlement.netPayout);
         pilot.current_icao = destIcao;
@@ -408,10 +452,10 @@ export class FlightStateMachine {
       }
 
       console.log(
-        `[StateMachine] Flight completed! Gross: $${settlement.grossPayout}, Fuel: -$${settlement.fuelCost} (${settlement.fuelGallons} gal), Landing Fee: -$${settlement.landingFee}. Net credited: +$${settlement.netPayout}`
+        `[StateMachine] Flight completed! Gross: $${settlement.grossPayout}, Net: +$${settlement.netPayout}, XP: +${flightXp.totalXp} (${flightXp.landingLabel}). Pilot Level: ${rankInfo?.level || 1} (${rankInfo?.title || 'Junior Aviator'})`
       );
 
-      // 4. Auto-generate new jobs for the new location scaled to the active aircraft
+      // 4. Auto-generate new jobs for the new location scaled to the active aircraft and pilot seniority
       await generateJobsForAirport(destIcao, { aircraft: pilot?.active_aircraft });
 
       if (this.onFlightCompletedCallback) {
@@ -419,6 +463,11 @@ export class FlightStateMachine {
           summary: flightSummary,
           payout: settlement.netPayout,
           settlement,
+          flightXp,
+          touchdownFpm: this.touchdownFpm,
+          landingRating: flightXp.landingRating,
+          rankInfo,
+          leveledUp,
           newIcao: destIcao,
           insufficientRentalFunds,
           rentalPrice,

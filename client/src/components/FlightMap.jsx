@@ -491,8 +491,17 @@ export function FlightMap({
                     </div>
                   )}
                   <p>Runway: {displayedJob?.destination_runway_ft?.toLocaleString() || displayedJob?.destination_airport?.longest_runway_ft?.toLocaleString()} ft</p>
-                  <p>Payload: {displayedJob?.cargo_lbs?.toLocaleString()} lbs cargo • {displayedJob?.pax_count} pax</p>
-                  <p className="font-bold text-emerald-700 mt-1">Reward: ${displayedJob?.payout?.toLocaleString()}</p>
+                  <p className="font-bold text-emerald-700 mt-1 flex items-center justify-between">
+                    <span>Reward: ${displayedJob?.payout?.toLocaleString()}</span>
+                    {displayedJob?.seniority_bonus > 0 && (
+                      <span className="text-[10px] text-purple-700 font-semibold">
+                        (+${displayedJob.seniority_bonus.toLocaleString()} Seniority)
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-purple-700 text-[11px] font-semibold">
+                    XP Reward: +{displayedJob?.xp_reward || displayedJob?.distance_nm} XP
+                  </p>
                   {isPreview && onAcceptJob && (
                     <button
                       onClick={() => onAcceptJob(displayedJob._id)}

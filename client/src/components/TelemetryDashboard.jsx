@@ -13,7 +13,8 @@ import {
   AlertCircle,
   Fuel,
   Clock,
-  MapPin
+  MapPin,
+  Award
 } from 'lucide-react';
 import { calculateNavEstimates } from '../utils/navigation.js';
 
@@ -403,6 +404,11 @@ export function TelemetryDashboard({
                 <p className="text-emerald-400 font-bold mt-1 text-sm font-mono">
                   ${activeJob.payout.toLocaleString()}
                 </p>
+                {activeJob.seniority_bonus > 0 && (
+                  <span className="text-[10px] text-purple-300 font-mono block">
+                    (+${activeJob.seniority_bonus.toLocaleString()} Seniority)
+                  </span>
+                )}
               </div>
             </div>
 
@@ -485,6 +491,10 @@ export function TelemetryDashboard({
               </span>
               <span>
                 Est. Landing Fee: <strong className="text-rose-400">${estimatedLandingFee}</strong>
+              </span>
+              <span className="flex items-center space-x-1 text-purple-300">
+                <Award className="w-3 h-3 text-purple-400" />
+                <span>XP Reward: <strong className="text-purple-300">+{activeJob.xp_reward || activeJob.distance_nm} XP</strong></span>
               </span>
             </div>
 

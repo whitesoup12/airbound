@@ -16,7 +16,8 @@ import {
   Zap,
   Compass,
   Layers,
-  Sparkles
+  Sparkles,
+  Award
 } from 'lucide-react';
 
 function getDistanceTiers(category = 'single_prop') {
@@ -411,17 +412,26 @@ export function JobBoard({
                         <Navigation className="w-3 h-3 text-cyan-400" />
                         <span>{job.distance_nm} NM</span>
                       </span>
-                      <span
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider font-semibold border ${
-                          job.resolvedTier === 'short'
-                            ? 'bg-amber-950/60 text-amber-300 border-amber-800/60'
-                            : job.resolvedTier === 'medium'
-                            ? 'bg-cyan-950/60 text-cyan-300 border-cyan-800/60'
-                            : 'bg-indigo-950/60 text-indigo-300 border-indigo-800/60'
-                        }`}
-                      >
-                        {job.resolvedTier}
-                      </span>
+                      <div className="flex items-center gap-1">
+                        <span
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider font-semibold border ${
+                            job.resolvedTier === 'short'
+                              ? 'bg-amber-950/60 text-amber-300 border-amber-800/60'
+                              : job.resolvedTier === 'medium'
+                              ? 'bg-cyan-950/60 text-cyan-300 border-cyan-800/60'
+                              : 'bg-indigo-950/60 text-indigo-300 border-indigo-800/60'
+                          }`}
+                        >
+                          {job.resolvedTier}
+                        </span>
+                        <span
+                          className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-purple-950/70 text-purple-300 border border-purple-800/60 flex items-center space-x-1"
+                          title="Pilot Experience (XP) reward upon flight completion"
+                        >
+                          <Award className="w-2.5 h-2.5 text-purple-400" />
+                          <span>+{job.xp_reward || job.distance_nm} XP</span>
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -476,12 +486,21 @@ export function JobBoard({
                 {/* Card Footer: Payout & Accept Button */}
                 <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between">
                   <div>
-                    <div className="flex items-center space-x-1.5">
+                    <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
                       <span className="text-[10px] font-mono text-slate-400 uppercase block">CONTRACT PAYOUT</span>
                       {job.exploration_bonus > 0 && (
                         <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center space-x-0.5 shadow-sm">
                           <Sparkles className="w-2 h-2 text-emerald-400" />
                           <span>+${job.exploration_bonus} DISCOVERY</span>
+                        </span>
+                      )}
+                      {job.seniority_bonus > 0 && (
+                        <span
+                          className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40 flex items-center space-x-0.5 shadow-sm"
+                          title={`Seniority standing bonus (+${Math.round(((job.seniority_multiplier || 1) - 1) * 100)}%)`}
+                        >
+                          <Award className="w-2 h-2 text-purple-400" />
+                          <span>+${job.seniority_bonus.toLocaleString()} SENIORITY</span>
                         </span>
                       )}
                     </div>

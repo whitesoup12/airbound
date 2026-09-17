@@ -24,6 +24,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import VisitedAirportsMap from '../VisitedAirportsMap.jsx';
+import { formatLandingRating, getPilotRank } from '../../utils/xpUtils.js';
 
 const regionNames = new Intl.DisplayNames(['en'], { type: 'region' });
 function getFullCountryName(code) {
@@ -56,6 +57,7 @@ export function CareerLogbookView({
   const totalDurationSec = flightLog.reduce((acc, f) => acc + (f.duration_seconds || 0), 0);
   const visitedAirports = pilot?.visited_airports || [];
   const visitedCountries = pilot?.visited_countries || [];
+  const rankInfo = useMemo(() => getPilotRank(pilot?.xp || 0), [pilot?.xp]);
 
   // Lookup map for airport details
   const airportInfoMap = useMemo(() => {
@@ -224,6 +226,14 @@ export function CareerLogbookView({
           valA = a.duration_seconds || 0;
           valB = b.duration_seconds || 0;
           break;
+        case 'touchdown_fpm':
+          valA = a.touchdown_fpm != null ? Math.abs(a.touchdown_fpm) : 9999;
+          valB = b.touchdown_fpm != null ? Math.abs(b.touchdown_fpm) : 9999;
+          break;
+        case 'xp_earned':
+          valA = a.xp_earned || a.distance_nm || 0;
+          valB = b.xp_earned || b.distance_nm || 0;
+          break;
         case 'payout':
           valA = a.net_payout || a.payout || 0;
           valB = b.net_payout || b.payout || 0;
@@ -276,12 +286,19 @@ export function CareerLogbookView({
             <ShieldCheck className="w-6 h-6" />
           </div>
           <div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 flex-wrap gap-y-1">
               <span className="text-[10px] font-mono uppercase text-slate-400 tracking-wider">
                 PILOT IN COMMAND PROFILE
               </span>
               <span className="px-1.5 py-0.2 rounded bg-cyan-950 text-cyan-400 border border-cyan-800/60 text-[10px] font-mono">
                 COMMERCIAL
+              </span>
+              <span className="px-2 py-0.5 rounded bg-purple-950/80 text-purple-300 border border-purple-800/80 text-[10px] font-mono font-bold flex items-center space-x-1 shadow-sm">
+                <Award className="w-3 h-3 text-purple-400" />
+                <span>LEVEL {rankInfo.level}: {rankInfo.title.toUpperCase()}</span>
+                {rankInfo.bonusPercent > 0 && (
+                  <span className="text-amber-300 ml-1">(+{rankInfo.bonusPercent}% BONUS)</span>
+                )}
               </span>
             </div>
             <h2 className="text-xl font-bold text-white font-mono tracking-wide">
@@ -316,7 +333,7 @@ export function CareerLogbookView({
       </div>
 
       {/* Career Milestones Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 font-mono text-xs">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 font-mono text-xs">
         <div className="glass-panel p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
           <span className="text-slate-400 block text-[11px]">FLIGHTS COMPLETED</span>
           <span className="text-2xl font-bold text-white mt-1 block">{flightLog.length}</span>
@@ -342,6 +359,19 @@ export function CareerLogbookView({
         </div>
 
         <div className="glass-panel p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
+          <div className="flex items-center justify-between text-slate-400 text-[11px]">
+            <span>CAREER XP & RANK</span>
+            <Award className="w-3 h-3 text-purple-400" />
+          </div>
+          <span className="text-2xl font-bold text-purple-300 mt-1 block">
+            {(pilot?.xp || 0).toLocaleString()} XP
+          </span>
+          <span className="text-[10px] text-slate-500 mt-1 block truncate" title={`${rankInfo.title} (Level ${rankInfo.level})`}>
+            L{rankInfo.level} {rankInfo.title}
+          </span>
+        </div>
+
+        <div className="glass-panel p-4 rounded-2xl bg-slate-900/60 border border-slate-800 col-span-2 sm:col-span-1">
           <span className="text-slate-400 block text-[11px]">AVAILABLE BALANCE</span>
           <span className="text-2xl font-bold text-emerald-400 mt-1 block">
             ${(pilot?.balance || 0).toLocaleString()}
@@ -628,6 +658,24 @@ export function CareerLogbookView({
                     </div>
                   </th>
                   <th
+                    onClick={() => handleSort('touchdown_fpm')}
+                    className="p-3 cursor-pointer hover:text-cyan-400 transition select-none text-right"
+                  >
+                    <div className="flex items-center justify-end space-x-1">
+                      <span>Touchdown</span>
+                      <ArrowUpDown className="w-3 h-3 text-slate-600" />
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleSort('xp_earned')}
+                    className="p-3 cursor-pointer hover:text-cyan-400 transition select-none text-right"
+                  >
+                    <div className="flex items-center justify-end space-x-1">
+                      <span>XP</span>
+                      <ArrowUpDown className="w-3 h-3 text-slate-600" />
+                    </div>
+                  </th>
+                  <th
                     onClick={() => handleSort('aircraft_name')}
                     className="p-3 cursor-pointer hover:text-cyan-400 transition select-none"
                   >
@@ -652,7 +700,7 @@ export function CareerLogbookView({
               <tbody className="divide-y divide-slate-800/60">
                 {filteredAndSortedFlights.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="p-12 text-center text-slate-500 font-mono">
+                    <td colSpan={11} className="p-12 text-center text-slate-500 font-mono">
                       No matching flights found. Try adjusting your search query or filter.
                     </td>
                   </tr>
@@ -738,6 +786,29 @@ export function CareerLogbookView({
                             {formatDuration(record.duration_seconds)}
                           </td>
 
+                          {/* Touchdown Vertical Speed & Rating */}
+                          <td className="p-3 text-right whitespace-nowrap">
+                            {record.touchdown_fpm !== undefined && record.touchdown_fpm !== null ? (() => {
+                              const rating = formatLandingRating(record.touchdown_fpm, record.landing_rating);
+                              return (
+                                <span
+                                  className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${rating.badgeColor} inline-flex items-center space-x-1`}
+                                  title={`${rating.fullLabel} (${Math.round(record.touchdown_fpm)} FPM)`}
+                                >
+                                  <span>{rating.icon}</span>
+                                  <span>{Math.round(record.touchdown_fpm)} FPM</span>
+                                </span>
+                              );
+                            })() : (
+                              <span className="text-slate-600 font-normal">—</span>
+                            )}
+                          </td>
+
+                          {/* XP Earned */}
+                          <td className="p-3 text-right whitespace-nowrap text-purple-300 font-bold">
+                            +{record.xp_earned || record.distance_nm || 0} XP
+                          </td>
+
                           {/* Aircraft */}
                           <td className="p-3 text-slate-300 whitespace-nowrap max-w-[180px] truncate">
                             {record.aircraft_name || 'MSFS Aircraft'}
@@ -758,7 +829,7 @@ export function CareerLogbookView({
                         {/* Expandable Flight Ledger Row */}
                         {isExpanded && (
                           <tr className="bg-slate-900/90 border-b border-slate-800">
-                            <td colSpan={9} className="p-4">
+                            <td colSpan={11} className="p-4">
                               <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
                                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2">
                                   <div className="flex items-center space-x-2">
@@ -804,6 +875,28 @@ export function CareerLogbookView({
                                     Contract payout: ${(record.payout || 0).toLocaleString()}
                                   </div>
                                 )}
+
+                                {/* Flight Performance & Career XP Strip */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800/80 text-xs font-mono">
+                                  <div className="flex flex-wrap items-center gap-3">
+                                    {record.touchdown_fpm !== null && record.touchdown_fpm !== undefined ? (() => {
+                                      const rating = formatLandingRating(record.touchdown_fpm, record.landing_rating);
+                                      return (
+                                        <span className="flex items-center space-x-1.5 text-slate-300">
+                                          <span className="text-slate-500">Landing Touchdown:</span>
+                                          <span className={`px-2 py-0.5 rounded border ${rating.badgeColor} font-bold inline-flex items-center space-x-1`}>
+                                            <span>{rating.icon}</span>
+                                            <span>{Math.round(record.touchdown_fpm)} FPM ({rating.fullLabel})</span>
+                                          </span>
+                                        </span>
+                                      );
+                                    })() : null}
+                                    <span className="flex items-center space-x-1 text-purple-300">
+                                      <Award className="w-3.5 h-3.5 text-purple-400" />
+                                      <span>Career XP Earned: <strong className="text-purple-300">+{record.xp_earned || record.distance_nm || 0} XP</strong></span>
+                                    </span>
+                                  </div>
+                                </div>
                               </div>
                             </td>
                           </tr>

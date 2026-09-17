@@ -26,6 +26,7 @@ export class SimConnectBridge extends EventEmitter {
       simAircraftTitle: '',
       simAircraftModel: '',
       isPaused: false,
+      verticalSpeed: 0,
       timestamp: Date.now()
     };
 
@@ -96,6 +97,7 @@ export class SimConnectBridge extends EventEmitter {
       handle.addToDataDefinition(DEF_ID, 'TITLE', null, SimConnectDataType.STRING256);
       handle.addToDataDefinition(DEF_ID, 'ATC MODEL', null, SimConnectDataType.STRING64);
       handle.addToDataDefinition(DEF_ID, 'IS SIM PAUSED', 'bool', SimConnectDataType.INT32);
+      handle.addToDataDefinition(DEF_ID, 'VERTICAL SPEED', 'feet per minute', SimConnectDataType.FLOAT64);
 
       // Request continuous telemetry data at 1 Hz
       handle.requestDataOnSimObject(
@@ -131,9 +133,13 @@ export class SimConnectBridge extends EventEmitter {
           }
 
           let isPaused = false;
+          let vs = 0;
           try {
             if (data.byteLength >= 384) {
               isPaused = Boolean(data.readInt32(380));
+            }
+            if (data.byteLength >= 392) {
+              vs = data.readFloat64(384);
             }
           } catch {
             // Buffer boundary safety fallback
@@ -152,6 +158,7 @@ export class SimConnectBridge extends EventEmitter {
             simAircraftTitle: simTitle,
             simAircraftModel: simModel,
             isPaused: isPaused,
+            verticalSpeed: Number.isFinite(vs) ? Math.round(vs) : 0,
             timestamp: Date.now()
           };
 
@@ -239,6 +246,7 @@ export class SimConnectBridge extends EventEmitter {
       this.telemetry.altitude = Math.round(120 + ((p - 0.05) / 0.1) * 3000);
       this.telemetry.airspeedTrue = 140;
       this.telemetry.groundSpeed = 145;
+      this.telemetry.verticalSpeed = 1200;
       this.telemetry.parkingBrake = false;
     } else if (p < 0.85) {
       // Cruise (EN ROUTE)
@@ -246,6 +254,7 @@ export class SimConnectBridge extends EventEmitter {
       this.telemetry.altitude = 8500;
       this.telemetry.airspeedTrue = 165;
       this.telemetry.groundSpeed = 170;
+      this.telemetry.verticalSpeed = 0;
       this.telemetry.parkingBrake = false;
     } else if (p < 0.95) {
       // Approach / Final Descent
@@ -253,18 +262,21 @@ export class SimConnectBridge extends EventEmitter {
       this.telemetry.altitude = Math.round(8500 - ((p - 0.85) / 0.1) * 8350);
       this.telemetry.airspeedTrue = 90;
       this.telemetry.groundSpeed = 85;
+      this.telemetry.verticalSpeed = -500;
     } else if (p < 0.99) {
       // TOUCHDOWN roll
       this.telemetry.simOnGround = true;
       this.telemetry.altitude = 150;
       this.telemetry.airspeedTrue = Math.max(10, Math.round(70 - ((p - 0.95) / 0.04) * 60));
       this.telemetry.groundSpeed = this.telemetry.airspeedTrue;
+      this.telemetry.verticalSpeed = -140;
     } else {
       // COMPLETED: stopped and secured
       this.telemetry.simOnGround = true;
       this.telemetry.altitude = 150;
       this.telemetry.airspeedTrue = 0;
       this.telemetry.groundSpeed = 0;
+      this.telemetry.verticalSpeed = 0;
       this.telemetry.parkingBrake = true;
       this.telemetry.engineRunning = false;
       this.mockFlight.active = false;

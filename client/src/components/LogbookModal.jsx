@@ -13,6 +13,7 @@ import {
   Plane,
   Fuel
 } from 'lucide-react';
+import { formatLandingRating, getPilotRank } from '../utils/xpUtils.js';
 
 export function LogbookModal({ isOpen, onClose, pilot }) {
   if (!isOpen) return null;
@@ -58,7 +59,7 @@ export function LogbookModal({ isOpen, onClose, pilot }) {
         </div>
 
         {/* Career Overview Strip */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-slate-900/40 border-b border-slate-800 font-mono text-xs">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 p-4 bg-slate-900/40 border-b border-slate-800 font-mono text-xs">
           <div className="p-3 rounded-xl bg-slate-900 border border-slate-800">
             <span className="text-slate-400 block text-[11px]">FLIGHTS COMPLETED</span>
             <span className="text-xl font-bold text-white mt-1 block">{flightLog.length}</span>
@@ -82,6 +83,16 @@ export function LogbookModal({ isOpen, onClose, pilot }) {
             <span className="text-slate-400 block text-[11px]">TIME IN FLIGHT</span>
             <span className="text-xl font-bold text-amber-400 mt-1 block">
               {formatDuration(totalDurationSec)}
+            </span>
+          </div>
+
+          <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 col-span-2 sm:col-span-1">
+            <div className="flex items-center justify-between text-slate-400 text-[11px]">
+              <span>CAREER XP</span>
+              <Award className="w-3.5 h-3.5 text-purple-400" />
+            </div>
+            <span className="text-xl font-bold text-purple-300 mt-1 block">
+              {(pilot?.xp || 0).toLocaleString()} XP
             </span>
           </div>
         </div>
@@ -150,6 +161,19 @@ export function LogbookModal({ isOpen, onClose, pilot }) {
                           <span className="text-base font-bold text-white">{record.destination_icao}</span>
                           <span className="px-1.5 py-0.2 rounded bg-slate-800 text-[11px] text-slate-300">
                             {record.distance_nm} NM
+                          </span>
+                          {record.touchdown_fpm !== undefined && record.touchdown_fpm !== null ? (() => {
+                            const rating = formatLandingRating(record.touchdown_fpm, record.landing_rating);
+                            return (
+                              <span className={`px-1.5 py-0.2 rounded border ${rating.badgeColor} text-[10px] inline-flex items-center space-x-1 font-mono`}>
+                                <span>{rating.icon}</span>
+                                <span>{Math.round(record.touchdown_fpm)} FPM</span>
+                              </span>
+                            );
+                          })() : null}
+                          <span className="px-1.5 py-0.2 rounded bg-purple-950/70 border border-purple-800/60 text-purple-300 text-[10px] inline-flex items-center space-x-0.5 font-mono">
+                            <Award className="w-2.5 h-2.5 text-purple-400" />
+                            <span>+{record.xp_earned || record.distance_nm || 0} XP</span>
                           </span>
                         </div>
                         <p className="text-xs text-slate-400 mt-0.5 flex items-center space-x-2">

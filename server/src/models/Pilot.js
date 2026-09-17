@@ -83,6 +83,18 @@ const FlightRecordSchema = new mongoose.Schema(
     },
     external_flight_number: {
       type: Number
+    },
+    xp_earned: {
+      type: Number,
+      default: 0
+    },
+    touchdown_fpm: {
+      type: Number,
+      default: null
+    },
+    landing_rating: {
+      type: String,
+      default: ''
     }
   },
   { _id: true }
@@ -163,6 +175,20 @@ const PilotSchema = new mongoose.Schema(
     visited_countries: {
       type: [String],
       default: ['US']
+    },
+    xp: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    level: {
+      type: Number,
+      default: 1,
+      min: 1
+    },
+    rank_title: {
+      type: String,
+      default: 'Junior Aviator'
     },
     // Active flying aircraft
     active_aircraft: {

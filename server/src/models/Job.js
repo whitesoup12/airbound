@@ -68,6 +68,26 @@ const JobSchema = new mongoose.Schema(
     exploration_bonus: {
       type: Number,
       default: 0
+    },
+    seniority_multiplier: {
+      type: Number,
+      default: 1.0
+    },
+    seniority_bonus: {
+      type: Number,
+      default: 0
+    },
+    xp_reward: {
+      type: Number,
+      default: 0
+    },
+    touchdown_fpm: {
+      type: Number,
+      default: null
+    },
+    landing_rating: {
+      type: String,
+      default: ''
     }
   },
   {

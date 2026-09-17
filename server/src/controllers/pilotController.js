@@ -5,6 +5,7 @@ import flightStateMachine from '../services/stateMachine.js';
 import simConnectBridge from '../services/simconnect.js';
 import { generateJobsForAirport } from '../services/jobGenerator.js';
 import { normalizeTo4CharIcao } from '../utils/icaoUtils.js';
+import { getPilotRank, calculateRetroactiveXp } from '../services/xpService.js';
 
 export async function getPilot(req, res) {
   try {
@@ -102,10 +103,25 @@ export async function getPilot(req, res) {
         ];
         needsSave = true;
       }
+      // Auto-compute retroactive career XP if pilot has flights logged but xp is uninitialized
+      if ((!pilot.xp || pilot.xp === 0) && pilot.flight_log && pilot.flight_log.length > 0) {
+        const retroXp = calculateRetroactiveXp(pilot.flight_log);
+        if (retroXp > 0) {
+          pilot.xp = retroXp;
+          const r = getPilotRank(pilot.xp);
+          pilot.level = r.level;
+          pilot.rank_title = r.title;
+          needsSave = true;
+          console.log(`[Pilot] Calculated retroactive career XP: ${retroXp} XP -> Level ${r.level} (${r.title})`);
+        }
+      }
+
       if (needsSave) {
         await pilot.save();
       }
     }
+
+    const rankInfo = getPilotRank(pilot?.xp || 0);
 
     // Check for an active accepted job
     const activeJob = await Job.findOne({ status: 'accepted' });
@@ -120,6 +136,7 @@ export async function getPilot(req, res) {
 
     res.json({
       pilot,
+      rankInfo,
       activeJob,
       currentAirport,
       visitedAirportsDetails,

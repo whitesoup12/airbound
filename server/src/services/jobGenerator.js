@@ -90,7 +90,15 @@ export function classifyJobTier(distanceNm, category = 'single_prop') {
 /**
  * Calculates job payout based on distance and complexity factors, scaled by aircraft category
  */
-export function calculatePayout(distanceNm, cargoLbs, paxCount, destRunwayFt, category = 'single_prop', explorationBonus = 0) {
+export function calculatePayout(
+  distanceNm,
+  cargoLbs,
+  paxCount,
+  destRunwayFt,
+  category = 'single_prop',
+  explorationBonus = 0,
+  seniorityMultiplier = 1.0
+) {
   let baseRate = BASE_RATE_PER_NM;
   let cargoRate = CARGO_RATE_PER_LB;
   let paxRate = PASSENGER_RATE;
@@ -115,7 +123,8 @@ export function calculatePayout(distanceNm, cargoLbs, paxCount, destRunwayFt, ca
   const runwayBonus = destRunwayFt < 4500 ? SHORT_RUNWAY_BONUS : 0;
   const complexityMultiplier = cargoBonus + paxBonus + runwayBonus;
 
-  return Math.round(basePayout + complexityMultiplier + (explorationBonus || 0));
+  const rawTotal = basePayout + complexityMultiplier + (explorationBonus || 0);
+  return Math.round(rawTotal * (seniorityMultiplier || 1.0));
 }
 
 /**
@@ -130,10 +139,11 @@ export async function generateJobsForAirport(originIcao, options = {}) {
     minRunwayFt,
     count = 5,
     aircraft = null,
-    visitedAirports = null
+    visitedAirports = null,
+    seniorityMultiplier = null
   } = options;
 
-  // Retrieve pilot profile for aircraft and visited airports if not provided
+  // Retrieve pilot profile for aircraft, visited airports, and seniority if not provided
   try {
     const Pilot = (await import('../models/Pilot.js')).default;
     const pilot = await Pilot.findOne();
@@ -143,8 +153,17 @@ export async function generateJobsForAirport(originIcao, options = {}) {
     if (!visitedAirports && pilot?.visited_airports) {
       visitedAirports = pilot.visited_airports;
     }
+    if (seniorityMultiplier === null || seniorityMultiplier === undefined) {
+      const { getPilotRank } = await import('./xpService.js');
+      const rank = getPilotRank(pilot?.xp || 0);
+      seniorityMultiplier = rank.seniorityMultiplier;
+    }
   } catch (e) {
     // ignore
+  }
+
+  if (seniorityMultiplier === null || seniorityMultiplier === undefined) {
+    seniorityMultiplier = 1.0;
   }
 
   const visitedSet = new Set((visitedAirports || []).map((i) => (i ? i.toUpperCase() : '')).filter(Boolean));
@@ -401,14 +420,28 @@ export async function generateJobsForAirport(originIcao, options = {}) {
     const isFeatured = featuredIcaos.has(dest.icao.toUpperCase());
     const bonus = isFeatured ? EXPLORATION_BONUS : 0;
 
-    const payout = calculatePayout(
+    const basePayout = calculatePayout(
       distanceNm,
       cargoLbs,
       paxCount,
       dest.longest_runway_ft,
       aircraftCategory,
-      bonus
+      bonus,
+      1.0
     );
+
+    const totalPayout = calculatePayout(
+      distanceNm,
+      cargoLbs,
+      paxCount,
+      dest.longest_runway_ft,
+      aircraftCategory,
+      bonus,
+      seniorityMultiplier
+    );
+
+    const seniorityBonus = Math.max(0, totalPayout - basePayout);
+    const xpReward = Math.max(50, Math.round(distanceNm) + (isUnvisited ? 100 : 0) + 100);
 
     const job = await Job.create({
       origin_icao: originAirport.icao,
@@ -416,7 +449,10 @@ export async function generateJobsForAirport(originIcao, options = {}) {
       distance_nm: distanceNm,
       cargo_lbs: cargoLbs,
       pax_count: paxCount,
-      payout,
+      payout: totalPayout,
+      seniority_multiplier: seniorityMultiplier,
+      seniority_bonus: seniorityBonus,
+      xp_reward: xpReward,
       tier: pair.tier || classifyJobTier(distanceNm, aircraftCategory),
       status: 'available',
       is_unvisited: isUnvisited,

@@ -17,7 +17,8 @@ import {
   fetchAirports,
   updateBaseAirport
 } from './api/client.js';
-import { Trophy, X } from 'lucide-react';
+import { Trophy, X, Award, Sparkles } from 'lucide-react';
+import { formatLandingRating } from './utils/xpUtils.js';
 
 function getInitialTab() {
   const hash = window.location.hash.replace('#', '');
@@ -225,48 +226,94 @@ export function App() {
         onOpenChangeBase={() => setIsChangeBaseOpen(true)}
       />
 
-      {/* Completion Banner Alert with Financial Ledger */}
-      {completionBanner && (
-        <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white p-4 shadow-xl border-b border-emerald-400/40 animate-slideDown">
-          <div className="max-w-[1600px] 2xl:max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 w-full flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-                <Trophy className="w-6 h-6 text-yellow-300" />
-              </div>
-              <div>
-                <h4 className="font-bold text-sm sm:text-base font-mono flex items-center space-x-2">
-                  <span>FLIGHT COMPLETED!</span>
-                  <span className="bg-white/20 px-2 py-0.5 rounded text-white text-xs">
-                    NET PROFIT: +${completionBanner.payout?.toLocaleString()}
+      {/* Completion Banner Alert with Financial Ledger & XP Breakdown */}
+      {completionBanner && (() => {
+        const landingRatingInfo = formatLandingRating(
+          completionBanner.touchdownFpm,
+          completionBanner.landingRating
+        );
+        const flightXp = completionBanner.flightXp;
+        const rankInfo = completionBanner.rankInfo;
+
+        return (
+          <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white p-4 shadow-xl border-b border-emerald-400/40 animate-slideDown space-y-2.5">
+            {/* Level-Up Promotion Banner */}
+            {completionBanner.leveledUp && rankInfo && (
+              <div className="bg-amber-400 text-slate-950 px-4 py-2 rounded-xl font-mono text-xs font-bold flex items-center justify-between shadow-lg shadow-amber-950/40 animate-pulse">
+                <div className="flex items-center space-x-2">
+                  <Sparkles className="w-4 h-4 text-slate-950 animate-spin" />
+                  <span>
+                    🎉 CAREER PROMOTION! You reached Level {rankInfo.level}: {rankInfo.title.toUpperCase()}! Seniority bonus increased to +{rankInfo.bonusPercent}%.
                   </span>
-                </h4>
-                <div className="text-xs text-emerald-100 font-mono mt-0.5 flex flex-wrap items-center gap-3">
-                  <span>Landed at {completionBanner.newIcao}</span>
-                  {completionBanner.settlement && (
-                    <>
-                      <span>• Gross: ${completionBanner.settlement.grossPayout?.toLocaleString()}</span>
-                      <span>• Fuel: -${completionBanner.settlement.fuelCost?.toFixed(2)} ({completionBanner.settlement.fuelGallons} gal)</span>
-                      <span>• Landing Fee: -${completionBanner.settlement.landingFee}</span>
-                    </>
-                  )}
-                  {completionBanner.insufficientRentalFunds && (
-                    <span className="bg-rose-900/90 text-rose-200 px-2 py-0.5 rounded text-[11px] font-bold">
-                      ⚠️ Balance insufficient for active rental renewal (${completionBanner.rentalPrice?.toLocaleString()} required)
+                </div>
+                <span className="hidden sm:inline bg-slate-950 text-amber-300 px-2 py-0.5 rounded text-[10px]">
+                  NEW RANK UNLOCKED
+                </span>
+              </div>
+            )}
+
+            <div className="max-w-[1600px] 2xl:max-w-[1760px] mx-auto w-full flex items-start sm:items-center justify-between gap-3">
+              <div className="flex items-start sm:items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0 mt-0.5 sm:mt-0">
+                  <Trophy className="w-6 h-6 text-yellow-300" />
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h4 className="font-bold text-sm sm:text-base font-mono">
+                      FLIGHT COMPLETED!
+                    </h4>
+                    <span className="bg-white/20 px-2 py-0.5 rounded text-white text-xs font-mono font-bold">
+                      NET PROFIT: +${completionBanner.payout?.toLocaleString()}
                     </span>
-                  )}
+
+                    {/* XP Reward Badge */}
+                    {flightXp?.totalXp ? (
+                      <span className="bg-purple-950/90 border border-purple-400/50 text-purple-200 px-2.5 py-0.5 rounded text-xs font-mono font-bold flex items-center space-x-1 shadow-sm">
+                        <Award className="w-3.5 h-3.5 text-purple-300" />
+                        <span>+{flightXp.totalXp.toLocaleString()} XP</span>
+                      </span>
+                    ) : null}
+
+                    {/* Touchdown Rating Badge */}
+                    {completionBanner.touchdownFpm !== null && completionBanner.touchdownFpm !== undefined ? (
+                      <span className="bg-slate-950/80 border border-slate-700/80 px-2 py-0.5 rounded text-xs font-mono flex items-center space-x-1.5 shadow-sm text-slate-200">
+                        <span>{landingRatingInfo.icon}</span>
+                        <span>Touchdown: <strong>{Math.round(completionBanner.touchdownFpm)} FPM</strong></span>
+                        <span className={`font-bold ${landingRatingInfo.color}`}>
+                          • {landingRatingInfo.label} Landing {flightXp?.landingXp ? `(+${flightXp.landingXp} XP)` : ''}
+                        </span>
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div className="text-xs text-emerald-100 font-mono mt-1 flex flex-wrap items-center gap-3">
+                    <span>Landed at <strong>{completionBanner.newIcao}</strong></span>
+                    {completionBanner.settlement && (
+                      <>
+                        <span>• Gross: ${completionBanner.settlement.grossPayout?.toLocaleString()}</span>
+                        <span>• Fuel: -${completionBanner.settlement.fuelCost?.toFixed(2)} ({completionBanner.settlement.fuelGallons} gal)</span>
+                        <span>• Landing Fee: -${completionBanner.settlement.landingFee}</span>
+                      </>
+                    )}
+                    {completionBanner.insufficientRentalFunds && (
+                      <span className="bg-rose-900/90 text-rose-200 px-2 py-0.5 rounded text-[11px] font-bold">
+                        ⚠️ Balance insufficient for active rental renewal (${completionBanner.rentalPrice?.toLocaleString()} required)
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <button
-              onClick={() => setCompletionBanner(null)}
-              className="p-1 rounded-lg bg-white/10 hover:bg-white/20 transition"
-            >
-              <X className="w-5 h-5" />
-            </button>
+              <button
+                onClick={() => setCompletionBanner(null)}
+                className="p-1 rounded-lg bg-white/10 hover:bg-white/20 transition flex-shrink-0"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Main Multi-Tab View Workspace */}
       <main className="flex-1 max-w-[1600px] 2xl:max-w-[1760px] mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full">
