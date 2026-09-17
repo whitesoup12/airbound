@@ -74,7 +74,7 @@ export function formatLandingRating(fpm, rating) {
       color: 'text-emerald-400',
       badgeColor: 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300',
       icon: '🧈',
-      bonusXp: 0
+      bonusXp: 100
     };
   } else if (resolvedRating === 'Good') {
     return {
@@ -83,7 +83,7 @@ export function formatLandingRating(fpm, rating) {
       color: 'text-cyan-400',
       badgeColor: 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300',
       icon: '✈️',
-      bonusXp: 0
+      bonusXp: 50
     };
   } else if (resolvedRating === 'Firm') {
     return {
@@ -101,7 +101,7 @@ export function formatLandingRating(fpm, rating) {
       color: 'text-orange-400',
       badgeColor: 'bg-orange-500/20 border-orange-500/50 text-orange-300',
       icon: '⚠️',
-      bonusXp: 0
+      bonusXp: -50
     };
   } else if (resolvedRating === 'Severe') {
     return {
@@ -110,7 +110,7 @@ export function formatLandingRating(fpm, rating) {
       color: 'text-rose-400',
       badgeColor: 'bg-rose-500/20 border-rose-500/50 text-rose-300',
       icon: '💥',
-      bonusXp: 0
+      bonusXp: -100
     };
   }
 

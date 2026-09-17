@@ -71,10 +71,10 @@ export function getPilotRank(xp = 0) {
 export function rateLandingTouchdown(touchdownFpm) {
   if (touchdownFpm == null || isNaN(touchdownFpm)) {
     return {
-      rating: 'Good',
-      label: 'Standard Landing',
+      rating: 'Unrecorded',
+      label: 'Unrecorded Landing',
       xpBonus: 0,
-      color: 'cyan',
+      color: 'slate',
       absFpm: null
     };
   }
@@ -85,7 +85,7 @@ export function rateLandingTouchdown(touchdownFpm) {
     return {
       rating: 'Butter',
       label: 'Butter / Greaser',
-      xpBonus: 0,
+      xpBonus: 100,
       color: 'emerald',
       absFpm
     };
@@ -93,7 +93,7 @@ export function rateLandingTouchdown(touchdownFpm) {
     return {
       rating: 'Good',
       label: 'Clean Landing',
-      xpBonus: 0,
+      xpBonus: 50,
       color: 'cyan',
       absFpm
     };
@@ -109,7 +109,7 @@ export function rateLandingTouchdown(touchdownFpm) {
     return {
       rating: 'Hard',
       label: 'Hard Landing',
-      xpBonus: 0,
+      xpBonus: -50,
       color: 'orange',
       absFpm
     };
@@ -117,7 +117,7 @@ export function rateLandingTouchdown(touchdownFpm) {
     return {
       rating: 'Severe',
       label: 'Severe Hard Landing',
-      xpBonus: 0,
+      xpBonus: -100,
       color: 'red',
       absFpm
     };
@@ -149,7 +149,7 @@ export function calculateFlightXp(params = {}) {
 
   const totalXp = Math.max(
     10,
-    distanceXp + explorationXp + runwayChallengeXp + arrivalXp
+    distanceXp + landing.xpBonus + explorationXp + runwayChallengeXp + arrivalXp
   );
 
   return {
@@ -157,7 +157,7 @@ export function calculateFlightXp(params = {}) {
     distanceXp,
     landingRating: landing.rating,
     landingLabel: landing.label,
-    landingXp: 0,
+    landingXp: landing.xpBonus,
     explorationXp,
     runwayChallengeXp,
     arrivalXp
@@ -186,10 +186,17 @@ export function calculateRetroactiveXp(flightLog = []) {
     const isUnvisited = dest && !seenAirports.has(dest);
     if (dest) seenAirports.add(dest);
 
+    // Only award landing XP if touchdown data was actually captured; otherwise 0 XP
+    let landingXp = 0;
+    if (entry.touchdown_fpm != null && !isNaN(entry.touchdown_fpm)) {
+      const landing = rateLandingTouchdown(entry.touchdown_fpm);
+      landingXp = landing.xpBonus;
+    }
+
     const exploration = isUnvisited ? 100 : 0;
     const arrival = 50;
 
-    totalXp += dist + exploration + arrival;
+    totalXp += dist + landingXp + exploration + arrival;
   }
 
   return Math.max(0, Math.round(totalXp));
