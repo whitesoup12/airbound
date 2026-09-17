@@ -75,6 +75,7 @@ export function CareerProgressView({
       if (f.touchdown_fpm !== null && f.touchdown_fpm !== undefined) {
         const fpm = Number(f.touchdown_fpm);
         const absFpm = Math.abs(Math.round(fpm));
+        if (absFpm === 0) continue;
         totalFpmSum += absFpm;
         recordedLandingsCount++;
 

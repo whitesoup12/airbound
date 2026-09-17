@@ -81,6 +81,16 @@ export function rateLandingTouchdown(touchdownFpm) {
 
   const absFpm = Math.abs(Math.round(touchdownFpm));
 
+  if (absFpm === 0) {
+    return {
+      rating: 'Unrecorded',
+      label: 'Unrecorded Landing',
+      xpBonus: 0,
+      color: 'slate',
+      absFpm: null
+    };
+  }
+
   if (absFpm <= 160) {
     return {
       rating: 'Butter',

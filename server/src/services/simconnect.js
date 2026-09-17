@@ -17,6 +17,7 @@ export class SimConnectBridge extends EventEmitter {
       latitude: 33.942536,
       longitude: -118.408074,
       altitude: 125, // feet
+      altAboveGround: 0, // feet AGL
       heading: 250, // degrees
       simOnGround: true,
       airspeedTrue: 0, // knots
@@ -29,6 +30,8 @@ export class SimConnectBridge extends EventEmitter {
       verticalSpeed: 0,
       timestamp: Date.now()
     };
+    this.lastBroadcastTime = 0;
+    this.lastBroadcastPhase = null;
 
     // Mock Flight Simulation State
     this.mockFlight = {
@@ -84,71 +87,90 @@ export class SimConnectBridge extends EventEmitter {
       // Define SimVars definition
       const DEF_ID = 1;
       const REQ_ID = 1;
+      const EVENT_ID_PAUSE = 1;
 
-      handle.addToDataDefinition(DEF_ID, 'PLANE LATITUDE', 'degrees', SimConnectDataType.FLOAT64);
-      handle.addToDataDefinition(DEF_ID, 'PLANE LONGITUDE', 'degrees', SimConnectDataType.FLOAT64);
-      handle.addToDataDefinition(DEF_ID, 'PLANE ALTITUDE', 'feet', SimConnectDataType.FLOAT64);
-      handle.addToDataDefinition(DEF_ID, 'PLANE HEADING DEGREES TRUE', 'degrees', SimConnectDataType.FLOAT64);
-      handle.addToDataDefinition(DEF_ID, 'SIM ON GROUND', 'bool', SimConnectDataType.INT32);
-      handle.addToDataDefinition(DEF_ID, 'AIRSPEED TRUE', 'knots', SimConnectDataType.FLOAT64);
-      handle.addToDataDefinition(DEF_ID, 'GROUND VELOCITY', 'knots', SimConnectDataType.FLOAT64);
-      handle.addToDataDefinition(DEF_ID, 'BRAKE PARKING POSITION', 'bool', SimConnectDataType.INT32);
-      handle.addToDataDefinition(DEF_ID, 'ENG COMBUSTION:1', 'bool', SimConnectDataType.INT32);
-      handle.addToDataDefinition(DEF_ID, 'TITLE', null, SimConnectDataType.STRING256);
-      handle.addToDataDefinition(DEF_ID, 'ATC MODEL', null, SimConnectDataType.STRING64);
-      handle.addToDataDefinition(DEF_ID, 'IS SIM PAUSED', 'bool', SimConnectDataType.INT32);
-      handle.addToDataDefinition(DEF_ID, 'VERTICAL SPEED', 'feet per minute', SimConnectDataType.FLOAT64);
+      handle.addToDataDefinition(DEF_ID, 'PLANE LATITUDE', 'degrees', SimConnectDataType.FLOAT64); // 0
+      handle.addToDataDefinition(DEF_ID, 'PLANE LONGITUDE', 'degrees', SimConnectDataType.FLOAT64); // 8
+      handle.addToDataDefinition(DEF_ID, 'PLANE ALTITUDE', 'feet', SimConnectDataType.FLOAT64); // 16
+      handle.addToDataDefinition(DEF_ID, 'PLANE HEADING DEGREES TRUE', 'degrees', SimConnectDataType.FLOAT64); // 24
+      handle.addToDataDefinition(DEF_ID, 'SIM ON GROUND', 'bool', SimConnectDataType.INT32); // 32
+      handle.addToDataDefinition(DEF_ID, 'AIRSPEED TRUE', 'knots', SimConnectDataType.FLOAT64); // 36
+      handle.addToDataDefinition(DEF_ID, 'GROUND VELOCITY', 'knots', SimConnectDataType.FLOAT64); // 44
+      handle.addToDataDefinition(DEF_ID, 'BRAKE PARKING POSITION', 'bool', SimConnectDataType.INT32); // 52
+      handle.addToDataDefinition(DEF_ID, 'ENG COMBUSTION:1', 'bool', SimConnectDataType.INT32); // 56
+      handle.addToDataDefinition(DEF_ID, 'TITLE', null, SimConnectDataType.STRING256); // 60
+      handle.addToDataDefinition(DEF_ID, 'ATC MODEL', null, SimConnectDataType.STRING64); // 316
+      handle.addToDataDefinition(DEF_ID, 'VERTICAL SPEED', 'feet per minute', SimConnectDataType.FLOAT64); // 380
+      handle.addToDataDefinition(DEF_ID, 'PLANE ALT ABOVE GROUND', 'feet', SimConnectDataType.FLOAT64); // 388
 
-      // Request continuous telemetry data at 1 Hz
+      // Subscribe to Pause system event
+      try {
+        handle.subscribeToSystemEvent(EVENT_ID_PAUSE, 'Pause');
+      } catch (subErr) {
+        console.warn('[SimConnect] Warning subscribing to Pause event:', subErr.message);
+      }
+
+      handle.on('event', (recvEvent) => {
+        const eventId = recvEvent.clientEventId ?? recvEvent.eventID;
+        if (eventId === EVENT_ID_PAUSE) {
+          const isPaused = recvEvent.data === 1;
+          this.telemetry.isPaused = isPaused;
+          this._broadcastTelemetry(true);
+        }
+      });
+
+      // Request continuous telemetry data per simulator frame (~10-20 Hz for high-fidelity flare & touchdown capture)
       handle.requestDataOnSimObject(
         REQ_ID,
         DEF_ID,
         0,
-        SimConnectPeriod.SECOND,
+        SimConnectPeriod.SIM_FRAME,
         DataRequestFlag.DATA_REQUEST_FLAG_DEFAULT
       );
 
       handle.on('simObjectData', (recvSimObjectData) => {
         if (recvSimObjectData.requestID === REQ_ID) {
           const data = recvSimObjectData.data;
-          const lat = data.readFloat64(0);
-          const lon = data.readFloat64(8);
-          const alt = data.readFloat64(16);
-          const hdg = data.readFloat64(24);
-          const onGround = Boolean(data.readInt32(32));
-          const tas = data.readFloat64(36);
-          const gs = data.readFloat64(44);
-          const brake = Boolean(data.readInt32(52));
-          const eng = Boolean(data.readInt32(56));
+          data.setOffset(0);
+          const lat = data.readFloat64();
+          const lon = data.readFloat64();
+          const alt = data.readFloat64();
+          const hdg = data.readFloat64();
+          const onGround = Boolean(data.readInt32());
+          const tas = data.readFloat64();
+          const gs = data.readFloat64();
+          const brake = Boolean(data.readInt32());
+          const eng = Boolean(data.readInt32());
 
           let simTitle = this.telemetry.simAircraftTitle || '';
           let simModel = this.telemetry.simAircraftModel || '';
           try {
-            const rawTitle = data.readString256(60);
+            data.setOffset(60);
+            const rawTitle = data.readString256();
             if (rawTitle) simTitle = rawTitle.replace(/\0.*$/, '').trim();
-            const rawModel = data.readString64(316);
+            data.setOffset(316);
+            const rawModel = data.readString64();
             if (rawModel) simModel = rawModel.replace(/\0.*$/, '').trim();
           } catch {
-            // RawBuffer safety fallback
+            // RawBuffer string safety fallback
           }
 
-          let isPaused = false;
           let vs = 0;
+          let agl = 0;
           try {
-            if (data.byteLength >= 384) {
-              isPaused = Boolean(data.readInt32(380));
-            }
-            if (data.byteLength >= 392) {
-              vs = data.readFloat64(384);
-            }
+            data.setOffset(380);
+            vs = data.readFloat64();
+            data.setOffset(388);
+            agl = data.readFloat64();
           } catch {
-            // Buffer boundary safety fallback
+            // RawBuffer boundary safety fallback
           }
 
           this.telemetry = {
             latitude: Number.isFinite(lat) ? lat : this.telemetry.latitude,
             longitude: Number.isFinite(lon) ? lon : this.telemetry.longitude,
             altitude: Number.isFinite(alt) ? Math.round(alt) : this.telemetry.altitude,
+            altAboveGround: Number.isFinite(agl) ? Math.round(agl) : 0,
             heading: Number.isFinite(hdg) ? Math.round(hdg) : this.telemetry.heading,
             simOnGround: onGround,
             airspeedTrue: Number.isFinite(tas) ? Math.max(0, Math.round(tas)) : 0,
@@ -157,7 +179,7 @@ export class SimConnectBridge extends EventEmitter {
             engineRunning: eng,
             simAircraftTitle: simTitle,
             simAircraftModel: simModel,
-            isPaused: isPaused,
+            isPaused: this.telemetry.isPaused,
             verticalSpeed: Number.isFinite(vs) ? Math.round(vs) : 0,
             timestamp: Date.now()
           };
@@ -285,22 +307,32 @@ export class SimConnectBridge extends EventEmitter {
     this.telemetry.timestamp = Date.now();
   }
 
-  async _broadcastTelemetry() {
-    // Pass telemetry to state machine
+  async _broadcastTelemetry(force = false) {
+    const now = Date.now();
+    // Pass telemetry to state machine on every tick for high-resolution airborne & touchdown detection
     const stateResult = await flightStateMachine.processTelemetry(this.telemetry, { isMockMode: this.isMockMode });
 
-    // Emit event with telemetry, updated flight phase, and aircraft validation
-    this.emit('telemetry', {
-      telemetry: this.telemetry,
-      phase: stateResult.phase,
-      originDist: stateResult.originDist,
-      destDist: stateResult.destDist,
-      aircraftValidation: stateResult.aircraftValidation,
-      flightSeconds: stateResult.flightSeconds || 0,
-      airborneSeconds: stateResult.airborneSeconds || 0,
-      isPaused: Boolean(stateResult.isPaused),
-      isMock: this.isMockMode
-    });
+    // Throttle UI / Socket.IO broadcast to at most once per 500ms (2 Hz) unless phase changes or forced
+    const phaseChanged = this.lastBroadcastPhase !== stateResult.phase;
+    const timeElapsed = (now - this.lastBroadcastTime) >= 500;
+
+    if (force || phaseChanged || timeElapsed) {
+      this.lastBroadcastTime = now;
+      this.lastBroadcastPhase = stateResult.phase;
+
+      // Emit event with telemetry, updated flight phase, and aircraft validation
+      this.emit('telemetry', {
+        telemetry: this.telemetry,
+        phase: stateResult.phase,
+        originDist: stateResult.originDist,
+        destDist: stateResult.destDist,
+        aircraftValidation: stateResult.aircraftValidation,
+        flightSeconds: stateResult.flightSeconds || 0,
+        airborneSeconds: stateResult.airborneSeconds || 0,
+        isPaused: Boolean(stateResult.isPaused),
+        isMock: this.isMockMode
+      });
+    }
   }
 
   /**
@@ -312,7 +344,7 @@ export class SimConnectBridge extends EventEmitter {
       ...partial,
       timestamp: Date.now()
     };
-    await this._broadcastTelemetry();
+    await this._broadcastTelemetry(true);
   }
 
   /**

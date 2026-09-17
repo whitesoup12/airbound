@@ -162,7 +162,7 @@ export function LogbookModal({ isOpen, onClose, pilot }) {
                           <span className="px-1.5 py-0.2 rounded bg-slate-800 text-[11px] text-slate-300">
                             {record.distance_nm} NM
                           </span>
-                          {record.touchdown_fpm !== undefined && record.touchdown_fpm !== null ? (() => {
+                          {record.touchdown_fpm !== undefined && record.touchdown_fpm !== null && Math.abs(record.touchdown_fpm) > 0 ? (() => {
                             const rating = formatLandingRating(record.touchdown_fpm, record.landing_rating);
                             return (
                               <span className={`px-1.5 py-0.2 rounded border ${rating.badgeColor} text-[10px] inline-flex items-center space-x-1 font-mono`}>

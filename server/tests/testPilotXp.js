@@ -65,6 +65,12 @@ if (unrecorded.xpBonus !== 0) {
 }
 console.log(`✓ Unrecorded / null touchdown data correctly defaults to 0 XP.`);
 
+const zeroFpm = rateLandingTouchdown(0);
+if (zeroFpm.rating !== 'Unrecorded' || zeroFpm.xpBonus !== 0) {
+  throw new Error(`0 FPM landing should be unrecorded with 0 XP: ${JSON.stringify(zeroFpm)}`);
+}
+console.log(`✓ 0 FPM uncaptured touchdown data correctly defaults to Unrecorded with 0 XP.`);
+
 // 3. Test Flight XP Calculation
 console.log('3. Testing Flight XP Calculation Breakdown...');
 const flightXp = calculateFlightXp({

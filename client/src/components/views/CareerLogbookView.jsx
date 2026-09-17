@@ -680,7 +680,7 @@ export function CareerLogbookView({
 
                           {/* Touchdown Vertical Speed & Rating */}
                           <td className="p-3 text-right whitespace-nowrap">
-                            {record.touchdown_fpm !== undefined && record.touchdown_fpm !== null ? (() => {
+                            {record.touchdown_fpm !== undefined && record.touchdown_fpm !== null && Math.abs(record.touchdown_fpm) > 0 ? (() => {
                               const rating = formatLandingRating(record.touchdown_fpm, record.landing_rating);
                               return (
                                 <span
@@ -771,7 +771,7 @@ export function CareerLogbookView({
                                 {/* Flight Performance & Career XP Strip */}
                                 <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800/80 text-xs font-mono">
                                   <div className="flex flex-wrap items-center gap-3">
-                                    {record.touchdown_fpm !== null && record.touchdown_fpm !== undefined ? (() => {
+                                    {record.touchdown_fpm !== null && record.touchdown_fpm !== undefined && Math.abs(record.touchdown_fpm) > 0 ? (() => {
                                       const rating = formatLandingRating(record.touchdown_fpm, record.landing_rating);
                                       return (
                                         <span className="flex items-center space-x-1.5 text-slate-300">

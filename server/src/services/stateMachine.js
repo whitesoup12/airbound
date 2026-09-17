@@ -37,6 +37,8 @@ export class FlightStateMachine {
     this.isPaused = false;
     this.touchdownFpm = null;
     this.landingRating = '';
+    this.airborneSamples = []; // High-resolution flare descent rate buffer
+    this.isMockMode = false;
   }
 
   setCallbacks({ onPhaseChange, onFlightCompleted }) {
@@ -65,6 +67,7 @@ export class FlightStateMachine {
       this.isPaused = false;
       this.touchdownFpm = null;
       this.landingRating = '';
+      this.airborneSamples = [];
       console.log(`[StateMachine] Active Job loaded: ${job.origin_icao} -> ${job.destination_icao}, phase set to IDLE`);
     } else {
       this.activeJob = null;
@@ -78,6 +81,7 @@ export class FlightStateMachine {
       this.isPaused = false;
       this.touchdownFpm = null;
       this.landingRating = '';
+      this.airborneSamples = [];
     }
 
     if (this.onPhaseChangeCallback) {
@@ -97,6 +101,7 @@ export class FlightStateMachine {
     this.isPaused = false;
     this.touchdownFpm = null;
     this.landingRating = '';
+    this.airborneSamples = [];
     if (this.onPhaseChangeCallback) {
       this.onPhaseChangeCallback(this.phase, null);
     }
@@ -114,6 +119,13 @@ export class FlightStateMachine {
       this.departedAt = new Date();
     } else if (newPhase === FLIGHT_PHASES.TOUCHDOWN && !this.touchdownAt) {
       this.touchdownAt = new Date();
+      if (this.touchdownFpm == null) {
+        this.touchdownFpm = telemetry.verticalSpeed != null && !isNaN(telemetry.verticalSpeed)
+          ? Math.round(telemetry.verticalSpeed)
+          : null;
+        const landingRate = rateLandingTouchdown(this.touchdownFpm);
+        this.landingRating = landingRate.rating;
+      }
     } else if (newPhase === FLIGHT_PHASES.COMPLETED) {
       await this._handleFlightCompleted(telemetry);
     }
@@ -144,6 +156,7 @@ export class FlightStateMachine {
     const pilot = await Pilot.findOne();
     const activeAircraft = pilot?.active_aircraft || null;
     const isMockMode = Boolean(options.isMockMode);
+    this.isMockMode = isMockMode;
     const aircraftValidation = validateAircraftMatch(activeAircraft, telemetry, isMockMode);
 
     if (!this.activeJob) {
@@ -163,6 +176,19 @@ export class FlightStateMachine {
     const now = telemetry.timestamp || Date.now();
     const isPaused = Boolean(telemetry.isPaused);
     this.isPaused = isPaused;
+
+    // Record airborne samples for pre-touchdown flare rate detection
+    if (!simOnGround && telemetry.verticalSpeed != null && !isNaN(telemetry.verticalSpeed)) {
+      this.airborneSamples.push({
+        time: now,
+        vs: Math.round(telemetry.verticalSpeed),
+        alt: Math.round(telemetry.altitude || 0),
+        agl: Number.isFinite(telemetry.altAboveGround) ? Math.round(telemetry.altAboveGround) : null
+      });
+      if (this.airborneSamples.length > 50) {
+        this.airborneSamples.shift();
+      }
+    }
 
     // Accumulate unpaused active flight time and airborne time
     const isFlightActive =
@@ -229,27 +255,21 @@ export class FlightStateMachine {
       case FLIGHT_PHASES.DEPARTED:
         // EN ROUTE: Airborne tracking mode once safely climbing / moving away
         if (!simOnGround) {
-          // If past 2 NM from origin or climbing above 500 ft AGL, transition to EN ROUTE
+          // If past 2 NM from origin or climbing above 1000 ft, transition to EN ROUTE
           if (originDist > 2.0 || telemetry.altitude > 1000) {
             this.phase = FLIGHT_PHASES.EN_ROUTE;
             console.log('[StateMachine] EN ROUTE: Airborne tracking mode active');
           }
+        } else if (!this.previousSimOnGround && simOnGround && destDist <= 3.0) {
+          // Short hop / circuit touchdown directly from DEPARTED
+          this._handleTouchdown(telemetry, destDist, now);
         }
         break;
 
       case FLIGHT_PHASES.EN_ROUTE:
         // TOUCHDOWN: SIM ON GROUND changes from false to true within 3 NM of destination ICAO
         if (!this.previousSimOnGround && simOnGround && destDist <= 3.0) {
-          this.phase = FLIGHT_PHASES.TOUCHDOWN;
-          this.touchdownAt = new Date();
-          this.touchdownFpm = telemetry.verticalSpeed != null && !isNaN(telemetry.verticalSpeed)
-            ? Math.round(telemetry.verticalSpeed)
-            : null;
-          const landingRate = rateLandingTouchdown(this.touchdownFpm);
-          this.landingRating = landingRate.rating;
-          console.log(
-            `[StateMachine] TOUCHDOWN: Touched down at ${this.touchdownFpm !== null ? this.touchdownFpm + ' FPM' : 'normal'} (${landingRate.label}) within ${destDist.toFixed(1)} NM of destination`
-          );
+          this._handleTouchdown(telemetry, destDist, now);
         }
         break;
 
@@ -296,6 +316,61 @@ export class FlightStateMachine {
       pausedSeconds: Math.round(this.pausedSeconds),
       isPaused: this.isPaused
     };
+  }
+
+  /**
+   * Evaluates the landing flare descent rate immediately before wheel contact.
+   * Prevents touchdown FPM from collapsing to 0 due to post-touchdown wheel compression.
+   */
+  _determineTouchdownFpm(telemetry, now) {
+    const instantVs = telemetry.verticalSpeed != null && !isNaN(telemetry.verticalSpeed)
+      ? Math.round(telemetry.verticalSpeed)
+      : null;
+
+    if (this.isMockMode) {
+      return instantVs !== null ? instantVs : -140;
+    }
+
+    // Filter airborne samples from the final 1.5 seconds leading to touchdown
+    const recent = this.airborneSamples.filter((s) => now - s.time <= 1500);
+
+    if (recent.length > 0) {
+      // Find descending samples (negative VS) right before touchdown
+      const descending = recent.filter((s) => s.vs < 0);
+      if (descending.length > 0) {
+        // Take the last up to 5 descending samples in the flare
+        const flare = descending.slice(-5);
+        const sum = flare.reduce((acc, s) => acc + s.vs, 0);
+        const flareAvg = Math.round(sum / flare.length);
+
+        // If instantaneous VS is already a solid descent (<= -50), take the more negative
+        // or if instantaneous already decayed toward 0 upon wheel contact (instantVs > -50),
+        // use the true pre-touchdown flare descent rate
+        if (instantVs !== null && instantVs <= -50) {
+          return Math.min(instantVs, flareAvg);
+        }
+        return flareAvg;
+      }
+
+      // If no negative samples found (e.g. float/balloon), use last recorded airborne sample
+      const lastAirborne = recent[recent.length - 1];
+      if (lastAirborne && lastAirborne.vs !== 0) {
+        return lastAirborne.vs;
+      }
+    }
+
+    return instantVs;
+  }
+
+  _handleTouchdown(telemetry, destDist, now) {
+    this.phase = FLIGHT_PHASES.TOUCHDOWN;
+    this.touchdownAt = new Date();
+    this.touchdownFpm = this._determineTouchdownFpm(telemetry, now);
+    const landingRate = rateLandingTouchdown(this.touchdownFpm);
+    this.landingRating = landingRate.rating;
+    console.log(
+      `[StateMachine] TOUCHDOWN: Touched down at ${this.touchdownFpm !== null ? this.touchdownFpm + ' FPM' : 'normal'} (${landingRate.label}) within ${destDist.toFixed(1)} NM of destination`
+    );
   }
 
   /**

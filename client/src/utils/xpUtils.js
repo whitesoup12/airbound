@@ -59,12 +59,24 @@ export function getPilotRank(xp = 0) {
 export function formatLandingRating(fpm, rating) {
   let resolvedRating = rating;
   if (!resolvedRating && fpm != null && !isNaN(fpm)) {
-    const abs = Math.abs(fpm);
-    if (abs <= 160) resolvedRating = 'Butter';
+    const abs = Math.abs(Math.round(fpm));
+    if (abs === 0) resolvedRating = 'Unrecorded';
+    else if (abs <= 160) resolvedRating = 'Butter';
     else if (abs <= 320) resolvedRating = 'Good';
     else if (abs <= 500) resolvedRating = 'Firm';
     else if (abs <= 750) resolvedRating = 'Hard';
     else resolvedRating = 'Severe';
+  }
+
+  if (resolvedRating === 'Unrecorded') {
+    return {
+      label: 'Unrecorded',
+      fullLabel: 'Unrecorded Landing',
+      color: 'text-slate-400',
+      badgeColor: 'bg-slate-800/60 border-slate-700 text-slate-400',
+      icon: '⚪',
+      bonusXp: 0
+    };
   }
 
   if (resolvedRating === 'Butter') {
