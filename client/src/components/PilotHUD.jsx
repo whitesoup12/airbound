@@ -2,7 +2,7 @@ import React from 'react';
 import { Award, Compass, Globe, Plane, ShieldCheck, Star } from 'lucide-react';
 import { getPilotRank } from '../utils/xpUtils.js';
 
-export function PilotHUD({ pilot, rankInfo: propRankInfo, currentAirport, onOpenChangeBase, onOpenFleet }) {
+export function PilotHUD({ pilot, rankInfo: propRankInfo, currentAirport, onOpenChangeBase, onOpenFleet, onOpenCareer }) {
   const rankInfo = propRankInfo || getPilotRank(pilot?.xp || 0);
   const totalEarnings = (pilot?.flight_log || []).reduce((acc, f) => acc + (f.payout || 0), 0);
   const totalNm = (pilot?.flight_log || []).reduce((acc, f) => acc + (f.distance_nm || 0), 0);
@@ -20,13 +20,25 @@ export function PilotHUD({ pilot, rankInfo: propRankInfo, currentAirport, onOpen
         {/* Callsign, Seniority Rank & XP Progress */}
         <div className="flex flex-col justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-950/60 border border-amber-500/40 flex items-center justify-center text-amber-400 font-bold font-mono shadow-sm shrink-0">
+            <div
+              onClick={onOpenCareer}
+              className={`w-10 h-10 rounded-xl bg-amber-950/60 border border-amber-500/40 flex items-center justify-center text-amber-400 font-bold font-mono shadow-sm shrink-0 ${
+                onOpenCareer ? 'cursor-pointer hover:border-amber-400 hover:scale-105 transition-transform' : ''
+              }`}
+              title={onOpenCareer ? 'View Career Progression & Rank' : undefined}
+            >
               <span className="text-xs">L{rankInfo.level}</span>
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center space-x-1.5 flex-wrap">
                 <h3 className="text-sm font-bold text-white tracking-wide truncate">{pilot?.callsign || 'James'}</h3>
-                <span className="text-[10px] px-1.5 py-0.2 rounded font-mono font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                <span
+                  onClick={onOpenCareer}
+                  className={`text-[10px] px-1.5 py-0.2 rounded font-mono font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 ${
+                    onOpenCareer ? 'cursor-pointer hover:bg-amber-500/30 transition' : ''
+                  }`}
+                  title={onOpenCareer ? 'View Career Progression & Rank' : undefined}
+                >
                   {rankInfo.title}
                 </span>
               </div>
@@ -47,16 +59,22 @@ export function PilotHUD({ pilot, rankInfo: propRankInfo, currentAirport, onOpen
             </div>
           </div>
           {/* XP Progress Bar */}
-          <div className="mt-2 pt-1.5 border-t border-slate-800/80">
+          <div
+            onClick={onOpenCareer}
+            className={`mt-2 pt-1.5 border-t border-slate-800/80 ${
+              onOpenCareer ? 'cursor-pointer group' : ''
+            }`}
+            title={onOpenCareer ? 'View Career Progression & Rank' : undefined}
+          >
             <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 mb-1">
-              <span className="text-amber-400/90 font-semibold">+{rankInfo.bonusPercent}% Payout</span>
-              <span className="text-slate-400 text-[9px]">
+              <span className="text-amber-400/90 font-semibold group-hover:text-amber-300">+{rankInfo.bonusPercent}% Payout</span>
+              <span className="text-slate-400 text-[9px] group-hover:text-slate-300">
                 {rankInfo.currentXp.toLocaleString()} / {rankInfo.nextLevelXp ? rankInfo.nextLevelXp.toLocaleString() : 'MAX'} XP
               </span>
             </div>
             <div className="w-full bg-slate-800/80 rounded-full h-1.5 overflow-hidden">
               <div
-                className="bg-gradient-to-r from-amber-500 to-yellow-400 h-1.5 rounded-full transition-all duration-500 shadow-sm shadow-amber-500/50"
+                className="bg-gradient-to-r from-amber-500 to-yellow-400 h-1.5 rounded-full transition-all duration-500 shadow-sm shadow-amber-500/50 group-hover:brightness-110"
                 style={{ width: `${rankInfo.progressPercent}%` }}
                 title={`${rankInfo.progressPercent}% to next rank (${rankInfo.xpToNextLevel.toLocaleString()} XP remaining)`}
               />

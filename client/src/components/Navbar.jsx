@@ -10,8 +10,10 @@ import {
   Briefcase,
   Warehouse,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Award
 } from 'lucide-react';
+import { getPilotRank } from '../utils/xpUtils.js';
 
 export function Navbar({
   currentTab = 'flight-deck',
@@ -30,6 +32,8 @@ export function Navbar({
   const appName = connectionStatus?.app || 'MSFS 2024';
   const isEnRoute = activeJob && phase !== 'STANDBY';
 
+  const rankInfo = getPilotRank(pilot?.xp || 0);
+
   const tabs = [
     {
       id: 'flight-deck',
@@ -47,17 +51,25 @@ export function Navbar({
     },
     {
       id: 'fleet',
-      label: 'FLEET & HANGAR',
+      label: 'FLEET',
       icon: Warehouse,
       badge: pilot?.active_aircraft?.tail_number || 'N172AB',
       badgeColor: 'bg-amber-950/60 text-amber-300 border-amber-800/60'
     },
     {
-      id: 'career',
-      label: 'CAREER LOG',
+      id: 'progression',
+      label: 'CAREER',
+      icon: Award,
+      badge: `L${rankInfo.level}`,
+      badgeColor: 'bg-purple-950/80 text-purple-300 border-purple-700/70',
+      isMatched: (t) => t === 'progression' || t === 'career'
+    },
+    {
+      id: 'logbook',
+      label: 'LOGBOOK',
       icon: BookOpen,
       badge: `${pilot?.flight_log?.length || 0}`,
-      badgeColor: 'bg-purple-950/60 text-purple-300 border-purple-800/60'
+      badgeColor: 'bg-slate-800 text-slate-300 border-slate-700'
     }
   ];
 
@@ -87,7 +99,7 @@ export function Navbar({
         <nav className="flex items-center space-x-1 bg-slate-900/80 p-1 rounded-xl border border-slate-800 shrink-0">
           {tabs.map((tab) => {
             const Icon = tab.icon;
-            const isActive = currentTab === tab.id;
+            const isActive = tab.isMatched ? tab.isMatched(currentTab) : currentTab === tab.id;
 
             return (
               <button

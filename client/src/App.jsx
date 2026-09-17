@@ -4,6 +4,7 @@ import FlightDeckView from './components/views/FlightDeckView.jsx';
 import DispatchView from './components/views/DispatchView.jsx';
 import FleetView from './components/views/FleetView.jsx';
 import CareerLogbookView from './components/views/CareerLogbookView.jsx';
+import CareerProgressView from './components/views/CareerProgressView.jsx';
 import ChangeBaseModal from './components/ChangeBaseModal.jsx';
 import ResetCareerModal from './components/ResetCareerModal.jsx';
 import { useTelemetry } from './hooks/useTelemetry.js';
@@ -22,8 +23,8 @@ import { formatLandingRating } from './utils/xpUtils.js';
 
 function getInitialTab() {
   const hash = window.location.hash.replace('#', '');
-  if (['flight-deck', 'dispatch', 'fleet', 'career'].includes(hash)) {
-    return hash;
+  if (['flight-deck', 'dispatch', 'fleet', 'progression', 'logbook', 'career'].includes(hash)) {
+    return hash === 'career' ? 'progression' : hash;
   }
   return 'flight-deck';
 }
@@ -45,8 +46,8 @@ export function App() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '');
-      if (['flight-deck', 'dispatch', 'fleet', 'career'].includes(hash)) {
-        setCurrentTab(hash);
+      if (['flight-deck', 'dispatch', 'fleet', 'progression', 'logbook', 'career'].includes(hash)) {
+        setCurrentTab(hash === 'career' ? 'progression' : hash);
       }
     };
     window.addEventListener('hashchange', handleHashChange);
@@ -331,6 +332,7 @@ export function App() {
             allAirports={allAirports}
             onAcceptJob={handleAcceptJob}
             onSwitchToDispatch={() => handleTabChange('dispatch')}
+            onOpenCareer={() => handleTabChange('progression')}
           />
         )}
 
@@ -359,7 +361,18 @@ export function App() {
           />
         )}
 
-        {currentTab === 'career' && (
+        {(currentTab === 'progression' || currentTab === 'career') && (
+          <CareerProgressView
+            pilot={pilot}
+            currentAirport={currentAirport}
+            allAirports={allAirports}
+            onOpenChangeBase={() => setIsChangeBaseOpen(true)}
+            onSwitchToDispatch={() => handleTabChange('dispatch')}
+            onSwitchToLogbook={() => handleTabChange('logbook')}
+          />
+        )}
+
+        {currentTab === 'logbook' && (
           <CareerLogbookView
             pilot={pilot}
             currentAirport={currentAirport}
@@ -367,6 +380,7 @@ export function App() {
             allAirports={allAirports}
             onOpenChangeBase={() => setIsChangeBaseOpen(true)}
             onReloadPilot={loadInitialData}
+            onSwitchToProgression={() => handleTabChange('progression')}
           />
         )}
       </main>

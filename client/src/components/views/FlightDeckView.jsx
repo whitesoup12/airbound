@@ -15,7 +15,8 @@ export function FlightDeckView({
   currentAirport,
   allAirports,
   onAcceptJob,
-  onSwitchToDispatch
+  onSwitchToDispatch,
+  onOpenCareer
 }) {
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -30,6 +31,7 @@ export function FlightDeckView({
         onCancelJob={onCancelJob}
         pilot={pilot}
         allAirports={allAirports}
+        onOpenCareer={onOpenCareer}
       />
 
       {/* No Active Contract Banner */}

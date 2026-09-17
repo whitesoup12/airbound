@@ -60,7 +60,8 @@ export function TelemetryDashboard({
   originDist = null,
   onCancelJob,
   pilot,
-  allAirports = []
+  allAirports = [],
+  onOpenCareer
 }) {
   const phaseInfo = PHASE_CONFIG[phase] || PHASE_CONFIG.STANDBY;
 
@@ -405,7 +406,13 @@ export function TelemetryDashboard({
                   ${activeJob.payout.toLocaleString()}
                 </p>
                 {activeJob.seniority_bonus > 0 && (
-                  <span className="text-[10px] text-purple-300 font-mono block">
+                  <span
+                    onClick={onOpenCareer}
+                    className={`text-[10px] text-purple-300 font-mono block ${
+                      onOpenCareer ? 'cursor-pointer hover:text-purple-200 hover:underline' : ''
+                    }`}
+                    title={onOpenCareer ? 'View Career Progression & Rank Multipliers' : undefined}
+                  >
                     (+${activeJob.seniority_bonus.toLocaleString()} Seniority)
                   </span>
                 )}
@@ -492,7 +499,13 @@ export function TelemetryDashboard({
               <span>
                 Est. Landing Fee: <strong className="text-rose-400">${estimatedLandingFee}</strong>
               </span>
-              <span className="flex items-center space-x-1 text-purple-300">
+              <span
+                onClick={onOpenCareer}
+                className={`flex items-center space-x-1 text-purple-300 ${
+                  onOpenCareer ? 'cursor-pointer hover:text-purple-200 transition' : ''
+                }`}
+                title={onOpenCareer ? 'View Career Progression & Rank' : undefined}
+              >
                 <Award className="w-3 h-3 text-purple-400" />
                 <span>XP Reward: <strong className="text-purple-300">+{activeJob.xp_reward || activeJob.distance_nm} XP</strong></span>
               </span>

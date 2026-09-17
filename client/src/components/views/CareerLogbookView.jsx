@@ -41,7 +41,8 @@ export function CareerLogbookView({
   currentAirport,
   visitedAirportsDetails = [],
   allAirports = [],
-  onOpenChangeBase
+  onOpenChangeBase,
+  onSwitchToProgression
 }) {
   const [filter, setFilter] = useState('all'); // 'all' | 'dispatch' | 'msfs'
   const [searchQuery, setSearchQuery] = useState('');
@@ -293,7 +294,13 @@ export function CareerLogbookView({
               <span className="px-1.5 py-0.2 rounded bg-cyan-950 text-cyan-400 border border-cyan-800/60 text-[10px] font-mono">
                 COMMERCIAL
               </span>
-              <span className="px-2 py-0.5 rounded bg-purple-950/80 text-purple-300 border border-purple-800/80 text-[10px] font-mono font-bold flex items-center space-x-1 shadow-sm">
+              <span
+                onClick={onSwitchToProgression}
+                className={`px-2 py-0.5 rounded bg-purple-950/80 text-purple-300 border border-purple-800/80 text-[10px] font-mono font-bold flex items-center space-x-1 shadow-sm ${
+                  onSwitchToProgression ? 'cursor-pointer hover:bg-purple-900/80 hover:border-purple-600 transition' : ''
+                }`}
+                title={onSwitchToProgression ? 'View Career Progression & Rank Roadmap' : undefined}
+              >
                 <Award className="w-3 h-3 text-purple-400" />
                 <span>LEVEL {rankInfo.level}: {rankInfo.title.toUpperCase()}</span>
                 {rankInfo.bonusPercent > 0 && (
@@ -358,7 +365,13 @@ export function CareerLogbookView({
           <span className="text-[10px] text-slate-500 mt-1 block">Total flight time logged</span>
         </div>
 
-        <div className="glass-panel p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
+        <div
+          onClick={onSwitchToProgression}
+          className={`glass-panel p-4 rounded-2xl bg-slate-900/60 border border-slate-800 transition ${
+            onSwitchToProgression ? 'cursor-pointer hover:border-purple-500/60 hover:bg-slate-900/90' : ''
+          }`}
+          title={onSwitchToProgression ? 'View Career Progression & Rank Roadmap' : undefined}
+        >
           <div className="flex items-center justify-between text-slate-400 text-[11px]">
             <span>CAREER XP & RANK</span>
             <Award className="w-3 h-3 text-purple-400" />
@@ -367,7 +380,7 @@ export function CareerLogbookView({
             {(pilot?.xp || 0).toLocaleString()} XP
           </span>
           <span className="text-[10px] text-slate-500 mt-1 block truncate" title={`${rankInfo.title} (Level ${rankInfo.level})`}>
-            L{rankInfo.level} {rankInfo.title}
+            L{rankInfo.level} {rankInfo.title} &rarr;
           </span>
         </div>
 
