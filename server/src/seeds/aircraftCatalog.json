@@ -64,6 +64,22 @@
     "description": "Legendary 6-place executive piston single. Combines 176-knot cruising speed, luxurious club seating, and refined handling."
   },
   {
+    "model_id": "da62",
+    "name": "Diamond DA62",
+    "manufacturer": "Diamond Aircraft",
+    "category": "single_prop",
+    "purchase_price": 1450000,
+    "rental_price_per_flight": 950,
+    "cruise_speed_kts": 192,
+    "max_range_nm": 1280,
+    "max_cargo_lbs": 1400,
+    "max_pax": 6,
+    "min_runway_ft": 1800,
+    "fuel_type": "Jet-A",
+    "fuel_burn_gph": 15.0,
+    "description": "Luxurious twin-engine Austrian composite touring aircraft powered by dual Austro Jet-A turbo diesels. Features 7-place seating, Garmin G1000 NXi avionics, and exceptional high-speed cross-country efficiency."
+  },
+  {
     "model_id": "c208b",
     "name": "Cessna 208B Grand Caravan",
     "manufacturer": "Textron Aviation",

@@ -25,6 +25,11 @@ export const AIRCRAFT_MATCH_RULES = {
     patterns: [/bonanza/i, /g36/i, /be36/i],
     models: [/g36/i, /be36/i]
   },
+  da62: {
+    name: 'Diamond DA62',
+    patterns: [/da[-_ ]?62/i, /diamond.*62/i, /da62/i],
+    models: [/da62/i, /asobo-aircraft-da62/i]
+  },
   c208b: {
     name: 'Cessna 208B Grand Caravan',
     patterns: [/208/i, /caravan/i, /c208/i],

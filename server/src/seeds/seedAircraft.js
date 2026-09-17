@@ -22,3 +22,15 @@ export async function seedAircraftCatalog() {
   console.log(`[Aircraft Seed] Seeded ${catalogData.length} aircraft models into dealership catalog.`);
 }
 
+if (process.argv[1] && process.argv[1].endsWith('seedAircraft.js')) {
+  import('dotenv').then(async (dotenv) => {
+    dotenv.default.config({ path: path.join(__dirname, '../../.env') });
+    const mongoose = (await import('mongoose')).default;
+    await mongoose.connect(process.env.MONGODB_URI);
+    await seedAircraftCatalog();
+    await mongoose.disconnect();
+    console.log('[Aircraft Seed] Direct run complete.');
+    process.exit(0);
+  });
+}
+

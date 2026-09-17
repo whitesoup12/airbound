@@ -258,7 +258,7 @@ export function FleetView({ pilot, onAircraftChanged }) {
                     : 'text-slate-500 hover:text-slate-300'
                 }`}
               >
-                {cat.replace('_', ' ')}
+                {cat === 'single_prop' ? 'Piston Prop' : cat.replace('_', ' ')}
               </button>
             ))}
           </div>
