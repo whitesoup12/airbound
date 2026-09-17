@@ -131,7 +131,8 @@ export class SimConnectBridge extends EventEmitter {
       handle.on('simObjectData', (recvSimObjectData) => {
         if (recvSimObjectData.requestID === REQ_ID) {
           const data = recvSimObjectData.data;
-          data.setOffset(0);
+          const baseOffset = (typeof data.getOffset === 'function' ? data.getOffset() : 0) || 0;
+          data.setOffset(baseOffset);
           const lat = data.readFloat64();
           const lon = data.readFloat64();
           const alt = data.readFloat64();
@@ -145,10 +146,10 @@ export class SimConnectBridge extends EventEmitter {
           let simTitle = this.telemetry.simAircraftTitle || '';
           let simModel = this.telemetry.simAircraftModel || '';
           try {
-            data.setOffset(60);
+            data.setOffset(baseOffset + 60);
             const rawTitle = data.readString256();
             if (rawTitle) simTitle = rawTitle.replace(/\0.*$/, '').trim();
-            data.setOffset(316);
+            data.setOffset(baseOffset + 316);
             const rawModel = data.readString64();
             if (rawModel) simModel = rawModel.replace(/\0.*$/, '').trim();
           } catch {
@@ -158,9 +159,9 @@ export class SimConnectBridge extends EventEmitter {
           let vs = 0;
           let agl = 0;
           try {
-            data.setOffset(380);
+            data.setOffset(baseOffset + 380);
             vs = data.readFloat64();
-            data.setOffset(388);
+            data.setOffset(baseOffset + 388);
             agl = data.readFloat64();
           } catch {
             // RawBuffer boundary safety fallback

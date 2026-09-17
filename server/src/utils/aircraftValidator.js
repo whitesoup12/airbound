@@ -37,8 +37,8 @@ export const AIRCRAFT_MATCH_RULES = {
   },
   vision_sf50: {
     name: 'Cirrus Vision SF50',
-    patterns: [/sf50/i, /vision.*jet/i, /cirrus.*vision/i],
-    models: [/sf50/i]
+    patterns: [/sf50/i, /vision.*jet/i, /cirrus.*vision/i, /vision/i],
+    models: [/sf50/i, /vision/i]
   },
   dhc6: {
     name: 'De Havilland DHC-6 Twin Otter',

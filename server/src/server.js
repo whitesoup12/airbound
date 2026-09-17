@@ -108,6 +108,7 @@ io.on('connection', (socket) => {
     activeJob: flightStateMachine.activeJob,
     originDist: initialOriginDist,
     destDist: initialDestDist,
+    aircraftValidation: flightStateMachine.lastAircraftValidation || null,
     flightSeconds: Math.round(flightStateMachine.activeFlightSeconds),
     airborneSeconds: Math.round(flightStateMachine.airborneSeconds),
     isPaused: flightStateMachine.isPaused,

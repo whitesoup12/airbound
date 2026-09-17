@@ -42,6 +42,7 @@ export class FlightStateMachine {
     this.landingClassLabel = '';
     this.airborneSamples = []; // High-resolution flare descent rate buffer
     this.isMockMode = false;
+    this.lastAircraftValidation = null;
   }
 
   setCallbacks({ onPhaseChange, onFlightCompleted }) {
@@ -172,6 +173,7 @@ export class FlightStateMachine {
     const isMockMode = Boolean(options.isMockMode);
     this.isMockMode = isMockMode;
     const aircraftValidation = validateAircraftMatch(activeAircraft, telemetry, isMockMode);
+    this.lastAircraftValidation = aircraftValidation;
 
     if (!this.activeJob) {
       this.previousSimOnGround = telemetry.simOnGround;
