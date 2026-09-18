@@ -137,18 +137,16 @@ export function calculateNavEstimates({
   }
 
   // Handle phase specific distance overrides
-  if (phase === 'IDLE') {
-    remainingNm = totalDist;
-  } else if (phase === 'COMPLETED') {
+  if (phase === 'COMPLETED') {
     remainingNm = 0;
+  } else if (remainingNm === null || !Number.isFinite(remainingNm)) {
+    remainingNm = totalDist;
   }
 
   // Progress percentage (0% to 100%)
   const progressPct =
     phase === 'COMPLETED'
       ? 100
-      : phase === 'IDLE'
-      ? 0
       : Math.min(100, Math.max(0, Math.round(((totalDist - remainingNm) / totalDist) * 100)));
 
   // Velocity Made Good (VMG) / Closure Rate towards destination
@@ -160,7 +158,7 @@ export function calculateNavEstimates({
   if (phase === 'COMPLETED') {
     status = 'ARRIVED';
     eteHours = 0;
-  } else if (phase === 'IDLE' || telemetry?.simOnGround || groundSpeed < 30) {
+  } else if (telemetry?.simOnGround || groundSpeed < 30) {
     // On the ground or pre-flight: estimate using aircraft cruise speed
     status = 'CRUISE_EST';
     eteHours = remainingNm / Math.max(50, cruiseSpeed);

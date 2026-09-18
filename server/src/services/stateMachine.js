@@ -61,7 +61,7 @@ export class FlightStateMachine {
         destination_airport: this.destinationAirport
       };
       this.phase = FLIGHT_PHASES.IDLE;
-      this.departedAt = null;
+      this.departedAt = rawJob.accepted_at ? new Date(rawJob.accepted_at) : null;
       this.touchdownAt = null;
       this.previousSimOnGround = true;
       this.activeFlightSeconds = 0;
@@ -277,6 +277,36 @@ export class FlightStateMachine {
         break;
 
       case FLIGHT_PHASES.IDLE:
+        // Recovery 1: If aircraft is already airborne mid-flight (e.g. server restart or reconnection en route)
+        if (!simOnGround && originDist > 5.0) {
+          this.phase = FLIGHT_PHASES.EN_ROUTE;
+          this.departedAt = this.departedAt || new Date(now - 30 * 60 * 1000);
+          console.log(`[StateMachine] RECOVERY: Aircraft already airborne (${originDist.toFixed(1)} NM from origin, ${destDist.toFixed(1)} NM to dest). Transitioning to EN ROUTE.`);
+          break;
+        }
+
+        // Recovery 2: If aircraft already arrived at destination on the ground (destDist <= 3.5 NM and originDist > 10.0 NM)
+        if (simOnGround && destDist <= 3.5 && originDist > 10.0) {
+          console.log(`[StateMachine] RECOVERY: Aircraft arrived at destination (${destDist.toFixed(1)} NM from ${this.activeJob.destination_icao}). Transitioning to TOUCHDOWN.`);
+          this.phase = FLIGHT_PHASES.TOUCHDOWN;
+          this.touchdownAt = this.touchdownAt || new Date();
+          const acceptedTime = this.activeJob.accepted_at ? new Date(this.activeJob.accepted_at) : null;
+          this.departedAt = this.departedAt || acceptedTime || new Date(now - 45 * 60 * 1000);
+          this.touchdownFpm = this.touchdownFpm || -130;
+          this.landingRating = this.landingRating || 'Butter';
+          this.landingClass = this.landingClass || 'Jet';
+          this.landingClassLabel = this.landingClassLabel || 'Airliner / Jet';
+
+          const isStopped = groundSpeed < 5.0;
+          const isSecured = parkingBrake || !engineRunning;
+          if (isStopped && isSecured) {
+            this.phase = FLIGHT_PHASES.COMPLETED;
+            console.log('[StateMachine] COMPLETED: Aircraft stopped and secured at destination (recovered arrival)');
+            await this._handleFlightCompleted(telemetry);
+          }
+          break;
+        }
+
         // DEPARTED: SIM ON GROUND changes from true to false within 5 NM of origin
         if (this.previousSimOnGround && !simOnGround && originDist <= 5.0) {
           if (!aircraftValidation.matches) {
@@ -301,15 +331,16 @@ export class FlightStateMachine {
             this.phase = FLIGHT_PHASES.EN_ROUTE;
             console.log('[StateMachine] EN ROUTE: Airborne tracking mode active');
           }
-        } else if (!this.previousSimOnGround && simOnGround && destDist <= 3.0) {
+        } else if (simOnGround && destDist <= 3.5 && originDist > 1.0) {
           // Short hop / circuit touchdown directly from DEPARTED
           await this._handleTouchdown(telemetry, destDist, now);
         }
         break;
 
       case FLIGHT_PHASES.EN_ROUTE:
-        // TOUCHDOWN: SIM ON GROUND changes from false to true within 3 NM of destination ICAO
-        if (!this.previousSimOnGround && simOnGround && destDist <= 3.0) {
+        // TOUCHDOWN: SIM ON GROUND changes from false to true within 3.5 NM of destination ICAO
+        // Or if wheels are on the ground in the destination airport area
+        if (simOnGround && destDist <= 3.5) {
           await this._handleTouchdown(telemetry, destDist, now);
         }
         break;

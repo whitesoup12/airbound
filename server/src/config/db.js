@@ -31,16 +31,22 @@ export async function connectDB(customUri = null) {
   if (uri) {
     try {
       await mongoose.connect(uri, {
-        serverSelectionTimeoutMS: 3000
+        serverSelectionTimeoutMS: 15000
       });
       console.log(`[Database] Connected to MongoDB at: ${uri.replace(/\/\/.*@/, '//<credentials>@')}`);
       return;
     } catch (err) {
-      console.warn(`[Database] Connection to specified URI failed (${err.message}). Attempting in-memory fallback...`);
+      console.error(`[Database] Connection to specified URI failed: ${err.message}`);
+      if (process.env.ALLOW_MEMORY_FALLBACK === 'true') {
+        console.warn('[Database] Falling back to in-memory database...');
+        return connectTestDB();
+      }
+      throw err;
     }
   }
 
-  // Fallback to in-memory MongoDB for instant zero-config offline development & testing
+  // Fallback to in-memory MongoDB only if zero URI is configured
+  console.log('[Database] No MONGODB_URI configured, using in-memory database.');
   return connectTestDB();
 }
 

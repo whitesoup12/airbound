@@ -55,21 +55,27 @@ export async function getPilot(req, res) {
 
       // Auto-heal visited_airports if any 3-char aliases exist
       if (pilot.visited_airports && pilot.visited_airports.length > 0) {
-        const normalizedVisited = [];
-        const seenVisited = new Set();
-        for (const code of pilot.visited_airports) {
-          const norm = await normalizeTo4CharIcao(code);
-          if (!seenVisited.has(norm)) {
-            seenVisited.add(norm);
-            normalizedVisited.push(norm);
+        const threeCharCodes = pilot.visited_airports.filter((c) => c && c.length === 3);
+        if (threeCharCodes.length > 0) {
+          const candidateCodes = threeCharCodes.map((c) => 'K' + c.toUpperCase());
+          const foundAirports = await Airport.find({ icao: { $in: candidateCodes } }).select('icao').lean();
+          const validKSet = new Set(foundAirports.map((a) => a.icao));
+          const normalizedVisited = Array.from(new Set(
+            pilot.visited_airports.map((c) => {
+              if (c && c.length === 3) {
+                const kCode = 'K' + c.toUpperCase();
+                return validKSet.has(kCode) ? kCode : c.toUpperCase();
+              }
+              return c.toUpperCase();
+            })
+          ));
+          if (
+            normalizedVisited.length !== pilot.visited_airports.length ||
+            normalizedVisited.some((c, idx) => c !== pilot.visited_airports[idx])
+          ) {
+            pilot.visited_airports = normalizedVisited;
+            needsSave = true;
           }
-        }
-        if (
-          normalizedVisited.length !== pilot.visited_airports.length ||
-          normalizedVisited.some((c, idx) => c !== pilot.visited_airports[idx])
-        ) {
-          pilot.visited_airports = normalizedVisited;
-          needsSave = true;
         }
       }
 
@@ -117,7 +123,7 @@ export async function getPilot(req, res) {
 
         // Backfill exploration_bonus from completed Job records if missing
         const missingBonusFlights = pilot.flight_log.filter(
-          (f) => f.job_id && (f.exploration_bonus === undefined || f.exploration_bonus === 0)
+          (f) => f.job_id && f.exploration_bonus === undefined
         );
         if (missingBonusFlights.length > 0) {
           const jobIds = missingBonusFlights.map((f) => f.job_id);
@@ -128,12 +134,15 @@ export async function getPilot(req, res) {
           if (bonusJobs.length > 0) {
             const bonusMap = new Map(bonusJobs.map((j) => [j._id.toString(), j.exploration_bonus]));
             for (const f of missingBonusFlights) {
-              const bonus = bonusMap.get(f.job_id?.toString());
-              if (bonus) {
-                f.exploration_bonus = bonus;
-                needsSave = true;
-                console.log(`[Pilot] Backfilled exploration bonus of $${bonus} for flight ${f.origin_icao} -> ${f.destination_icao}`);
-              }
+              const bonus = bonusMap.get(f.job_id?.toString()) || 0;
+              f.exploration_bonus = bonus;
+              needsSave = true;
+              console.log(`[Pilot] Backfilled exploration bonus of $${bonus} for flight ${f.origin_icao} -> ${f.destination_icao}`);
+            }
+          } else {
+            for (const f of missingBonusFlights) {
+              f.exploration_bonus = 0;
+              needsSave = true;
             }
           }
         }
@@ -142,18 +151,15 @@ export async function getPilot(req, res) {
         const rentalPlanes = (pilot.fleet || []).filter((p) => p.is_rental && !p.is_loaner);
         if (rentalPlanes.length > 0) {
           for (const f of pilot.flight_log) {
-            if (f.source === 'airbound_dispatch' && (!f.rental_fee || f.rental_fee === 0)) {
+            if (f.source === 'airbound_dispatch' && f.rental_fee === undefined) {
               const matchedRental = rentalPlanes.find((rp) =>
                 f.aircraft_name && (
                   f.aircraft_name.toLowerCase().includes(rp.model_id.toLowerCase()) ||
                   rp.name.toLowerCase().includes(f.aircraft_name.toLowerCase())
                 )
               );
-              if (matchedRental && matchedRental.rental_price_per_flight > 0) {
-                f.rental_fee = matchedRental.rental_price_per_flight;
-                needsSave = true;
-                console.log(`[Pilot] Backfilled rental fee of $${matchedRental.rental_price_per_flight} for flight ${f.origin_icao} -> ${f.destination_icao} in ${f.aircraft_name}`);
-              }
+              f.rental_fee = matchedRental && matchedRental.rental_price_per_flight > 0 ? matchedRental.rental_price_per_flight : 0;
+              needsSave = true;
             }
           }
         }

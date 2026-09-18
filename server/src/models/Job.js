@@ -103,6 +103,8 @@ const JobSchema = new mongoose.Schema(
   }
 );
 
+JobSchema.index({ origin_icao: 1, status: 1 });
+
 export const Job = mongoose.model('Job', JobSchema);
 export default Job;
 
