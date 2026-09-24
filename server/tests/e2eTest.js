@@ -21,6 +21,9 @@ async function runE2E() {
   const baseUrl = `http://localhost:${port}`;
   console.log(`Testing against running server at ${baseUrl}...`);
 
+  // Ensure mock mode is active for synthetic telemetry injection in test suite
+  simConnectBridge.isMockMode = true;
+
   // Connect Socket.IO client
   const socket = ClientIO(baseUrl, { transports: ['websocket'] });
   const receivedPhases = [];
@@ -126,6 +129,7 @@ async function runE2E() {
   // 8. Verify Persisted Pilot State
   const updatedPilotRes = await fetch(`${baseUrl}/api/pilot`).then((r) => r.json());
   const updatedPilot = updatedPilotRes.pilot;
+  assert.strictEqual(updatedPilotRes.activeJob, null, 'Active job returned by /api/pilot must be null after completion');
 
   const netEarned = updatedPilot.flight_log[0]?.net_payout ?? jobToAccept.payout;
   assert.strictEqual(

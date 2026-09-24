@@ -171,6 +171,7 @@ async function runTests() {
     engineRunning: false
   });
   assert.strictEqual(sm.phase, FLIGHT_PHASES.COMPLETED);
+  assert.strictEqual(sm.activeJob, null, 'Active job in state machine must be cleared to null upon flight completion');
 
   // 5. Verify Persistence in MongoDB
   console.log('\nVerifying Persistence after Completion...');

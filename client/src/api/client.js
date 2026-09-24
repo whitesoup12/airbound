@@ -217,6 +217,27 @@ export async function returnAircraft(tailNumber) {
   );
 }
 
+export async function startFreeFlight({ destination_icao = null, deduct_fees = false } = {}) {
+  return safeFetchJson(
+    `${API_BASE}/free-flight/start`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ destination_icao, deduct_fees })
+    },
+    'Failed to commence Free Flight'
+  );
+}
+
+export async function cancelFreeFlight() {
+  return safeFetchJson(
+    `${API_BASE}/free-flight/cancel`,
+    { method: 'POST' },
+    'Failed to cancel Free Flight'
+  );
+}
+
+
 
 
 

@@ -17,7 +17,9 @@ import {
   acceptJob,
   cancelJob,
   fetchAirports,
-  updateBaseAirport
+  updateBaseAirport,
+  startFreeFlight,
+  cancelFreeFlight
 } from './api/client.js';
 import { Trophy, X, Award, Sparkles } from 'lucide-react';
 import { formatLandingRating } from './utils/xpUtils.js';
@@ -64,24 +66,25 @@ export function App() {
     window.location.hash = tabId;
   };
 
-  // Load initial pilot & airport data
+  // Load initial pilot & airport data concurrently
   const loadInitialData = useCallback(async () => {
     try {
       setLoading(true);
-      const pilotData = await fetchPilot();
+      const [pilotData, airportsData] = await Promise.all([
+        fetchPilot(),
+        fetchAirports()
+      ]);
       setPilot(pilotData.pilot);
       setCurrentAirport(pilotData.currentAirport);
+      setVisitedAirportsDetails(pilotData.visitedAirportsDetails || []);
+      setAllAirports(airportsData || []);
 
       const jobData = await fetchJobs(pilotData.pilot?.current_icao);
       const fetchedJobs = jobData.jobs || [];
       setJobs(fetchedJobs);
-      setVisitedAirportsDetails(pilotData.visitedAirportsDetails || []);
       if (fetchedJobs.length > 0 && !jobData.activeJob) {
         setPreviewJob(fetchedJobs[0]);
       }
-
-      const airportsData = await fetchAirports();
-      setAllAirports(airportsData || []);
     } catch (err) {
       console.error('Failed to load initial data:', err);
     } finally {
@@ -151,8 +154,19 @@ export function App() {
 
   const handleCancelJob = async (jobId) => {
     if (!confirm('Are you sure you want to cancel this contract?')) return;
+    const isFree = Boolean(activeJob?.is_free_flight);
+    const confirmPrompt = isFree
+      ? 'Are you sure you want to cancel this Free Flight session?'
+      : 'Are you sure you want to cancel this contract?';
+    if (!confirm(confirmPrompt)) return;
     try {
       const res = await cancelJob(jobId);
+      if (isFree) {
+        await cancelFreeFlight();
+      } else {
+        const res = await cancelJob(jobId);
+        if (res.pilot) setPilot(res.pilot);
+      }
       setActiveJob(null);
       if (res.pilot) {
         setPilot(res.pilot);
@@ -166,6 +180,31 @@ export function App() {
       }
     } catch (err) {
       alert(err.message);
+    }
+  };
+
+  const handleStartFreeFlight = async ({ destination_icao, deduct_fees }) => {
+    try {
+      const res = await startFreeFlight({ destination_icao, deduct_fees });
+      setActiveJob(res.activeJob);
+      if (res.pilot) {
+        setPilot(res.pilot);
+      }
+      return res;
+    } catch (err) {
+      console.error('[App] Failed to start free flight:', err);
+      throw err;
+    }
+  };
+
+  const handleCancelFreeFlight = async () => {
+    try {
+      await cancelFreeFlight();
+      setActiveJob(null);
+      await loadInitialData();
+    } catch (err) {
+      console.error('[App] Failed to cancel free flight:', err);
+      throw err;
     }
   };
 
@@ -244,7 +283,13 @@ export function App() {
       {completionBanner && (() => {
         const landingRatingInfo = formatLandingRating(
           completionBanner.touchdownFpm,
-          completionBanner.landingRating
+          completionBanner.landingRating,
+          {
+            landingClass: completionBanner.flightXp?.aircraftClass || completionBanner.summary?.landing_class,
+            aircraftName: completionBanner.aircraftName || completionBanner.summary?.aircraft_name,
+            category: completionBanner.summary?.category,
+            approachKts: completionBanner.summary?.approach_speed_kts
+          }
         );
         const flightXp = completionBanner.flightXp;
         const rankInfo = completionBanner.rankInfo;
@@ -275,10 +320,22 @@ export function App() {
                   <div className="flex flex-wrap items-center gap-2">
                     <h4 className="font-bold text-sm sm:text-base font-mono">
                       FLIGHT COMPLETED!
+                      {completionBanner.summary?.source === 'free_flight' ? 'FREE FLIGHT COMPLETED!' : 'FLIGHT COMPLETED!'}
                     </h4>
                     <span className="bg-white/20 px-2 py-0.5 rounded text-white text-xs font-mono font-bold">
                       NET PROFIT: +${completionBanner.payout?.toLocaleString()}
                     </span>
+                    {completionBanner.summary?.source === 'free_flight' ? (
+                      <span className="bg-white/20 px-2 py-0.5 rounded text-white text-xs font-mono font-bold">
+                        {completionBanner.payout < 0
+                          ? `EXPENSES: -$${Math.abs(completionBanner.payout)?.toFixed(2)}`
+                          : 'FREE FLIGHT • $0 EXPENSE'}
+                      </span>
+                    ) : (
+                      <span className="bg-white/20 px-2 py-0.5 rounded text-white text-xs font-mono font-bold">
+                        NET PROFIT: +${completionBanner.payout?.toLocaleString()}
+                      </span>
+                    )}
 
                     {/* XP Reward Badge */}
                     {flightXp?.totalXp ? (
@@ -368,6 +425,8 @@ export function App() {
             onAcceptJob={handleAcceptJob}
             onRefreshJobs={handleRefreshJobs}
             onOpenChangeBase={() => setIsChangeBaseOpen(true)}
+            onStartFreeFlight={handleStartFreeFlight}
+            onCancelFreeFlight={handleCancelFreeFlight}
             loading={loading}
             telemetry={telemetry}
           />

@@ -79,6 +79,30 @@ export function calculateNavEstimates({
     };
   }
 
+  if (activeJob.is_free_flight && !activeJob.destination_icao) {
+    return {
+      hasActiveJob: true,
+      isOpenRoam: true,
+      remainingNm: 0,
+      progressPct: 0,
+      bearing: null,
+      heading: Math.round(telemetry?.heading || 0),
+      headingDiff: 0,
+      turnAdvice: 'OPEN ROAM',
+      groundSpeed: Math.round(
+        telemetry?.groundSpeed > 0 ? telemetry.groundSpeed : (telemetry?.airspeedTrue || 0)
+      ),
+      closureRate: 0,
+      eteMinutes: 0,
+      formattedEte: '--',
+      formattedEta: '',
+      isLiveRate: false,
+      isDiverging: false,
+      isCruiseEst: false,
+      isArrived: phase === 'COMPLETED'
+    };
+  }
+
   const totalDist = activeJob.distance_nm || 1;
   const cruiseSpeed = activeAircraft?.cruise_speed_kts || 120;
 

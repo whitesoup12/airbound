@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Award,
   ShieldCheck,
@@ -22,6 +22,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { PILOT_RANKS, getPilotRank, formatLandingRating } from '../../utils/xpUtils.js';
+import LandingCategoryModal from '../LandingCategoryModal.jsx';
 
 export function CareerProgressView({
   pilot,
@@ -31,6 +32,7 @@ export function CareerProgressView({
   onSwitchToDispatch,
   onSwitchToLogbook
 }) {
+  const [landingModalCategory, setLandingModalCategory] = useState(null);
   const rankInfo = useMemo(() => getPilotRank(pilot?.xp || 0), [pilot?.xp]);
   const flightLog = pilot?.flight_log || [];
 
@@ -412,28 +414,44 @@ export function CareerProgressView({
                 SimConnect vertical speed captured at touchdown threshold (telemetry tracking only).
               </p>
             </div>
-            <span className="text-xs font-mono text-cyan-300 bg-cyan-950/60 border border-cyan-800/60 px-2.5 py-1 rounded-lg">
-              {landingStats.recordedLandingsCount} Touchdowns Logged
-            </span>
+            <button
+              onClick={() => setLandingModalCategory('ALL')}
+              className="text-xs font-mono text-cyan-300 bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyan-800/60 hover:border-cyan-700 px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center space-x-1.5 group"
+              title="Click to view all touchdowns log"
+            >
+              <span>{landingStats.recordedLandingsCount} Touchdowns Logged</span>
+              <span className="text-[10px] text-cyan-400 group-hover:translate-x-0.5 transition-transform">→</span>
+            </button>
           </div>
           <div className="text-xs text-slate-400 font-mono">
-            Adaptive scoring calibrated by airframe class & approach airspeed
+            Adaptive scoring calibrated by airframe class & approach airspeed • Click any category to view touchdown log
           </div>
 
           {/* 5 Rating Categories Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 font-mono text-xs">
             {/* Butter Landing */}
-            <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-800/60 flex items-start justify-between">
+            <div
+              onClick={() => setLandingModalCategory('Butter')}
+              className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-800/60 hover:border-emerald-500 hover:shadow-lg hover:shadow-emerald-950/50 hover:scale-[1.02] active:scale-[0.99] transition-all duration-200 cursor-pointer flex items-start justify-between group"
+              role="button"
+              tabIndex={0}
+              title="Click to view Butter / Greaser landings log"
+            >
               <div>
-                <div className="flex items-center space-x-1.5 text-emerald-300 font-bold text-sm">
+                <div className="flex items-center space-x-1.5 text-emerald-300 font-bold text-sm group-hover:text-emerald-200">
                   <span>🧈</span>
                   <span>BUTTER / GREASER</span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">Light ≤90 · Twin ≤135 · Jet ≤180 · Heavy ≤240</p>
-                <p className="text-xs text-emerald-400 font-semibold mt-2">+100 XP per landing</p>
+                <div className="flex items-center space-x-2 mt-2">
+                  <p className="text-xs text-emerald-400 font-semibold">+100 XP per landing</p>
+                  <span className="text-[10px] text-emerald-400/80 group-hover:text-emerald-300 group-hover:translate-x-0.5 transition font-mono">
+                    View log →
+                  </span>
+                </div>
               </div>
               <div className="text-right">
-                <span className="text-2xl font-bold text-emerald-400 block">
+                <span className="text-2xl font-bold text-emerald-400 block group-hover:scale-105 transition-transform">
                   {landingStats.butterCount}
                 </span>
                 <span className="text-[10px] text-slate-500">
@@ -445,17 +463,28 @@ export function CareerProgressView({
             </div>
 
             {/* Clean Landing */}
-            <div className="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-800/60 flex items-start justify-between">
+            <div
+              onClick={() => setLandingModalCategory('Clean')}
+              className="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-800/60 hover:border-cyan-500 hover:shadow-lg hover:shadow-cyan-950/50 hover:scale-[1.02] active:scale-[0.99] transition-all duration-200 cursor-pointer flex items-start justify-between group"
+              role="button"
+              tabIndex={0}
+              title="Click to view Clean landings log"
+            >
               <div>
-                <div className="flex items-center space-x-1.5 text-cyan-300 font-bold text-sm">
+                <div className="flex items-center space-x-1.5 text-cyan-300 font-bold text-sm group-hover:text-cyan-200">
                   <span>✈️</span>
                   <span>CLEAN LANDING</span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">Light ≤200 · Twin ≤250 · Jet ≤300 · Heavy ≤360</p>
-                <p className="text-xs text-cyan-400 font-semibold mt-2">+50 XP per landing</p>
+                <div className="flex items-center space-x-2 mt-2">
+                  <p className="text-xs text-cyan-400 font-semibold">+50 XP per landing</p>
+                  <span className="text-[10px] text-cyan-400/80 group-hover:text-cyan-300 group-hover:translate-x-0.5 transition font-mono">
+                    View log →
+                  </span>
+                </div>
               </div>
               <div className="text-right">
-                <span className="text-2xl font-bold text-cyan-400 block">
+                <span className="text-2xl font-bold text-cyan-400 block group-hover:scale-105 transition-transform">
                   {landingStats.cleanCount}
                 </span>
                 <span className="text-[10px] text-slate-500">
@@ -467,17 +496,28 @@ export function CareerProgressView({
             </div>
 
             {/* Firm Landing */}
-            <div className="p-3.5 rounded-xl bg-amber-950/40 border border-amber-800/60 flex items-start justify-between">
+            <div
+              onClick={() => setLandingModalCategory('Firm')}
+              className="p-3.5 rounded-xl bg-amber-950/40 border border-amber-800/60 hover:border-amber-500 hover:shadow-lg hover:shadow-amber-950/50 hover:scale-[1.02] active:scale-[0.99] transition-all duration-200 cursor-pointer flex items-start justify-between group"
+              role="button"
+              tabIndex={0}
+              title="Click to view Firm landings log"
+            >
               <div>
-                <div className="flex items-center space-x-1.5 text-amber-300 font-bold text-sm">
+                <div className="flex items-center space-x-1.5 text-amber-300 font-bold text-sm group-hover:text-amber-200">
                   <span>⚡</span>
                   <span>FIRM LANDING</span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">Light ≤350 · Twin ≤400 · Jet ≤450 · Heavy ≤500</p>
-                <p className="text-xs text-amber-400 font-semibold mt-2">+0 XP (neutral)</p>
+                <div className="flex items-center space-x-2 mt-2">
+                  <p className="text-xs text-amber-400 font-semibold">+0 XP (neutral)</p>
+                  <span className="text-[10px] text-amber-400/80 group-hover:text-amber-300 group-hover:translate-x-0.5 transition font-mono">
+                    View log →
+                  </span>
+                </div>
               </div>
               <div className="text-right">
-                <span className="text-2xl font-bold text-amber-400 block">
+                <span className="text-2xl font-bold text-amber-400 block group-hover:scale-105 transition-transform">
                   {landingStats.firmCount}
                 </span>
                 <span className="text-[10px] text-slate-500">
@@ -489,17 +529,28 @@ export function CareerProgressView({
             </div>
 
             {/* Hard Landing */}
-            <div className="p-3.5 rounded-xl bg-orange-950/40 border border-orange-800/60 flex items-start justify-between">
+            <div
+              onClick={() => setLandingModalCategory('Hard')}
+              className="p-3.5 rounded-xl bg-orange-950/40 border border-orange-800/60 hover:border-orange-500 hover:shadow-lg hover:shadow-orange-950/50 hover:scale-[1.02] active:scale-[0.99] transition-all duration-200 cursor-pointer flex items-start justify-between group"
+              role="button"
+              tabIndex={0}
+              title="Click to view Hard landings log"
+            >
               <div>
-                <div className="flex items-center space-x-1.5 text-orange-300 font-bold text-sm">
+                <div className="flex items-center space-x-1.5 text-orange-300 font-bold text-sm group-hover:text-orange-200">
                   <span>⚠️</span>
                   <span>HARD LANDING</span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">Light ≤500 · Twin ≤550 · Jet ≤600 · Heavy ≤650</p>
-                <p className="text-xs text-orange-400 font-semibold mt-2">-50 XP penalty</p>
+                <div className="flex items-center space-x-2 mt-2">
+                  <p className="text-xs text-orange-400 font-semibold">-50 XP penalty</p>
+                  <span className="text-[10px] text-orange-400/80 group-hover:text-orange-300 group-hover:translate-x-0.5 transition font-mono">
+                    View log →
+                  </span>
+                </div>
               </div>
               <div className="text-right">
-                <span className="text-2xl font-bold text-orange-400 block">
+                <span className="text-2xl font-bold text-orange-400 block group-hover:scale-105 transition-transform">
                   {landingStats.hardCount}
                 </span>
                 <span className="text-[10px] text-slate-500">
@@ -511,17 +562,28 @@ export function CareerProgressView({
             </div>
 
             {/* Severe Landing */}
-            <div className="p-3.5 rounded-xl bg-rose-950/40 border border-rose-800/60 flex items-start justify-between">
+            <div
+              onClick={() => setLandingModalCategory('Severe')}
+              className="p-3.5 rounded-xl bg-rose-950/40 border border-rose-800/60 hover:border-rose-500 hover:shadow-lg hover:shadow-rose-950/50 hover:scale-[1.02] active:scale-[0.99] transition-all duration-200 cursor-pointer flex items-start justify-between group"
+              role="button"
+              tabIndex={0}
+              title="Click to view Severe Impact landings log"
+            >
               <div>
-                <div className="flex items-center space-x-1.5 text-rose-300 font-bold text-sm">
+                <div className="flex items-center space-x-1.5 text-rose-300 font-bold text-sm group-hover:text-rose-200">
                   <span>💥</span>
                   <span>SEVERE IMPACT</span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">Hard impact beyond class maximum limits</p>
-                <p className="text-xs text-rose-400 font-semibold mt-2">-100 XP penalty</p>
+                <div className="flex items-center space-x-2 mt-2">
+                  <p className="text-xs text-rose-400 font-semibold">-100 XP penalty</p>
+                  <span className="text-[10px] text-rose-400/80 group-hover:text-rose-300 group-hover:translate-x-0.5 transition font-mono">
+                    View log →
+                  </span>
+                </div>
               </div>
               <div className="text-right">
-                <span className="text-2xl font-bold text-rose-400 block">
+                <span className="text-2xl font-bold text-rose-400 block group-hover:scale-105 transition-transform">
                   {landingStats.severeCount}
                 </span>
                 <span className="text-[10px] text-slate-500">
@@ -533,19 +595,30 @@ export function CareerProgressView({
             </div>
 
             {/* Cumulative Landing Bonus XP */}
-            <div className="p-3.5 rounded-xl bg-purple-950/40 border border-purple-800/60 flex items-start justify-between">
+            <div
+              onClick={() => setLandingModalCategory('ALL')}
+              className="p-3.5 rounded-xl bg-purple-950/40 border border-purple-800/60 hover:border-purple-500 hover:shadow-lg hover:shadow-purple-950/50 hover:scale-[1.02] active:scale-[0.99] transition-all duration-200 cursor-pointer flex items-start justify-between group"
+              role="button"
+              tabIndex={0}
+              title="Click to view all recorded landings log"
+            >
               <div>
-                <div className="flex items-center space-x-1.5 text-purple-300 font-bold text-sm">
+                <div className="flex items-center space-x-1.5 text-purple-300 font-bold text-sm group-hover:text-purple-200">
                   <Award className="w-4 h-4 text-purple-400" />
                   <span>TOTAL BONUS XP</span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">Landing Smoothness</p>
-                <p className="text-xs text-purple-400 font-semibold mt-2">
-                  {landingStats.recordedLandingsCount > 0 ? 'Career quality bonus' : 'No telemetry captured yet'}
-                </p>
+                <div className="flex items-center space-x-2 mt-2">
+                  <p className="text-xs text-purple-400 font-semibold">
+                    {landingStats.recordedLandingsCount > 0 ? 'Career quality bonus' : 'No telemetry captured yet'}
+                  </p>
+                  <span className="text-[10px] text-purple-400/80 group-hover:text-purple-300 group-hover:translate-x-0.5 transition font-mono">
+                    View all →
+                  </span>
+                </div>
               </div>
               <div className="text-right">
-                <span className="text-2xl font-bold text-purple-300 block">
+                <span className="text-2xl font-bold text-purple-300 block group-hover:scale-105 transition-transform">
                   {landingStats.totalLandingBonusXp >= 0
                     ? `+${landingStats.totalLandingBonusXp.toLocaleString()}`
                     : landingStats.totalLandingBonusXp.toLocaleString()}
@@ -570,8 +643,17 @@ export function CareerProgressView({
 
             <div className="mt-4 space-y-3 font-mono text-xs">
               {/* Best Touchdown */}
-              <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800">
-                <span className="text-slate-500 block text-[10px] uppercase">CAREER BEST TOUCHDOWN</span>
+              <div
+                onClick={() => setLandingModalCategory(landingStats.bestTouchdown?.ratingLabel || 'ALL')}
+                className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 hover:border-emerald-500/80 hover:shadow-lg hover:shadow-emerald-950/40 transition cursor-pointer group"
+                role="button"
+                tabIndex={0}
+                title="Click to view landings log"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 block text-[10px] uppercase">CAREER BEST TOUCHDOWN</span>
+                  <span className="text-[10px] text-emerald-400 opacity-0 group-hover:opacity-100 transition">View log →</span>
+                </div>
                 {landingStats.bestTouchdown ? (
                   <div className="mt-1">
                     <div className="flex items-baseline justify-between">
@@ -713,6 +795,16 @@ export function CareerProgressView({
           </div>
         </div>
       </div>
+
+      {/* Landing Category Drilldown Modal */}
+      <LandingCategoryModal
+        isOpen={landingModalCategory !== null}
+        onClose={() => setLandingModalCategory(null)}
+        initialCategory={landingModalCategory || 'ALL'}
+        flightLog={flightLog}
+        allAirports={allAirports}
+        onSwitchToLogbook={onSwitchToLogbook}
+      />
     </div>
   );
 }

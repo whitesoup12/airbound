@@ -4,23 +4,18 @@ import Airport from '../models/Airport.js';
 import { generateJobsForAirport, classifyJobTier } from '../services/jobGenerator.js';
 import flightStateMachine from '../services/stateMachine.js';
 import { normalizeTo4CharIcao } from '../utils/icaoUtils.js';
+import { getCachedAirport, getCachedAirportsList } from '../services/airportCache.js';
 
 export async function getJobs(req, res) {
   try {
-    const pilot = await Pilot.findOne();
+    const pilot = await Pilot.findOne().select('current_icao visited_airports active_aircraft').lean();
     let currentIcao = req.query.icao || pilot?.current_icao || 'KLAX';
     currentIcao = await normalizeTo4CharIcao(currentIcao);
-
-    // Auto-heal pilot current_icao if it had a 3-character alias
-    if (pilot && pilot.current_icao && pilot.current_icao !== currentIcao) {
-      pilot.current_icao = currentIcao;
-      await pilot.save();
-    }
 
     let availableJobs = await Job.find({
       origin_icao: currentIcao,
       status: 'available'
-    }).sort({ createdAt: -1 });
+    }).sort({ createdAt: -1 }).lean();
 
     // Auto-generate if fewer than 3 available
     if (availableJobs.length < 3) {
@@ -28,7 +23,7 @@ export async function getJobs(req, res) {
       availableJobs = await Job.find({
         origin_icao: currentIcao,
         status: 'available'
-      }).sort({ createdAt: -1 });
+      }).sort({ createdAt: -1 }).lean();
     }
 
     // Enrich with destination airport metadata and visited status
@@ -37,7 +32,7 @@ export async function getJobs(req, res) {
       if (item.length === 3) visitedSet.add('K' + item);
     }
     const destIcaos = availableJobs.map((j) => j.destination_icao);
-    const destAirports = await Airport.find({ icao: { $in: destIcaos } });
+    const destAirports = await getCachedAirportsList(destIcaos);
     const airportMap = new Map(destAirports.map((a) => [a.icao, a]));
 
     const enrichedJobs = availableJobs.map((job) => {
@@ -45,7 +40,7 @@ export async function getJobs(req, res) {
       const tier = job.tier || classifyJobTier(job.distance_nm, pilot?.active_aircraft?.category);
       const isUnvisited = !visitedSet.has(job.destination_icao.toUpperCase());
       return {
-        ...job.toObject(),
+        ...job,
         tier,
         is_unvisited: isUnvisited,
         is_featured_destination: Boolean(job.is_featured_destination && isUnvisited),
@@ -58,13 +53,16 @@ export async function getJobs(req, res) {
       };
     });
 
-    const activeJob = await Job.findOne({ status: 'accepted' });
+    const activeJob =
+      flightStateMachine.activeJob && flightStateMachine.activeJob.status === 'accepted'
+        ? flightStateMachine.activeJob
+        : await Job.findOne({ status: 'accepted' }).lean();
     let enrichedActiveJob = null;
     if (activeJob) {
-      const dest = await Airport.findOne({ icao: activeJob.destination_icao });
-      const orig = await Airport.findOne({ icao: activeJob.origin_icao });
+      const dest = await getCachedAirport(activeJob.destination_icao);
+      const orig = await getCachedAirport(activeJob.origin_icao);
       enrichedActiveJob = {
-        ...activeJob.toObject(),
+        ...(activeJob.toObject ? activeJob.toObject() : activeJob),
         origin_airport: orig,
         destination_airport: dest
       };

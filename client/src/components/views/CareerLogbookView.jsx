@@ -175,6 +175,11 @@ export function CareerLogbookView({
 
   const dispatchedFlights = useMemo(
     () => augmentedFlightLog.filter((f) => f.source !== 'msfs_import' && !f.is_external),
+    () => augmentedFlightLog.filter((f) => f.source === 'airbound_dispatch' || (!f.source && !f.is_external && f.source !== 'free_flight')),
+    [augmentedFlightLog]
+  );
+  const freeFlights = useMemo(
+    () => augmentedFlightLog.filter((f) => f.source === 'free_flight'),
     [augmentedFlightLog]
   );
   const importedFlights = useMemo(
@@ -189,6 +194,9 @@ export function CareerLogbookView({
     // Filter tab
     if (filter === 'dispatch') {
       list = list.filter((f) => f.source !== 'msfs_import' && !f.is_external);
+      list = list.filter((f) => f.source === 'airbound_dispatch' || (!f.source && !f.is_external && f.source !== 'free_flight'));
+    } else if (filter === 'free_flight') {
+      list = list.filter((f) => f.source === 'free_flight');
     } else if (filter === 'msfs') {
       list = list.filter((f) => f.source === 'msfs_import' || f.is_external);
     }
@@ -504,7 +512,7 @@ export function CareerLogbookView({
             <div className="flex items-center space-x-1 font-mono text-xs bg-slate-900/90 p-1 rounded-xl border border-slate-800">
               <button
                 onClick={() => setFilter('all')}
-                className={`px-2.5 py-1 rounded-lg transition ${
+                className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
                   filter === 'all'
                     ? 'bg-cyan-600 text-white font-bold shadow-sm'
                     : 'text-slate-400 hover:text-slate-200'
@@ -514,7 +522,7 @@ export function CareerLogbookView({
               </button>
               <button
                 onClick={() => setFilter('dispatch')}
-                className={`px-2.5 py-1 rounded-lg transition ${
+                className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
                   filter === 'dispatch'
                     ? 'bg-cyan-600 text-white font-bold shadow-sm'
                     : 'text-slate-400 hover:text-slate-200'
@@ -523,8 +531,18 @@ export function CareerLogbookView({
                 Dispatched ({dispatchedFlights.length})
               </button>
               <button
+                onClick={() => setFilter('free_flight')}
+                className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                  filter === 'free_flight'
+                    ? 'bg-teal-600 text-white font-bold shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Free Flight ({freeFlights.length})
+              </button>
+              <button
                 onClick={() => setFilter('msfs')}
-                className={`px-2.5 py-1 rounded-lg transition ${
+                className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
                   filter === 'msfs'
                     ? 'bg-purple-600 text-white font-bold shadow-sm'
                     : 'text-slate-400 hover:text-slate-200'
@@ -684,7 +702,12 @@ export function CareerLogbookView({
 
                           {/* Source / Type Badge */}
                           <td className="p-3 whitespace-nowrap">
-                            {isMsfsImport ? (
+                            {record.source === 'free_flight' ? (
+                              <span className="px-2 py-0.5 rounded-md bg-teal-950/90 border border-teal-600/70 text-teal-300 text-[10px] font-mono flex items-center space-x-1 w-fit">
+                                <Compass className="w-3 h-3 text-teal-400" />
+                                <span>Free Flight</span>
+                              </span>
+                            ) : isMsfsImport ? (
                               <span className="px-2 py-0.5 rounded-md bg-purple-950/90 border border-purple-700/70 text-purple-300 text-[10px] font-mono flex items-center space-x-1 w-fit">
                                 <Globe className="w-3 h-3 text-purple-400" />
                                 <span>MSFS Free Flight</span>
@@ -762,7 +785,17 @@ export function CareerLogbookView({
 
                           {/* Payout */}
                           <td className="p-3 text-right pr-4 whitespace-nowrap">
-                            {isMsfsImport ? (
+                            {record.source === 'free_flight' ? (
+                              (record.fuel_cost > 0 || record.landing_fee > 0 || (record.net_payout !== undefined && record.net_payout < 0)) ? (
+                                <span className="text-amber-400 font-bold" title="Operating expense deductions">
+                                  -${(Math.abs(record.net_payout || ((record.fuel_cost || 0) + (record.landing_fee || 0)))).toFixed(2)}
+                                </span>
+                              ) : (
+                                <span className="text-teal-400 font-medium text-[11px]">
+                                  $0 (Waived)
+                                </span>
+                              )
+                            ) : isMsfsImport ? (
                               <span className="text-slate-500 font-normal">-</span>
                             ) : (
                               <span className="text-emerald-400 font-bold">
@@ -791,7 +824,42 @@ export function CareerLogbookView({
                                   </span>
                                 </div>
 
-                                {isMsfsImport ? (
+                                {record.source === 'free_flight' ? (
+                                  <div className="space-y-2">
+                                    <div className="flex items-center justify-between text-xs text-slate-400">
+                                      <span>Source: Airbound Free Flight Dispatch</span>
+                                      <span className="text-teal-300 font-bold">
+                                        {(record.fuel_cost > 0 || record.landing_fee > 0 || (record.net_payout !== undefined && record.net_payout < 0))
+                                          ? 'Realistic Operating Deductions'
+                                          : 'Casual Mode ($0 Waived)'}
+                                      </span>
+                                    </div>
+                                    {(record.fuel_cost > 0 || record.landing_fee > 0 || (record.net_payout !== undefined && record.net_payout < 0)) ? (
+                                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs font-mono">
+                                        <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+                                          <span className="text-slate-500 block text-[10px]">FUEL EXPENSE</span>
+                                          <span className="text-amber-400 font-bold text-sm">-${(record.fuel_cost || 0).toFixed(2)}</span>
+                                          <span className="text-[10px] text-slate-500 block">({record.fuel_gallons || 0} gal)</span>
+                                        </div>
+                                        <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+                                          <span className="text-slate-500 block text-[10px]">LANDING FEES</span>
+                                          <span className="text-rose-400 font-bold text-sm">-${record.landing_fee || 0}</span>
+                                        </div>
+                                        <div className="p-2.5 rounded-lg bg-amber-950/60 border border-amber-800">
+                                          <span className="text-slate-400 block text-[10px]">NET WALLET DEDUCTION</span>
+                                          <span className="text-amber-300 font-bold text-sm">
+                                            -${(Math.abs(record.net_payout || ((record.fuel_cost || 0) + (record.landing_fee || 0)))).toFixed(2)}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="p-2.5 rounded-lg bg-teal-950/40 border border-teal-800/60 text-teal-300 text-xs flex items-center justify-between">
+                                        <span>Operating expenses (fuel and landing fees) waived.</span>
+                                        <span className="font-bold">$0.00 EXPENSE</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : isMsfsImport ? (
                                   <div className="flex items-center justify-between text-xs text-slate-400">
                                     <span>Source: MSFS 2024 Logbook {record.external_flight_number ? `(#${record.external_flight_number})` : ''}</span>
                                     <span className="text-slate-500">Free Flight • No commercial operating fees</span>

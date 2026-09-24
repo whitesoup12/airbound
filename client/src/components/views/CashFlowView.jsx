@@ -635,7 +635,7 @@ export function CashFlowView({
 
               <div className="flex flex-wrap items-center gap-2 pt-1 text-[10px] text-slate-400">
                 <span className="px-2 py-0.5 rounded bg-indigo-950/50 border border-indigo-800/50 text-indigo-300">
-                  🔑 {rentedPlanes.length > 0 ? rentedPlanes[0].name.replace(' (Rental)', '') : 'Fleet Leases'} (${rentedPlanes.length > 0 ? rentedPlanes[0].rental_price_per_flight : 950}/flight)
+                  🔑 {rentedPlanes.length > 0 ? `${rentedPlanes[0].name.replace(' (Rental)', '')} ($${(rentedPlanes[0].rental_price_per_flight || 0).toLocaleString()}/flight)` : 'Per-Flight Leases'}
                 </span>
                 <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800">
                   Owned planes: $0.00 lease

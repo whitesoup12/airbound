@@ -83,6 +83,7 @@ const FlightRecordSchema = new mongoose.Schema(
     source: {
       type: String,
       enum: ['airbound_dispatch', 'msfs_import'],
+      enum: ['airbound_dispatch', 'msfs_import', 'free_flight'],
       default: 'airbound_dispatch'
     },
     is_external: {
@@ -111,6 +112,10 @@ const FlightRecordSchema = new mongoose.Schema(
     approach_speed_kts: {
       type: Number,
       default: null
+    },
+    category: {
+      type: String,
+      default: ''
     }
   },
   { _id: true }
@@ -241,6 +246,14 @@ const PilotSchema = new mongoose.Schema(
     flight_log: {
       type: [FlightRecordSchema],
       default: []
+    },
+    active_free_flight: {
+      origin_icao: { type: String, uppercase: true },
+      destination_icao: { type: String, uppercase: true, default: null },
+      deduct_fees: { type: Boolean, default: false },
+      departed_at: { type: Date, default: null },
+      created_at: { type: Date, default: Date.now },
+      active: { type: Boolean, default: false }
     }
   },
   {

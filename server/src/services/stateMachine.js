@@ -43,6 +43,13 @@ export class FlightStateMachine {
     this.airborneSamples = []; // High-resolution flare descent rate buffer
     this.isMockMode = false;
     this.lastAircraftValidation = null;
+    this.activeAircraft = null;
+    this._lastAircraftFetch = 0;
+  }
+
+  setActiveAircraft(aircraft) {
+    this.activeAircraft = aircraft;
+    this._lastAircraftFetch = Date.now();
   }
 
   setCallbacks({ onPhaseChange, onFlightCompleted }) {
@@ -52,8 +59,11 @@ export class FlightStateMachine {
 
   async setActiveJob(job) {
     if (job) {
-      this.originAirport = await Airport.findOne({ icao: job.origin_icao });
-      this.destinationAirport = await Airport.findOne({ icao: job.destination_icao });
+      const pilot = await Pilot.findOne().select('active_aircraft').lean();
+      this.activeAircraft = pilot?.active_aircraft || null;
+      this._lastAircraftFetch = Date.now();
+      this.originAirport = job.origin_icao ? await Airport.findOne({ icao: job.origin_icao }) : null;
+      this.destinationAirport = job.destination_icao ? await Airport.findOne({ icao: job.destination_icao }) : null;
       const rawJob = job.toObject ? job.toObject() : { ...job };
       this.activeJob = {
         ...rawJob,
@@ -75,7 +85,8 @@ export class FlightStateMachine {
       this.landingClass = '';
       this.landingClassLabel = '';
       this.airborneSamples = [];
-      console.log(`[StateMachine] Active Job loaded: ${job.origin_icao} -> ${job.destination_icao}, phase set to IDLE`);
+      const modeLabel = job.is_free_flight ? 'Free Flight session' : 'Active Job';
+      console.log(`[StateMachine] ${modeLabel} loaded: ${job.origin_icao || 'Auto'} -> ${job.destination_icao || 'Open Roam'}, phase set to IDLE`);
     } else {
       this.activeJob = null;
       this.originAirport = null;
@@ -100,6 +111,13 @@ export class FlightStateMachine {
   }
 
   async clearActiveJob() {
+    if (this.activeJob?.is_free_flight) {
+      try {
+        await Pilot.updateOne({}, { $set: { active_free_flight: null } });
+      } catch (err) {
+        console.warn('[StateMachine] Failed to clear active_free_flight from pilot:', err.message);
+      }
+    }
     this.activeJob = null;
     this.originAirport = null;
     this.destinationAirport = null;
@@ -168,11 +186,30 @@ export class FlightStateMachine {
    * @param {boolean} telemetry.engineRunning True if engine combustion is active
    */
   async processTelemetry(telemetry, options = {}) {
-    const pilot = await Pilot.findOne();
-    const activeAircraft = pilot?.active_aircraft || null;
+    const now = telemetry.timestamp || Date.now();
+    const isTestEnv = process.env.NODE_ENV === 'test';
+    // In production, cache activeAircraft in memory to avoid querying MongoDB Atlas on every simulator frame
+    if (isTestEnv || !this.activeAircraft || (now - this._lastAircraftFetch > 5000)) {
+      try {
+        const pilot = await Pilot.findOne().select('active_aircraft').lean();
+        if (pilot?.active_aircraft) {
+          this.activeAircraft = pilot.active_aircraft;
+        }
+      } catch {
+        // Retain existing activeAircraft in memory
+      }
+      this._lastAircraftFetch = now;
+    }
+    const activeAircraft = options.activeAircraft || this.activeAircraft;
     const isMockMode = Boolean(options.isMockMode);
     this.isMockMode = isMockMode;
+    const isFreeFlight = Boolean(this.activeJob?.is_free_flight);
     const aircraftValidation = validateAircraftMatch(activeAircraft, telemetry, isMockMode);
+    if (isFreeFlight) {
+      aircraftValidation.matches = true;
+      aircraftValidation.isFreeFlight = true;
+      aircraftValidation.expectedAircraft = telemetry.simAircraftTitle || activeAircraft?.name || 'MSFS Aircraft';
+    }
     this.lastAircraftValidation = aircraftValidation;
 
     if (!this.activeJob) {
@@ -189,7 +226,6 @@ export class FlightStateMachine {
       engineRunning = false
     } = telemetry;
 
-    const now = telemetry.timestamp || Date.now();
     const isPaused = Boolean(telemetry.isPaused);
     this.isPaused = isPaused;
 
@@ -277,6 +313,43 @@ export class FlightStateMachine {
         break;
 
       case FLIGHT_PHASES.IDLE:
+        // Free Flight auto-detect: automatically update origin airport while on the ground if user spawned at a new airport
+        if (isFreeFlight && simOnGround) {
+          if (!this.originAirport || originDist > 5.0) {
+            try {
+              const nearest = await Airport.findOne({
+                location: {
+                  $nearSphere: {
+                    $geometry: { type: 'Point', coordinates: [longitude, latitude] },
+                    $maxDistance: 35000
+                  }
+                }
+              });
+              if (nearest && nearest.icao !== this.activeJob.origin_icao) {
+                this.originAirport = nearest;
+                this.activeJob.origin_icao = nearest.icao;
+                this.activeJob.origin_airport = nearest;
+                const [oLon, oLat] = nearest.location.coordinates;
+                originDist = calculateDistanceNm(latitude, longitude, oLat, oLon);
+                console.log(`[StateMachine] Free Flight origin auto-detected: ${nearest.icao} (${nearest.name})`);
+
+                try {
+                  await Pilot.updateOne(
+                    {},
+                    { $set: { 'active_free_flight.origin_icao': nearest.icao } }
+                  );
+                } catch {}
+
+                if (this.onPhaseChangeCallback) {
+                  this.onPhaseChangeCallback(this.phase, { job: this.activeJob });
+                }
+              }
+            } catch (err) {
+              console.warn('[StateMachine] Free flight origin auto-detect note:', err.message);
+            }
+          }
+        }
+
         // Recovery 1: If aircraft is already airborne mid-flight (e.g. server restart or reconnection en route)
         if (!simOnGround && originDist > 5.0) {
           this.phase = FLIGHT_PHASES.EN_ROUTE;
@@ -308,7 +381,35 @@ export class FlightStateMachine {
         }
 
         // DEPARTED: SIM ON GROUND changes from true to false within 5 NM of origin
-        if (this.previousSimOnGround && !simOnGround && originDist <= 5.0) {
+        // Must be genuinely airborne (not a gear bounce at 0 knots or ground taxiing!)
+        const hasSpeedOrAgl = (telemetry.groundSpeed !== undefined) || (telemetry.airspeedTrue !== undefined) || (telemetry.altAboveGround !== undefined);
+        const isAirborneSpeed = (groundSpeed >= 35.0) || (telemetry.airspeedTrue >= 35.0);
+        const isAboveGround = (telemetry.altAboveGround != null && telemetry.altAboveGround >= 10);
+        const isGenuinelyAirborne = !simOnGround && (!hasSpeedOrAgl || isAirborneSpeed || isAboveGround);
+
+        if (this.previousSimOnGround && isGenuinelyAirborne && (originDist <= 5.0 || isFreeFlight)) {
+          if (isFreeFlight && (!this.originAirport || originDist > 5.0)) {
+            try {
+              const nearest = await Airport.findOne({
+                location: {
+                  $nearSphere: {
+                    $geometry: { type: 'Point', coordinates: [longitude, latitude] },
+                    $maxDistance: 35000
+                  }
+                }
+              });
+              if (nearest) {
+                this.originAirport = nearest;
+                this.activeJob.origin_icao = nearest.icao;
+                this.activeJob.origin_airport = nearest;
+                const [oLon, oLat] = nearest.location.coordinates;
+                originDist = calculateDistanceNm(latitude, longitude, oLat, oLon);
+              }
+            } catch (err) {
+              console.warn('[StateMachine] Dynamic origin lookup note:', err.message);
+            }
+          }
+
           if (!aircraftValidation.matches) {
             console.warn(
               `[StateMachine] Takeoff BLOCKED: Airframe mismatch! Contract requires "${aircraftValidation.expectedAircraft}", but MSFS is flying "${aircraftValidation.simAircraftTitle}".`
@@ -318,30 +419,83 @@ export class FlightStateMachine {
             this.phase = FLIGHT_PHASES.DEPARTED;
             this.departedAt = new Date();
             this.lastTelemetryTime = now;
-            console.log(`[StateMachine] DEPARTED: Took off in verified aircraft within ${originDist.toFixed(1)} NM of origin`);
+            console.log(`[StateMachine] DEPARTED: Took off in ${isFreeFlight ? 'Free Flight' : 'verified aircraft'} within ${originDist.toFixed(1)} NM of origin (${this.activeJob.origin_icao || 'Airfield'})`);
           }
         }
         break;
 
       case FLIGHT_PHASES.DEPARTED:
+        // If aircraft is back on the ground at origin airfield (aborted takeoff, taxiing, rollout)
+        if (simOnGround && originDist <= 3.5 && (destDist > 10.0 || !this.destinationAirport)) {
+          console.log(`[StateMachine] On ground at origin (${originDist.toFixed(1)} NM). Reverting to IDLE.`);
+          this.phase = FLIGHT_PHASES.IDLE;
+          this.departedAt = null;
+          break;
+        }
+
         // EN ROUTE: Airborne tracking mode once safely climbing / moving away
         if (!simOnGround) {
-          // If past 2 NM from origin or climbing above 1000 ft, transition to EN ROUTE
-          if (originDist > 2.0 || telemetry.altitude > 1000) {
+          // If past 3 NM from origin or climbing above 800 ft AGL, transition to EN ROUTE
+          const agl = Number.isFinite(telemetry.altAboveGround) ? telemetry.altAboveGround : null;
+          const originElevation = this.originAirport?.elevation_ft || 0;
+          const heightAboveOrigin = telemetry.altitude - originElevation;
+          const isClimbingOut = (agl !== null && agl > 800) || heightAboveOrigin > 800;
+
+          if (originDist > 3.0 || isClimbingOut) {
             this.phase = FLIGHT_PHASES.EN_ROUTE;
             console.log('[StateMachine] EN ROUTE: Airborne tracking mode active');
           }
-        } else if (simOnGround && destDist <= 3.5 && originDist > 1.0) {
+        } else if (simOnGround && this.destinationAirport && destDist <= 3.5 && originDist > 1.0) {
           // Short hop / circuit touchdown directly from DEPARTED
           await this._handleTouchdown(telemetry, destDist, now);
         }
         break;
 
       case FLIGHT_PHASES.EN_ROUTE:
+        // If aircraft landed back at the origin airport or is on the ground near origin
+        if (simOnGround && originDist <= 3.5 && (destDist > 10.0 || !this.destinationAirport)) {
+          console.log(`[StateMachine] Aircraft on ground at origin airfield (${originDist.toFixed(1)} NM). Reverting to IDLE.`);
+          this.phase = FLIGHT_PHASES.IDLE;
+          this.departedAt = null;
+          break;
+        }
+
         // TOUCHDOWN: SIM ON GROUND changes from false to true within 3.5 NM of destination ICAO
         // Or if wheels are on the ground in the destination airport area
-        if (simOnGround && destDist <= 3.5) {
-          await this._handleTouchdown(telemetry, destDist, now);
+        if (this.destinationAirport) {
+          if (simOnGround && destDist <= 3.5) {
+            await this._handleTouchdown(telemetry, destDist, now);
+          }
+        } else if (isFreeFlight) {
+          // Open Roam mode: touchdown detected when on ground and moved away from origin (or in flight > 30s)
+          if (simOnGround && (originDist > 1.0 || this.airborneSeconds >= 30)) {
+            // Find destination airfield near touchdown point
+            try {
+              const nearestDest = await Airport.findOne({
+                location: {
+                  $nearSphere: {
+                    $geometry: { type: 'Point', coordinates: [longitude, latitude] },
+                    $maxDistance: 35000
+                  }
+                }
+              });
+              if (nearestDest) {
+                this.destinationAirport = nearestDest;
+                this.activeJob.destination_icao = nearestDest.icao;
+                this.activeJob.destination_airport = nearestDest;
+                const [dLon, dLat] = nearestDest.location.coordinates;
+                destDist = calculateDistanceNm(latitude, longitude, dLat, dLon);
+              } else {
+                this.activeJob.destination_icao = this.activeJob.origin_icao || 'UNKN';
+                destDist = 0;
+              }
+            } catch (err) {
+              console.warn('[StateMachine] Failed to find landing airport:', err.message);
+              this.activeJob.destination_icao = this.activeJob.origin_icao || 'UNKN';
+              destDist = 0;
+            }
+            await this._handleTouchdown(telemetry, destDist, now);
+          }
         }
         break;
 
@@ -452,8 +606,7 @@ export class FlightStateMachine {
     this.touchdownFpm = this._determineTouchdownFpm(telemetry, now);
     this.approachSpeedKts = this._determineApproachSpeed(now);
 
-    const pilot = await Pilot.findOne();
-    const activeAircraft = pilot?.active_aircraft || null;
+    const activeAircraft = this.activeAircraft || (await Pilot.findOne().select('active_aircraft').lean())?.active_aircraft || null;
 
     const landingRate = rateLandingTouchdown(this.touchdownFpm, {
       category: activeAircraft?.category,
@@ -509,15 +662,53 @@ export class FlightStateMachine {
         fuel_type: '100LL'
       };
 
+      const isFreeFlight = Boolean(this.activeJob.is_free_flight);
+
+      // Distance calculation for Free Flight if not set or 0
+      if (isFreeFlight && (!this.activeJob.distance_nm || this.activeJob.distance_nm <= 0)) {
+        if (this.originAirport?.location?.coordinates && this.destinationAirport?.location?.coordinates) {
+          const [oLon, oLat] = this.originAirport.location.coordinates;
+          const [dLon, dLat] = this.destinationAirport.location.coordinates;
+          this.activeJob.distance_nm = Math.round(calculateDistanceNm(oLat, oLon, dLat, dLon) * 10) / 10;
+        } else {
+          this.activeJob.distance_nm = Math.max(1, Math.round(((airborneSeconds || 60) / 3600) * (telemetry.groundSpeed || 110)));
+        }
+      }
+
       // Calculate economic settlement: Gross - Fuel - Landing Fee = Net Payout
-      const settlement = computeFlightSettlement({
-        grossPayout: this.activeJob.payout,
-        durationSeconds,
-        fuelBurnGph: activeAircraft.fuel_burn_gph || 9.0,
-        fuelType: activeAircraft.fuel_type || '100LL',
-        destRunwayFt,
-        aircraftName: activeAircraft.name || 'Cessna 172 Skyhawk'
-      });
+      let settlement;
+      if (isFreeFlight) {
+        if (this.activeJob.deduct_fees) {
+          settlement = computeFlightSettlement({
+            grossPayout: 0,
+            durationSeconds,
+            fuelBurnGph: activeAircraft.fuel_burn_gph || 9.0,
+            fuelType: activeAircraft.fuel_type || '100LL',
+            destRunwayFt,
+            aircraftName: activeAircraft.name || 'Cessna 172 Skyhawk'
+          });
+          // For free flight with deductions, net payout is negative (settles fuel + landing fees)
+          settlement.netPayout = -settlement.totalExpenses;
+        } else {
+          settlement = {
+            grossPayout: 0,
+            fuelCost: 0,
+            fuelGallons: 0,
+            landingFee: 0,
+            netPayout: 0,
+            aircraftName: activeAircraft.name || 'Cessna 172 Skyhawk'
+          };
+        }
+      } else {
+        settlement = computeFlightSettlement({
+          grossPayout: this.activeJob.payout,
+          durationSeconds,
+          fuelBurnGph: activeAircraft.fuel_burn_gph || 9.0,
+          fuelType: activeAircraft.fuel_type || '100LL',
+          destRunwayFt,
+          aircraftName: activeAircraft.name || 'Cessna 172 Skyhawk'
+        });
+      }
 
       const isUnvisited = Boolean(
         this.activeJob.is_unvisited ||
@@ -545,15 +736,29 @@ export class FlightStateMachine {
         approach_speed_kts: this.approachSpeedKts,
         xp_reward: flightXp.totalXp
       });
+      // 1. Update Job status to 'completed' with touchdown and XP metadata (only if job contract exists)
+      if (this.activeJob._id) {
+        await Job.findByIdAndUpdate(this.activeJob._id, {
+          status: 'completed',
+          completed_at: completedAt,
+          touchdown_fpm: this.touchdownFpm,
+          landing_rating: flightXp.landingRating,
+          landing_class: flightXp.aircraftClass,
+          approach_speed_kts: this.approachSpeedKts,
+          xp_reward: flightXp.totalXp
+        });
+      }
 
       // 2. Flight summary for logbook with detailed financial ledger and XP
       const flightSummary = {
         job_id: this.activeJob._id,
         origin_icao: this.activeJob.origin_icao,
+        job_id: this.activeJob._id || null,
+        origin_icao: this.activeJob.origin_icao || 'UNKN',
         destination_icao: destIcao,
-        distance_nm: this.activeJob.distance_nm,
-        cargo_lbs: this.activeJob.cargo_lbs,
-        pax_count: this.activeJob.pax_count,
+        distance_nm: this.activeJob.distance_nm || 1,
+        cargo_lbs: this.activeJob.cargo_lbs || 0,
+        pax_count: this.activeJob.pax_count || 0,
         payout: settlement.netPayout, // Persisted reward
         gross_payout: settlement.grossPayout,
         fuel_cost: settlement.fuelCost,
@@ -561,8 +766,9 @@ export class FlightStateMachine {
         landing_fee: settlement.landingFee,
         net_payout: settlement.netPayout,
         exploration_bonus: this.activeJob.exploration_bonus || 0,
-        rental_fee: this.activeJob.rental_fee_charged || (activeAircraft.is_rental && !activeAircraft.is_loaner ? (activeAircraft.rental_price_per_flight || 0) : 0),
-        aircraft_name: settlement.aircraftName,
+        rental_fee: isFreeFlight ? 0 : (this.activeJob.rental_fee_charged || (activeAircraft.is_rental && !activeAircraft.is_loaner ? (activeAircraft.rental_price_per_flight || 0) : 0)),
+        aircraft_name: telemetry.simAircraftTitle || activeAircraft.name || settlement.aircraftName,
+        category: activeAircraft?.category || 'single_prop',
         duration_seconds: durationSeconds,
         airborne_seconds: airborneSeconds,
         touchdown_fpm: this.touchdownFpm,
@@ -571,7 +777,8 @@ export class FlightStateMachine {
         approach_speed_kts: this.approachSpeedKts,
         xp_earned: flightXp.totalXp,
         departed_at: departedAt,
-        completed_at: completedAt
+        completed_at: completedAt,
+        source: isFreeFlight ? 'free_flight' : 'airbound_dispatch'
       };
 
       // 3. Update Pilot persistence:
@@ -586,6 +793,9 @@ export class FlightStateMachine {
       let rankInfo = null;
 
       if (pilot) {
+        if (isFreeFlight) {
+          pilot.active_free_flight = null;
+        }
         // Increment flight hours for the flown aircraft in pilot's fleet if matching
         let fleetPlane = null;
         if (pilot.fleet && pilot.fleet.length > 0 && activeAircraft.tail_number) {
@@ -656,6 +866,11 @@ export class FlightStateMachine {
           aircraftName: activeAircraft.name
         });
       }
+
+      // Conclude active contract upon successful flight completion
+      this.activeJob = null;
+      this.originAirport = null;
+      this.destinationAirport = null;
     } catch (err) {
       console.error('[StateMachine] Error persisting flight completion:', err);
     }

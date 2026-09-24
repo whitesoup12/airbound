@@ -1,3 +1,4 @@
+import './setupTestEnv.js';
 import assert from 'assert';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
@@ -168,6 +169,9 @@ async function runTests() {
     latitude: 33.9425,
     longitude: -118.4081,
     simOnGround: false, // Wheels lift off
+    groundSpeed: 100,
+    airspeedTrue: 100,
+    altAboveGround: 50,
     simAircraftTitle: 'C172SP G1000 Cargo',
     simAircraftModel: 'ATCCOM.AC_MODEL C172.0.text'
   });
@@ -179,6 +183,9 @@ async function runTests() {
     latitude: 33.9425,
     longitude: -118.4081,
     simOnGround: true,
+    groundSpeed: 0,
+    airspeedTrue: 0,
+    altAboveGround: 0,
     simAircraftTitle: 'TBM 930 Asobo',
     simAircraftModel: 'TBM9'
   });
@@ -188,6 +195,9 @@ async function runTests() {
     latitude: 33.9425,
     longitude: -118.4081,
     simOnGround: false,
+    groundSpeed: 100,
+    airspeedTrue: 100,
+    altAboveGround: 50,
     simAircraftTitle: 'TBM 930 Asobo',
     simAircraftModel: 'TBM9'
   });

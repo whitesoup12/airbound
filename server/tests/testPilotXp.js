@@ -59,6 +59,13 @@ if (a320Clean.rating !== 'Good' || a320Clean.aircraftClass !== 'airliner') {
 }
 console.log(`✓ Airliner (A320): -170 FPM is Butter (+100 XP), -250 FPM is Clean (+50 XP).`);
 
+// 2c-2. Personal / Business Jet (Cirrus Vision SF50: ideal ≤ 180 FPM)
+const sf50Butter = rateLandingTouchdown(-130, { aircraftName: 'Cirrus Vision SF50', approachKts: 105 });
+if (sf50Butter.rating !== 'Butter' || sf50Butter.aircraftClass !== 'airliner' || sf50Butter.aircraftClassLabel !== 'Airliner / Jet') {
+  throw new Error(`SF50 Butter mismatch: ${JSON.stringify(sf50Butter)}`);
+}
+console.log(`✓ Jet (Cirrus Vision SF50): -130 FPM correctly rated as Butter (+100 XP) [${sf50Butter.aircraftClassLabel}].`);
+
 // 2d. Heavy Widebody (Boeing 747-8: ideal ≤ 240 FPM)
 const b747Butter = rateLandingTouchdown(-220, { category: 'airliner', aircraftName: 'Boeing 747-8 Intercontinental' });
 if (b747Butter.rating !== 'Butter' || b747Butter.aircraftClass !== 'heavy') {

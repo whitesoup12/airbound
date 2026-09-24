@@ -94,6 +94,7 @@ export function useTelemetry(onFlightCompleted) {
 
     socket.on('flightCompleted', (result) => {
       setCompletedFlight(result);
+      setActiveJob(null);
       if (onFlightCompleted) {
         onFlightCompleted(result);
       }

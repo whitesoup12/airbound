@@ -1,7 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import JobBoard from '../JobBoard.jsx';
 import FlightMap from '../FlightMap.jsx';
-import { MapPin, Plane, RefreshCw, Layers, Compass, ArrowRight, ShieldCheck } from 'lucide-react';
+import FreeFlightDispatcher from '../FreeFlightDispatcher.jsx';
+import {
+  MapPin,
+  Plane,
+  RefreshCw,
+  Layers,
+  Compass,
+  ArrowRight,
+  ShieldCheck,
+  Briefcase,
+  Globe
+} from 'lucide-react';
 
 export function DispatchView({
   jobs,
@@ -15,9 +26,15 @@ export function DispatchView({
   onAcceptJob,
   onRefreshJobs,
   onOpenChangeBase,
+  onStartFreeFlight,
+  onCancelFreeFlight,
   loading,
   telemetry
 }) {
+  const [dispatchTab, setDispatchTab] = useState(
+    activeJob?.is_free_flight ? 'free_flight' : 'commercial'
+  );
+
   const activeAircraft = {
     name: pilot?.active_aircraft?.name || 'Cessna 172 Skyhawk',
     tail_number: pilot?.active_aircraft?.tail_number || 'N172AB',
@@ -50,7 +67,7 @@ export function DispatchView({
               {onOpenChangeBase && (
                 <button
                   onClick={onOpenChangeBase}
-                  className="text-[10px] text-cyan-400 hover:text-cyan-300 font-mono px-1.5 py-0.2 rounded bg-slate-800 border border-slate-700 hover:border-cyan-500 transition"
+                  className="text-[10px] text-cyan-400 hover:text-cyan-300 font-mono px-1.5 py-0.2 rounded bg-slate-800 border border-slate-700 hover:border-cyan-500 transition cursor-pointer"
                   title="Change departure base"
                 >
                   Change Base
@@ -84,49 +101,99 @@ export function DispatchView({
         </div>
       </div>
 
-      {/* Interactive Route Preview Map */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center space-x-2">
-            <Compass className="w-4 h-4 text-amber-400" />
-            <h3 className="text-sm font-mono uppercase tracking-wider text-slate-300 font-bold">
-              ROUTE PLANNING & DESTINATION RADAR
-            </h3>
-          </div>
-          <span className="text-xs font-mono text-slate-400">
-            Select a contract below to preview flight path
-          </span>
-        </div>
+      {/* Dispatch Operation Mode Switcher Tabs */}
+      <div className="flex items-center space-x-3 border-b border-slate-800 pb-3">
+        <button
+          type="button"
+          onClick={() => setDispatchTab('commercial')}
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all cursor-pointer ${
+            dispatchTab === 'commercial'
+              ? 'bg-amber-500/20 border border-amber-500/60 text-amber-300 shadow-lg shadow-amber-950/40'
+              : 'bg-slate-900/60 border border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+          }`}
+        >
+          <Briefcase className="w-4 h-4 text-amber-400" />
+          <span>COMMERCIAL CONTRACTS</span>
+          {jobs?.length > 0 && (
+            <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-amber-950 border border-amber-800 text-amber-300">
+              {jobs.length}
+            </span>
+          )}
+        </button>
 
-        <FlightMap
-          telemetry={telemetry}
-          activeJob={activeJob}
-          previewJob={previewJob}
-          currentAirport={currentAirport}
-          onAcceptJob={onAcceptJob}
-          visitedAirports={pilot?.visited_airports || []}
-          allAirports={allAirports}
-          activeAircraft={activeAircraft}
-          heightClass="h-[380px]"
-        />
+        <button
+          type="button"
+          onClick={() => setDispatchTab('free_flight')}
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-mono text-xs font-bold transition-all cursor-pointer ${
+            dispatchTab === 'free_flight'
+              ? 'bg-cyan-500/20 border border-cyan-500/60 text-cyan-300 shadow-lg shadow-cyan-950/40'
+              : 'bg-slate-900/60 border border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+          }`}
+        >
+          <Globe className="w-4 h-4 text-cyan-400" />
+          <span>FREE FLIGHT DISPATCHER</span>
+          {activeJob?.is_free_flight && (
+            <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-cyan-950 border border-cyan-700 text-cyan-300 font-bold animate-pulse">
+              ACTIVE
+            </span>
+          )}
+        </button>
       </div>
 
-      {/* Job Dispatch Board */}
-      <JobBoard
-        jobs={jobs}
-        activeJob={activeJob}
-        currentIcao={currentIcao}
-        selectedJobId={activeJob?._id || previewJob?._id}
-        activeAircraft={activeAircraft}
-        pilot={pilot}
-        onSelectJob={onSelectJob}
-        onAcceptJob={onAcceptJob}
-        onRefreshJobs={onRefreshJobs}
-        loading={loading}
-      />
+      {dispatchTab === 'commercial' ? (
+        <>
+          {/* Interactive Route Preview Map */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center space-x-2">
+                <Compass className="w-4 h-4 text-amber-400" />
+                <h3 className="text-sm font-mono uppercase tracking-wider text-slate-300 font-bold">
+                  ROUTE PLANNING & DESTINATION RADAR
+                </h3>
+              </div>
+              <span className="text-xs font-mono text-slate-400">
+                Select a contract below to preview flight path
+              </span>
+            </div>
+
+            <FlightMap
+              telemetry={telemetry}
+              activeJob={activeJob}
+              previewJob={previewJob}
+              currentAirport={currentAirport}
+              onAcceptJob={onAcceptJob}
+              visitedAirports={pilot?.visited_airports || []}
+              allAirports={allAirports}
+              activeAircraft={activeAircraft}
+              heightClass="h-[380px]"
+            />
+          </div>
+
+          {/* Job Dispatch Board */}
+          <JobBoard
+            jobs={jobs}
+            activeJob={activeJob}
+            currentIcao={currentIcao}
+            selectedJobId={activeJob?._id || previewJob?._id}
+            activeAircraft={activeAircraft}
+            pilot={pilot}
+            onSelectJob={onSelectJob}
+            onAcceptJob={onAcceptJob}
+            onRefreshJobs={onRefreshJobs}
+            loading={loading}
+          />
+        </>
+      ) : (
+        /* Free Flight Dispatcher Setup Card (Open Roam only) */
+        <FreeFlightDispatcher
+          activeJob={activeJob}
+          onStartFreeFlight={onStartFreeFlight}
+          onCancelFreeFlight={onCancelFreeFlight}
+          loading={loading}
+        />
+      )}
     </div>
   );
 }
 
 export default DispatchView;
-

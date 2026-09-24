@@ -110,8 +110,13 @@ export const LANDING_CLASS_CONFIGS = {
 export function resolveAircraftClass(params = {}) {
   const { category = '', aircraftName = '', approachKts = null, landingClass = '' } = params;
 
-  if (landingClass && LANDING_CLASS_CONFIGS[landingClass]) {
-    return landingClass;
+  if (landingClass) {
+    const norm = (landingClass + '').toLowerCase().trim();
+    for (const [key, cfg] of Object.entries(LANDING_CLASS_CONFIGS)) {
+      if (key.toLowerCase() === norm || cfg.id.toLowerCase() === norm || cfg.label.toLowerCase() === norm) {
+        return key;
+      }
+    }
   }
 
   const name = (aircraftName || '').toLowerCase();
@@ -125,11 +130,11 @@ export function resolveAircraftClass(params = {}) {
     return 'heavy';
   }
 
-  // 2. Airliners & Mid-size Business Jets (A320, B737, CRJ, ERJ, CJ4, Longitude)
+  // 2. Airliners & Business / Personal Jets (Cirrus Vision SF50, Citation, Phenom, HondaJet, A320, B737, etc.)
   if (
     cat === 'airliner' ||
     cat === 'jet' ||
-    /airbus|a319|a320|a321|boeing|737|727|717|crj|erj|embraer|citation|longitude|cj4|phenom|learjet|challenger|global/i.test(name)
+    /airbus|a319|a320|a321|boeing|737|727|717|crj|erj|embraer|citation|longitude|cj4|phenom|learjet|challenger|global|vision|sf50|cirrus.*jet|hondajet|hawker|falcon|gulfstream|premier|mustang|eclipse|\bjet\b/i.test(name)
   ) {
     return 'airliner';
   }

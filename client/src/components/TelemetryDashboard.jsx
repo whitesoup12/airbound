@@ -14,7 +14,8 @@ import {
   Fuel,
   Clock,
   MapPin,
-  Award
+  Award,
+  Plane
 } from 'lucide-react';
 import { calculateNavEstimates } from '../utils/navigation.js';
 
@@ -292,7 +293,7 @@ export function TelemetryDashboard({
           </div>
           <div className="mt-2 flex items-baseline space-x-1">
             <span className={`text-base font-bold font-mono truncate ${
-              navEstimates.turnAdvice === 'ON TRACK'
+              navEstimates.turnAdvice === 'ON TRACK' || navEstimates.turnAdvice === 'OPEN ROAM'
                 ? 'text-emerald-400'
                 : 'text-amber-300'
             }`}>
@@ -300,7 +301,11 @@ export function TelemetryDashboard({
             </span>
           </div>
           <div className="mt-1 text-[10px] font-mono text-slate-400 truncate">
-            {activeJob ? `VMG: ${navEstimates.closureRate} KTS` : 'Straight Flight'}
+            {activeJob
+              ? activeJob.is_free_flight && !activeJob.destination_icao
+                ? 'Free Exploration'
+                : `VMG: ${navEstimates.closureRate} KTS`
+              : 'Straight Flight'}
           </div>
         </div>
 
@@ -353,132 +358,217 @@ export function TelemetryDashboard({
         </div>
       </div>
 
-      {/* Active Contract Details Banner (when job is accepted) */}
+      {/* Active Contract / Free Flight Details Banner (when job is accepted) */}
       {activeJob ? (
-        <div className="glass-panel rounded-2xl p-4 sm:p-5 border border-cyan-800/50 bg-gradient-to-r from-cyan-950/40 via-slate-900/70 to-slate-900/40 shadow-xl">
+        <div className={`glass-panel rounded-2xl p-4 sm:p-5 border shadow-xl ${
+          activeJob.is_free_flight
+            ? 'border-cyan-700/60 bg-gradient-to-r from-cyan-950/50 via-slate-900/80 to-slate-900/60 shadow-cyan-950/40'
+            : 'border-cyan-800/50 bg-gradient-to-r from-cyan-950/40 via-slate-900/70 to-slate-900/40'
+        }`}>
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
             {/* Route & Destination */}
             <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 rounded-xl bg-cyan-900/50 border border-cyan-500/50 flex items-center justify-center text-cyan-300 font-mono font-bold text-lg">
-                {activeJob.destination_icao}
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-mono font-bold text-lg border ${
+                activeJob.is_free_flight
+                  ? 'bg-cyan-950/90 border-cyan-400 text-cyan-300 shadow-lg shadow-cyan-950/50'
+                  : 'bg-cyan-900/50 border-cyan-500/50 text-cyan-300'
+              }`}>
+                {activeJob.is_free_flight ? (activeJob.destination_icao || 'ROAM') : activeJob.destination_icao}
               </div>
               <div>
                 <div className="flex items-center space-x-2">
-                  <span className="text-xs uppercase font-mono text-cyan-400">ACTIVE CONTRACT</span>
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-cyan-900/70 text-cyan-200">
-                    {activeJob.distance_nm} NM
+                  <span className="text-xs uppercase font-mono text-cyan-400">
+                    {activeJob.is_free_flight ? 'FREE FLIGHT MISSION' : 'ACTIVE CONTRACT'}
                   </span>
+                  {activeJob.is_free_flight ? (
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-cyan-950/90 text-cyan-200 border border-cyan-700/70 font-bold">
+                      {activeJob.destination_icao ? `${activeJob.distance_nm || '--'} NM ROUTE` : 'OPEN ROAM'}
+                    </span>
+                  ) : (
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-cyan-900/70 text-cyan-200">
+                      {activeJob.distance_nm} NM
+                    </span>
+                  )}
                 </div>
                 <h4 className="text-lg font-bold text-white font-mono tracking-wide">
-                  {activeJob.origin_icao} <span className="text-cyan-400">➔</span> {activeJob.destination_icao}
+                  {activeJob.origin_icao} <span className="text-cyan-400">➔</span> {activeJob.destination_icao || 'Any Airfield (Open Roam)'}
                 </h4>
                 <p className="text-xs text-slate-300">
-                  {activeJob.destination_airport?.name || activeJob.destination_name || 'En Route to Destination'}
+                  {activeJob.is_free_flight
+                    ? activeJob.destination_icao
+                      ? (activeJob.destination_airport?.name || activeJob.destination_name || 'Planned Destination Airfield')
+                      : 'Fly anywhere. Touchdown and engine shutdown will auto-detect nearest airport.'
+                    : (activeJob.destination_airport?.name || activeJob.destination_name || 'En Route to Destination')}
                   {activeJob.destination_airport?.city ? ` • ${activeJob.destination_airport.city}` : ''}
                 </p>
               </div>
             </div>
 
-            {/* Payload & Payout Details */}
-            <div className="grid grid-cols-3 gap-4 text-xs font-mono w-full lg:w-auto">
-              <div className="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
-                <div className="flex items-center space-x-1.5 text-slate-400">
-                  <Package className="w-3.5 h-3.5 text-amber-400" />
-                  <span>CARGO</span>
+            {/* Middle Specs Grid */}
+            {activeJob.is_free_flight ? (
+              <div className="grid grid-cols-3 gap-4 text-xs font-mono w-full lg:w-auto">
+                <div className="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+                  <div className="flex items-center space-x-1.5 text-slate-400">
+                    <Plane className="w-3.5 h-3.5 text-amber-400" />
+                    <span>AIRFRAME</span>
+                  </div>
+                  <p className="text-white font-bold mt-1 text-xs truncate max-w-[130px]" title={telemetry?.simAircraftTitle || activeAircraft.name}>
+                    {telemetry?.simAircraftTitle || activeAircraft.name}
+                  </p>
                 </div>
-                <p className="text-white font-bold mt-1 text-sm">{activeJob.cargo_lbs.toLocaleString()} lbs</p>
-              </div>
 
-              <div className="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
-                <div className="flex items-center space-x-1.5 text-slate-400">
-                  <Users className="w-3.5 h-3.5 text-blue-400" />
-                  <span>PASSENGERS</span>
+                <div className="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+                  <div className="flex items-center space-x-1.5 text-slate-400">
+                    <Compass className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>DISPATCH</span>
+                  </div>
+                  <p className="text-white font-bold mt-1 text-sm">{activeJob.destination_icao ? 'Planned' : 'Open Roam'}</p>
                 </div>
-                <p className="text-white font-bold mt-1 text-sm">{activeJob.pax_count} pax</p>
-              </div>
 
-              <div className="bg-slate-900/80 p-2.5 rounded-xl border border-emerald-900/50">
-                <div className="flex items-center space-x-1.5 text-emerald-400">
-                  <DollarSign className="w-3.5 h-3.5" />
-                  <span>REWARD</span>
+                <div className="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+                  <div className="flex items-center space-x-1.5 text-emerald-400">
+                    <DollarSign className="w-3.5 h-3.5" />
+                    <span>EXPENSES</span>
+                  </div>
+                  <p className={`font-bold mt-1 text-xs font-mono ${activeJob.deduct_fees ? 'text-amber-400' : 'text-emerald-400'}`}>
+                    {activeJob.deduct_fees ? 'Realistic ($)' : 'Casual ($0)'}
+                  </p>
                 </div>
-                <p className="text-emerald-400 font-bold mt-1 text-sm font-mono">
-                  ${activeJob.payout.toLocaleString()}
-                </p>
-                {activeJob.seniority_bonus > 0 && (
-                  <span
-                    onClick={onOpenCareer}
-                    className={`text-[10px] text-purple-300 font-mono block ${
-                      onOpenCareer ? 'cursor-pointer hover:text-purple-200 hover:underline' : ''
-                    }`}
-                    title={onOpenCareer ? 'View Career Progression & Rank Multipliers' : undefined}
-                  >
-                    (+${activeJob.seniority_bonus.toLocaleString()} Seniority)
-                  </span>
-                )}
               </div>
-            </div>
-
-            {/* Progress & Live ETE Guidance */}
-            <div className="w-full lg:w-60 flex flex-col justify-center">
-              <div className="flex justify-between text-xs font-mono mb-1 text-slate-400">
-                <span>DIST REMAINING</span>
-                <span className="text-cyan-300 font-bold">{remainingNm} NM</span>
-              </div>
-              <div className="w-full h-2.5 rounded-full bg-slate-800 overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-cyan-500 to-emerald-400 transition-all duration-500"
-                  style={{ width: `${progressPct}%` }}
-                />
-              </div>
-
-              {/* Live ETE and Clock ETA */}
-              <div className="flex justify-between items-center text-[11px] font-mono mt-1.5 text-slate-400">
-                <div className="flex items-center space-x-1">
-                  <Clock className="w-3 h-3 text-emerald-400" />
-                  <span>EST. TIME:</span>
+            ) : (
+              <div className="grid grid-cols-3 gap-4 text-xs font-mono w-full lg:w-auto">
+                <div className="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+                  <div className="flex items-center space-x-1.5 text-slate-400">
+                    <Package className="w-3.5 h-3.5 text-amber-400" />
+                    <span>CARGO</span>
+                  </div>
+                  <p className="text-white font-bold mt-1 text-sm">{activeJob.cargo_lbs?.toLocaleString()} lbs</p>
                 </div>
-                <div className="flex items-center space-x-1.5">
-                  <span className={`font-bold ${navEstimates.isDiverging ? 'text-amber-400' : 'text-emerald-400'}`}>
-                    {navEstimates.formattedEte}
-                  </span>
-                  {navEstimates.formattedEta && navEstimates.formattedEta !== 'N/A' && (
-                    <span className="text-[10px] text-slate-400 font-normal">({navEstimates.formattedEta})</span>
+
+                <div className="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+                  <div className="flex items-center space-x-1.5 text-slate-400">
+                    <Users className="w-3.5 h-3.5 text-blue-400" />
+                    <span>PASSENGERS</span>
+                  </div>
+                  <p className="text-white font-bold mt-1 text-sm">{activeJob.pax_count} pax</p>
+                </div>
+
+                <div className="bg-slate-900/80 p-2.5 rounded-xl border border-emerald-900/50">
+                  <div className="flex items-center space-x-1.5 text-emerald-400">
+                    <DollarSign className="w-3.5 h-3.5" />
+                    <span>REWARD</span>
+                  </div>
+                  <p className="text-emerald-400 font-bold mt-1 text-sm font-mono">
+                    ${activeJob.payout?.toLocaleString()}
+                  </p>
+                  {activeJob.seniority_bonus > 0 && (
+                    <span
+                      onClick={onOpenCareer}
+                      className={`text-[10px] text-purple-300 font-mono block ${
+                        onOpenCareer ? 'cursor-pointer hover:text-purple-200 hover:underline' : ''
+                      }`}
+                      title={onOpenCareer ? 'View Career Progression & Rank Multipliers' : undefined}
+                    >
+                      (+${activeJob.seniority_bonus.toLocaleString()} Seniority)
+                    </span>
                   )}
                 </div>
               </div>
+            )}
 
-              {/* Direct Bearing & Heading Deviation */}
-              {navEstimates.bearing !== null && (
-                <div className="flex justify-between items-center text-[10px] font-mono mt-0.5 text-slate-400">
-                  <span>DIRECT BRG:</span>
-                  <span className="text-cyan-400 font-medium">
-                    {navEstimates.bearing.toString().padStart(3, '0')}°
-                    {navEstimates.turnAdvice ? ` (${navEstimates.turnAdvice})` : ''}
-                  </span>
-                </div>
+            {/* Progress & Live ETE Guidance */}
+            <div className="w-full lg:w-60 flex flex-col justify-center">
+              {activeJob.is_free_flight && !activeJob.destination_icao ? (
+                <>
+                  <div className="flex justify-between text-xs font-mono mb-1 text-slate-400">
+                    <span>FLIGHT LOGGING</span>
+                    <span className="text-cyan-300 font-bold">ACTIVE</span>
+                  </div>
+                  <div className="w-full h-2.5 rounded-full bg-slate-800 overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-cyan-500 to-emerald-400 animate-pulse"
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+                  <div className="flex justify-between items-center text-[11px] font-mono mt-1.5 text-slate-400">
+                    <span>TOUCHDOWN:</span>
+                    <span className="text-cyan-300 font-medium">Auto-Detect</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex justify-between text-xs font-mono mb-1 text-slate-400">
+                    <span>DIST REMAINING</span>
+                    <span className="text-cyan-300 font-bold">{remainingNm} NM</span>
+                  </div>
+                  <div className="w-full h-2.5 rounded-full bg-slate-800 overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-cyan-500 to-emerald-400 transition-all duration-500"
+                      style={{ width: `${progressPct}%` }}
+                    />
+                  </div>
+
+                  {/* Live ETE and Clock ETA */}
+                  <div className="flex justify-between items-center text-[11px] font-mono mt-1.5 text-slate-400">
+                    <div className="flex items-center space-x-1">
+                      <Clock className="w-3 h-3 text-emerald-400" />
+                      <span>EST. TIME:</span>
+                    </div>
+                    <div className="flex items-center space-x-1.5">
+                      <span className={`font-bold ${navEstimates.isDiverging ? 'text-amber-400' : 'text-emerald-400'}`}>
+                        {navEstimates.formattedEte}
+                      </span>
+                      {navEstimates.formattedEta && navEstimates.formattedEta !== 'N/A' && (
+                        <span className="text-[10px] text-slate-400 font-normal">({navEstimates.formattedEta})</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Direct Bearing & Heading Deviation */}
+                  {navEstimates.bearing !== null && (
+                    <div className="flex justify-between items-center text-[10px] font-mono mt-0.5 text-slate-400">
+                      <span>DIRECT BRG:</span>
+                      <span className="text-cyan-400 font-medium">
+                        {navEstimates.bearing.toString().padStart(3, '0')}°
+                        {navEstimates.turnAdvice ? ` (${navEstimates.turnAdvice})` : ''}
+                      </span>
+                    </div>
+                  )}
+                </>
               )}
 
-              {phase === 'IDLE' && onCancelJob && (
-                <button
-                  onClick={() => onCancelJob(activeJob._id)}
-                  className="mt-2 text-[11px] text-rose-400 hover:text-rose-300 font-mono text-center hover:underline"
-                >
-                  Cancel Contract
-                </button>
+              {/* Cancel Button */}
+              {activeJob.is_free_flight ? (
+                onCancelJob && (
+                  <button
+                    onClick={() => onCancelJob(activeJob._id)}
+                    className="mt-2 text-[11px] text-rose-400 hover:text-rose-300 font-mono text-center hover:underline"
+                  >
+                    Cancel Free Flight
+                  </button>
+                )
+              ) : (
+                phase === 'IDLE' && onCancelJob && (
+                  <button
+                    onClick={() => onCancelJob(activeJob._id)}
+                    className="mt-2 text-[11px] text-rose-400 hover:text-rose-300 font-mono text-center hover:underline"
+                  >
+                    Cancel Contract
+                  </button>
+                )
               )}
             </div>
           </div>
 
-          {/* Operating Expenses & Estimated Net Payout Strip */}
+          {/* Operating Expenses & Estimated Settlement Strip */}
           <div className="mt-3 pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between text-[11px] font-mono gap-2 text-slate-400">
             <div className="flex flex-wrap items-center gap-3">
               <span className="text-slate-400 flex items-center space-x-1.5">
                 <span>Aircraft:</span>
-                <strong className={aircraftValidation && !aircraftValidation.matches ? 'text-rose-400' : 'text-cyan-300'}>
-                  {activeAircraft.name}
+                <strong className={!activeJob.is_free_flight && aircraftValidation && !aircraftValidation.matches ? 'text-rose-400' : 'text-cyan-300'}>
+                  {activeJob.is_free_flight ? (telemetry?.simAircraftTitle || activeAircraft.name) : activeAircraft.name}
                 </strong>
-                {aircraftValidation && (
+                {aircraftValidation && !activeJob.is_free_flight && (
                   <span
                     className={`px-1.5 py-0.5 rounded text-[10px] font-mono ${
                       aircraftValidation.matches
@@ -491,14 +581,41 @@ export function TelemetryDashboard({
                       : `✗ MSFS: ${aircraftValidation.simAircraftTitle || 'Mismatch'}`}
                   </span>
                 )}
+                {activeJob.is_free_flight && (
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-cyan-950/80 text-cyan-300 border border-cyan-700/60">
+                    Free Flight Mode
+                  </span>
+                )}
               </span>
-              <span className="flex items-center space-x-1">
-                <Fuel className="w-3 h-3 text-amber-400" />
-                <span>Est. Fuel: <strong className="text-amber-300">~{estimatedFuelGallons} gal (${estimatedFuelCost.toFixed(2)})</strong></span>
-              </span>
-              <span>
-                Est. Landing Fee: <strong className="text-rose-400">${estimatedLandingFee}</strong>
-              </span>
+
+              {activeJob.is_free_flight ? (
+                activeJob.deduct_fees ? (
+                  <>
+                    <span className="flex items-center space-x-1">
+                      <Fuel className="w-3 h-3 text-amber-400" />
+                      <span>Est. Fuel: <strong className="text-amber-300">~{estimatedFuelGallons} gal (${estimatedFuelCost.toFixed(2)})</strong></span>
+                    </span>
+                    <span>
+                      Est. Landing Fee: <strong className="text-rose-400">${estimatedLandingFee}</strong>
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-emerald-400">
+                    Fees Waived: <strong className="text-emerald-300">$0.00 (Casual Flight)</strong>
+                  </span>
+                )
+              ) : (
+                <>
+                  <span className="flex items-center space-x-1">
+                    <Fuel className="w-3 h-3 text-amber-400" />
+                    <span>Est. Fuel: <strong className="text-amber-300">~{estimatedFuelGallons} gal (${estimatedFuelCost.toFixed(2)})</strong></span>
+                  </span>
+                  <span>
+                    Est. Landing Fee: <strong className="text-rose-400">${estimatedLandingFee}</strong>
+                  </span>
+                </>
+              )}
+
               <span
                 onClick={onOpenCareer}
                 className={`flex items-center space-x-1 text-purple-300 ${
@@ -507,14 +624,29 @@ export function TelemetryDashboard({
                 title={onOpenCareer ? 'View Career Progression & Rank' : undefined}
               >
                 <Award className="w-3 h-3 text-purple-400" />
-                <span>XP Reward: <strong className="text-purple-300">+{activeJob.xp_reward || activeJob.distance_nm} XP</strong></span>
+                <span>XP Reward: <strong className="text-purple-300">+{activeJob.xp_reward || (activeJob.distance_nm ? activeJob.distance_nm : 'Flight')} XP</strong></span>
               </span>
             </div>
 
-            <div className="flex items-center space-x-1.5 bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-emerald-800/50">
-              <span className="text-emerald-400 font-bold">EST. NET PROFIT:</span>
-              <span className="text-emerald-300 font-bold text-xs">${estimatedNetProfit.toLocaleString()}</span>
-            </div>
+            {activeJob.is_free_flight ? (
+              <div className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-lg border ${
+                activeJob.deduct_fees
+                  ? 'bg-amber-950/60 border-amber-800/50'
+                  : 'bg-emerald-950/60 border-emerald-800/50'
+              }`}>
+                <span className={activeJob.deduct_fees ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}>
+                  {activeJob.deduct_fees ? 'EST. EXPENSES:' : 'EXPENSES WAIVED:'}
+                </span>
+                <span className={`font-bold text-xs ${activeJob.deduct_fees ? 'text-amber-300' : 'text-emerald-300'}`}>
+                  {activeJob.deduct_fees ? `-$${(estimatedFuelCost + estimatedLandingFee).toFixed(2)}` : '$0.00'}
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-1.5 bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-emerald-800/50">
+                <span className="text-emerald-400 font-bold">EST. NET PROFIT:</span>
+                <span className="text-emerald-300 font-bold text-xs">${estimatedNetProfit.toLocaleString()}</span>
+              </div>
+            )}
           </div>
         </div>
       ) : null}

@@ -22,6 +22,11 @@ import {
   Locate
 } from 'lucide-react';
 
+const CARTO_API_KEY = import.meta.env.VITE_CARTO_API_KEY || '';
+const CARTO_TILE_URL = CARTO_API_KEY
+  ? `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${CARTO_API_KEY}`
+  : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+
 // Controller to auto-center the map on the aircraft when "Follow Aircraft" is active
 function MapRecenter({ center, followAircraft }) {
   const map = useMap();
@@ -438,8 +443,9 @@ export function FlightMap({
           <ZoomControl position="bottomright" />
           {/* Dark Avionics Tile Layer */}
           <TileLayer
-            attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
+            url={CARTO_TILE_URL}
+            subdomains="abcd"
             maxZoom={18}
           />
 

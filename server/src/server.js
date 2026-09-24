@@ -2,6 +2,7 @@ import http from 'http';
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import mongoose from 'mongoose';
 import { Server as SocketIOServer } from 'socket.io';
 import { connectDB } from './config/db.js';
 import { seedAirports } from './seeds/seedAirports.js';
@@ -16,7 +17,9 @@ import jobsRoutes from './routes/jobs.js';
 import airportsRoutes from './routes/airports.js';
 import simulatorRoutes from './routes/simulator.js';
 import fleetRoutes from './routes/fleet.js';
+import freeFlightRoutes from './routes/freeFlight.js';
 import { seedAircraftCatalog } from './seeds/seedAircraft.js';
+import { healPilotData } from './controllers/pilotController.js';
 
 import { calculateDistanceNm } from './services/geoUtils.js';
 
@@ -38,6 +41,7 @@ app.use('/api/jobs', jobsRoutes);
 app.use('/api/airports', airportsRoutes);
 app.use('/api/simulator', simulatorRoutes);
 app.use('/api/fleet', fleetRoutes);
+app.use('/api/free-flight', freeFlightRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({
@@ -46,7 +50,9 @@ app.get('/api/health', (req, res) => {
     isMockMode: simConnectBridge.isMockMode,
     app: simConnectBridge.appName,
     currentPhase: flightStateMachine.phase,
-    activeJob: flightStateMachine.activeJob?._id || null
+    activeJob: flightStateMachine.activeJob?._id || null,
+    mongooseState: mongoose.connection.readyState,
+    dbName: mongoose.connection.name
   });
 });
 
@@ -144,6 +150,9 @@ async function startServer() {
   try {
     await connectDB();
 
+    // Background pilot profile validation & auto-healing (runs once on startup)
+    healPilotData().catch((e) => console.warn('[Server] healPilotData note:', e.message));
+
     // Ensure dealership catalog is seeded
     await seedAircraftCatalog();
 
@@ -155,10 +164,26 @@ async function startServer() {
     }
 
     // Resume active job if server restarted mid-flight
+    // Resume active job or active free flight if server restarted mid-flight
     const activeJob = await Job.findOne({ status: 'accepted' });
     if (activeJob) {
       console.log(`[Server] Resuming active accepted job: ${activeJob.origin_icao} -> ${activeJob.destination_icao}`);
       await flightStateMachine.setActiveJob(activeJob);
+    } else {
+      const pilot = await Pilot.findOne();
+      if (pilot?.active_free_flight?.active) {
+        console.log(
+          `[Server] Resuming active free flight: ${pilot.active_free_flight.origin_icao} -> ${pilot.active_free_flight.destination_icao || 'Open Roam'}`
+        );
+        await flightStateMachine.setActiveJob({
+          is_free_flight: true,
+          origin_icao: pilot.active_free_flight.origin_icao,
+          destination_icao: pilot.active_free_flight.destination_icao,
+          deduct_fees: pilot.active_free_flight.deduct_fees,
+          status: 'accepted',
+          accepted_at: pilot.active_free_flight.created_at || new Date()
+        });
+      }
     }
 
     // Initialize SimConnect / Mock Bridge

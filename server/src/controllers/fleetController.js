@@ -9,7 +9,7 @@ import { flightStateMachine, FLIGHT_PHASES } from '../services/stateMachine.js';
  */
 export async function getCatalog(req, res) {
   try {
-    const catalog = await Aircraft.find().sort({ purchase_price: 1 });
+    const catalog = await Aircraft.find().sort({ purchase_price: 1 }).lean();
     res.json({ catalog });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -21,12 +21,12 @@ export async function getCatalog(req, res) {
  */
 export async function getHangar(req, res) {
   try {
-    let pilot = await Pilot.findOne();
+    let pilot = await Pilot.findOne().select('fleet active_aircraft balance').lean();
     if (!pilot) {
       pilot = await Pilot.create({ callsign: 'James' });
     }
 
-    const catalog = await Aircraft.find();
+    const catalog = await Aircraft.find().lean();
     const catalogMap = new Map(catalog.map((c) => [c.model_id, c]));
 
     const enrichedFleet = (pilot.fleet || []).map((plane) => {
@@ -137,6 +137,7 @@ export async function buyAircraft(req, res) {
     };
 
     await pilot.save();
+    flightStateMachine.setActiveAircraft(pilot.active_aircraft);
 
     // Regenerate jobs scaled to new aircraft
     try {
@@ -221,6 +222,7 @@ export async function rentAircraft(req, res) {
     };
 
     await pilot.save();
+    flightStateMachine.setActiveAircraft(pilot.active_aircraft);
 
     // Regenerate jobs scaled to new aircraft
     try {
@@ -273,13 +275,17 @@ export async function selectActiveAircraft(req, res) {
       return res.status(404).json({ error: `Aircraft model '${fleetPlane.model_id}' not found in catalog.` });
     }
 
+    if (fleetPlane.is_rental && model.rental_price_per_flight) {
+      fleetPlane.rental_price_per_flight = model.rental_price_per_flight;
+    }
+
     pilot.active_aircraft = {
       model_id: model.model_id,
       name: model.name,
       tail_number: fleetPlane.tail_number,
       category: model.category,
       is_rental: Boolean(fleetPlane.is_rental),
-      rental_price_per_flight: fleetPlane.rental_price_per_flight || model.rental_price_per_flight || 0,
+      rental_price_per_flight: fleetPlane.is_rental ? (model.rental_price_per_flight || fleetPlane.rental_price_per_flight || 0) : 0,
       rental_flights_paid: fleetPlane.rental_flights_paid || 0,
       is_loaner: Boolean(fleetPlane.is_loaner),
       cruise_speed_kts: model.cruise_speed_kts,
@@ -292,6 +298,7 @@ export async function selectActiveAircraft(req, res) {
     };
 
     await pilot.save();
+    flightStateMachine.setActiveAircraft(pilot.active_aircraft);
 
     // Regenerate jobs scaled to new aircraft
     try {
