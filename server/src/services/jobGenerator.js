@@ -341,11 +341,14 @@ export async function generateJobsForAirport(originIcao, options = {}) {
       const tierMaxMeters = Math.min(tierDef.max, Math.round(maxRange * 0.95)) * NM_TO_METERS;
       if (tierMinMeters >= tierMaxMeters) continue;
 
-      // 1. First attempt to query non-small airports in this tier bracket
-      const tierLimit = (direction && direction !== 'any' && direction !== 'all') ? 35 : 20;
+      // 1. Attempt to query candidates in this tier bracket
+      const isDirectional = Boolean(direction && direction !== 'any' && direction !== 'all');
+      const tierLimit = isDirectional ? 80 : 25;
+      const effectiveRunwayThreshold = isDirectional ? minRunwayFt : nonSmallMinRunway;
+
       let tierCandidates = await Airport.find({
         icao: { $nin: Array.from(seenIcaos), $regex: '^[A-Z0-9]{4}$' },
-        longest_runway_ft: { $gte: nonSmallMinRunway },
+        longest_runway_ft: { $gte: effectiveRunwayThreshold },
         location: {
           $nearSphere: {
             $geometry: { type: 'Point', coordinates: [originLon, originLat] },
@@ -356,7 +359,7 @@ export async function generateJobsForAirport(originIcao, options = {}) {
       }).limit(tierLimit);
 
       // 2. Fallback to include smaller runways if insufficient candidates
-      if (tierCandidates.length < 4 && nonSmallMinRunway > minRunwayFt) {
+      if (tierCandidates.length < 6 && effectiveRunwayThreshold > minRunwayFt) {
         const existingIcaos = tierCandidates.map((a) => a.icao);
         const fallbackCandidates = await Airport.find({
           icao: { $nin: [...Array.from(seenIcaos), ...existingIcaos], $regex: '^[A-Z0-9]{4}$' },
@@ -379,21 +382,33 @@ export async function generateJobsForAirport(originIcao, options = {}) {
         const bearing = calculateBearing(originLat, originLon, destLat, destLon);
         const dirMatch = matchesDirection(bearing, direction);
         let score = scoreAirport(ap, !visitedSet.has(ap.icao)) + Math.random() * 20;
-        if (direction && direction !== 'any' && direction !== 'all') {
-          if (dirMatch) {
-            score += 140;
-          } else {
-            score -= 150;
-          }
-        }
         return {
           airport: ap,
+          bearing,
+          dirMatch,
           score
         };
       });
-      scoredCandidates.sort((a, b) => b.score - a.score);
 
-      const picked = scoredCandidates.slice(0, 3).map((item) => item.airport);
+      let picked = [];
+      if (isDirectional) {
+        const matching = scoredCandidates.filter((c) => c.dirMatch);
+        matching.sort((a, b) => b.score - a.score);
+        if (matching.length >= 3) {
+          picked = matching.slice(0, 3).map((item) => item.airport);
+        } else {
+          // Take all matching candidates first, fill remainder only if insufficient in airspace
+          scoredCandidates.sort((a, b) => {
+            if (a.dirMatch !== b.dirMatch) return a.dirMatch ? -1 : 1;
+            return b.score - a.score;
+          });
+          picked = scoredCandidates.slice(0, 3).map((item) => item.airport);
+        }
+      } else {
+        scoredCandidates.sort((a, b) => b.score - a.score);
+        picked = scoredCandidates.slice(0, 3).map((item) => item.airport);
+      }
+
       for (const ap of picked) {
         seenIcaos.add(ap.icao);
         candidatePairs.push({ airport: ap, tier: tierName });
@@ -402,11 +417,24 @@ export async function generateJobsForAirport(originIcao, options = {}) {
 
     // Fallback if sparse location has fewer than 3 total
     if (candidatePairs.length < 3) {
-      const fallbacks = await Airport.find({
+      let fallbacks = await Airport.find({
         icao: { $nin: Array.from(seenIcaos), $regex: '^[A-Z0-9]{4}$' },
         longest_runway_ft: { $gte: minRunwayFt }
-      }).limit(6);
+      }).limit(40);
+
+      if (direction && direction !== 'any' && direction !== 'all') {
+        const matchingFallbacks = fallbacks.filter((ap) => {
+          const [destLon, destLat] = ap.location.coordinates;
+          const b = calculateBearing(originLat, originLon, destLat, destLon);
+          return matchesDirection(b, direction);
+        });
+        if (matchingFallbacks.length > 0) {
+          fallbacks = matchingFallbacks;
+        }
+      }
+
       for (const ap of fallbacks) {
+        if (candidatePairs.length >= 9) break;
         seenIcaos.add(ap.icao);
         const [destLon, destLat] = ap.location.coordinates;
         const dist = calculateDistanceNm(originLat, originLon, destLat, destLon);
@@ -418,11 +446,12 @@ export async function generateJobsForAirport(originIcao, options = {}) {
   // Ensure 1 or 2 unvisited airports are included if any unvisited airports exist in range
   let unvisitedCount = candidatePairs.filter((p) => !visitedSet.has(p.airport.icao)).length;
   if (unvisitedCount < 2) {
-    const unvisitedLimit = (direction && direction !== 'any' && direction !== 'all') ? 15 : 6;
+    const isDirectional = Boolean(direction && direction !== 'any' && direction !== 'all');
+    const unvisitedLimit = isDirectional ? 40 : 10;
     // Actively seek unvisited non-small airports in the aircraft's radius
     let unvisitedAvailable = await Airport.find({
       icao: { $nin: [...Array.from(seenIcaos), ...Array.from(visitedSet)], $regex: '^[A-Z0-9]{4}$' },
-      longest_runway_ft: { $gte: nonSmallMinRunway },
+      longest_runway_ft: { $gte: isDirectional ? minRunwayFt : nonSmallMinRunway },
       location: {
         $nearSphere: {
           $geometry: { type: 'Point', coordinates: [originLon, originLat] },
@@ -432,30 +461,12 @@ export async function generateJobsForAirport(originIcao, options = {}) {
       }
     }).limit(unvisitedLimit);
 
-    // If no non-small unvisited found, broaden search to minRunwayFt
-    if (unvisitedAvailable.length === 0 && nonSmallMinRunway > minRunwayFt) {
-      unvisitedAvailable = await Airport.find({
-        icao: { $nin: [...Array.from(seenIcaos), ...Array.from(visitedSet)], $regex: '^[A-Z0-9]{4}$' },
-        longest_runway_ft: { $gte: minRunwayFt },
-        location: {
-          $nearSphere: {
-            $geometry: { type: 'Point', coordinates: [originLon, originLat] },
-            $minDistance: 20 * NM_TO_METERS,
-            $maxDistance: Math.round(maxRange * 0.95) * NM_TO_METERS
-          }
-        }
-      }).limit(unvisitedLimit);
-    }
-
-    if (direction && direction !== 'any' && direction !== 'all') {
-      unvisitedAvailable.sort((a, b) => {
-        const [aLon, aLat] = a.location.coordinates;
-        const [bLon, bLat] = b.location.coordinates;
-        const bA = calculateBearing(originLat, originLon, aLat, aLon);
-        const bB = calculateBearing(originLat, originLon, bLat, bLon);
-        const matchA = matchesDirection(bA, direction) ? 1 : 0;
-        const matchB = matchesDirection(bB, direction) ? 1 : 0;
-        return matchB - matchA;
+    if (isDirectional) {
+      // Strictly restrict unvisited injection to the requested heading cone
+      unvisitedAvailable = unvisitedAvailable.filter((ap) => {
+        const [aLon, aLat] = ap.location.coordinates;
+        const b = calculateBearing(originLat, originLon, aLat, aLon);
+        return matchesDirection(b, direction);
       });
     }
 

@@ -209,9 +209,10 @@ export function App() {
   };
 
   const handleRefreshJobs = async (direction = 'any') => {
+    const targetDir = typeof direction === 'string' && direction ? direction : 'any';
     if (!pilot?.current_icao) return;
     try {
-      const res = await refreshJobs(pilot.current_icao, 3000, direction);
+      const res = await refreshJobs(pilot.current_icao, 3000, targetDir);
       const refreshed = res.jobs || [];
       setJobs(refreshed);
       if (refreshed.length > 0) {

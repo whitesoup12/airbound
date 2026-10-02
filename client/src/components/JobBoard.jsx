@@ -134,10 +134,11 @@ export function JobBoard({
   const hasInsufficientRentalFunds = needsRentalPayment && pilotBalance < rentalPricePerFlight;
   const rentalShortage = hasInsufficientRentalFunds ? rentalPricePerFlight - pilotBalance : 0;
 
-  const handleRefresh = async (dir = selectedDirection) => {
+  const handleRefresh = async (dir) => {
+    const targetDirection = typeof dir === 'string' && dir ? dir : selectedDirection;
     setRefreshing(true);
     try {
-      await onRefreshJobs(dir);
+      await onRefreshJobs(targetDirection);
     } finally {
       setRefreshing(false);
     }

@@ -85,7 +85,8 @@ export async function generateNewJobs(req, res) {
     icao = await normalizeTo4CharIcao(icao);
     const minRunwayRaw = req.body.minRunwayFt ?? req.body.min_runway_ft;
     const minRunwayFt = minRunwayRaw ? parseInt(minRunwayRaw, 10) : undefined;
-    const direction = req.body.direction || 'any';
+    const rawDirection = req.body.direction;
+    const direction = (typeof rawDirection === 'string' && rawDirection.trim()) ? rawDirection.trim().toLowerCase() : 'any';
 
     const newJobs = await generateJobsForAirport(icao, {
       minRunwayFt,
