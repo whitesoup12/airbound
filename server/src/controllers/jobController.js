@@ -83,10 +83,13 @@ export async function generateNewJobs(req, res) {
     const pilot = await Pilot.findOne();
     let icao = req.body.icao || pilot?.current_icao || 'KLAX';
     icao = await normalizeTo4CharIcao(icao);
-    const minRunwayFt = req.body.minRunwayFt ? parseInt(req.body.minRunwayFt, 10) : undefined;
+    const minRunwayRaw = req.body.minRunwayFt ?? req.body.min_runway_ft;
+    const minRunwayFt = minRunwayRaw ? parseInt(minRunwayRaw, 10) : undefined;
+    const direction = req.body.direction || 'any';
 
     const newJobs = await generateJobsForAirport(icao, {
       minRunwayFt,
+      direction,
       aircraft: pilot?.active_aircraft,
       visitedAirports: pilot?.visited_airports
     });

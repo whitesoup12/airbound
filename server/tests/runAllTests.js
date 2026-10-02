@@ -6,7 +6,12 @@ import Job from '../src/models/Job.js';
 import Pilot from '../src/models/Pilot.js';
 import { seedAirports } from '../src/seeds/seedAirports.js';
 import { calculateDistanceNm, calculateBearing } from '../src/services/geoUtils.js';
-import { generateJobsForAirport, calculatePayout } from '../src/services/jobGenerator.js';
+import {
+  generateJobsForAirport,
+  calculatePayout,
+  getCardinalDirection,
+  matchesDirection
+} from '../src/services/jobGenerator.js';
 import { FlightStateMachine, FLIGHT_PHASES } from '../src/services/stateMachine.js';
 import { resetPilot } from '../src/controllers/pilotController.js';
 
@@ -87,12 +92,42 @@ async function runTests() {
   const payoutExploration = calculatePayout(100, 1000, 2, 5000, 'single_prop', 500);
   assert.strictEqual(payoutExploration, 3550, `Expected 3550 with $500 bonus, got ${payoutExploration}`);
 
+  // Verify Directional Compass & Heading Logic
+  console.log('\nTesting Directional Compass & Heading Logic...');
+  assert.strictEqual(getCardinalDirection(0), 'N');
+  assert.strictEqual(getCardinalDirection(90), 'E');
+  assert.strictEqual(getCardinalDirection(180), 'S');
+  assert.strictEqual(getCardinalDirection(270), 'W');
+  assert.strictEqual(getCardinalDirection(45), 'NE');
+  assert.strictEqual(matchesDirection(180, 'south'), true);
+  assert.strictEqual(matchesDirection(0, 'south'), false);
+  assert.strictEqual(matchesDirection(90, 'east'), true);
+  assert.strictEqual(matchesDirection(270, 'west'), true);
+  assert.strictEqual(matchesDirection(45, 'north'), true);
+  assert.strictEqual(matchesDirection(180, 'any'), true);
+
+  // Verify Directional Contract Generation (e.g. South from KLAX)
+  console.log('Testing Directional Contract Generation (South from KLAX)...');
+  const southJobs = await generateJobsForAirport('KLAX', {
+    direction: 'south',
+    count: 6,
+    visitedAirports: []
+  });
+  assert(southJobs.length > 0, 'Should generate contracts when direction is specified');
+  for (const sj of southJobs) {
+    assert(sj.bearing !== null && sj.bearing !== undefined, 'Generated job must have bearing');
+    assert(typeof sj.cardinal_direction === 'string' && sj.cardinal_direction.length > 0, 'Generated job must have cardinal_direction');
+  }
+  const matchingSouth = southJobs.filter((j) => matchesDirection(j.bearing, 'south'));
+  console.log(`Generated ${southJobs.length} contracts with direction=south (${matchingSouth.length} heading south, e.g. ${southJobs[0].destination_icao} at ${southJobs[0].bearing}° ${southJobs[0].cardinal_direction})`);
+  assert(matchingSouth.length >= 1, 'Should include destinations heading south');
+
 
   // 4. Test Flight Phase State Machine
   console.log('\nTesting Flight Phase State Machine & Persistence...');
   const sm = new FlightStateMachine();
 
-  const testJob = multiTierJobs[0];
+  const testJob = southJobs[0];
   testJob.status = 'accepted';
   await Job.findByIdAndUpdate(testJob._id, { status: 'accepted' });
   await sm.setActiveJob(testJob);

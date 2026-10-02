@@ -55,13 +55,13 @@ export async function fetchJobs(icao) {
   return safeFetchJson(url, {}, 'Failed to fetch jobs');
 }
 
-export async function refreshJobs(icao, minRunwayFt = 3000) {
+export async function refreshJobs(icao, minRunwayFt = 3000, direction = 'any') {
   return safeFetchJson(
     `${API_BASE}/jobs/generate`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ icao, minRunwayFt })
+      body: JSON.stringify({ icao, minRunwayFt, direction })
     },
     'Failed to refresh jobs'
   );

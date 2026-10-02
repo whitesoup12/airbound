@@ -63,6 +63,14 @@ function classifyJobTier(distanceNm, category = 'single_prop') {
   return 'long';
 }
 
+const DIRECTION_OPTIONS = [
+  { id: 'any', label: 'All Directions', shortLabel: 'ALL' },
+  { id: 'north', label: 'North (305°–55°)', shortLabel: 'N ↑' },
+  { id: 'east', label: 'East (35°–145°)', shortLabel: 'E →' },
+  { id: 'south', label: 'South (125°–235°)', shortLabel: 'S ↓' },
+  { id: 'west', label: 'West (215°–325°)', shortLabel: 'W ←' }
+];
+
 export function JobBoard({
   jobs = [],
   activeJob = null,
@@ -76,6 +84,7 @@ export function JobBoard({
   loading = false
 }) {
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedDirection, setSelectedDirection] = useState('any');
   const [activeTier, setActiveTier] = useState('short'); // 'short' | 'medium' | 'long' | 'all'
 
   const aircraftCategory = activeAircraft?.category || 'single_prop';
@@ -125,19 +134,24 @@ export function JobBoard({
   const hasInsufficientRentalFunds = needsRentalPayment && pilotBalance < rentalPricePerFlight;
   const rentalShortage = hasInsufficientRentalFunds ? rentalPricePerFlight - pilotBalance : 0;
 
-  const handleRefresh = async () => {
+  const handleRefresh = async (dir = selectedDirection) => {
     setRefreshing(true);
     try {
-      await onRefreshJobs();
+      await onRefreshJobs(dir);
     } finally {
       setRefreshing(false);
     }
   };
 
+  const handleDirectionSelect = (dir) => {
+    setSelectedDirection(dir);
+    handleRefresh(dir);
+  };
+
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 glass-panel p-4 rounded-2xl border border-slate-800">
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 glass-panel p-4 rounded-2xl border border-slate-800">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 rounded-xl bg-amber-950/50 border border-amber-500/40 flex items-center justify-center text-amber-400">
             <Briefcase className="w-5 h-5" />
@@ -163,20 +177,47 @@ export function JobBoard({
           </div>
         </div>
 
-        {/* Refresh button */}
-        <button
-          onClick={handleRefresh}
-          disabled={refreshing || loading || Boolean(activeJob)}
-          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-mono transition border ${
-            activeJob
-              ? 'bg-slate-900 text-slate-600 border-slate-800 cursor-not-allowed'
-              : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700 hover:border-cyan-500'
-          }`}
-          title={activeJob ? 'Complete active flight before generating new jobs' : 'Refresh available contracts'}
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-cyan-400' : ''}`} />
-          <span>{refreshing ? 'GENERATING...' : 'REFRESH CONTRACTS'}</span>
-        </button>
+        {/* Direction Selector & Refresh button */}
+        <div className="flex flex-wrap items-center gap-2 self-stretch sm:self-auto justify-end">
+          <div className="flex items-center bg-slate-900/90 p-1 rounded-xl border border-slate-800 text-xs font-mono">
+            <span className="text-[10px] text-slate-400 px-2 font-semibold flex items-center gap-1 hidden sm:inline-flex">
+              <Compass className="w-3 h-3 text-cyan-400" />
+              HEADING:
+            </span>
+            {DIRECTION_OPTIONS.map((opt) => {
+              const isSelected = selectedDirection === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => handleDirectionSelect(opt.id)}
+                  disabled={refreshing || loading || Boolean(activeJob)}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-mono transition-all font-semibold ${
+                    isSelected
+                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-sm'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border border-transparent'
+                  } ${activeJob ? 'cursor-not-allowed opacity-60' : ''}`}
+                  title={`Generate routes heading ${opt.label}`}
+                >
+                  {opt.shortLabel}
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            onClick={() => handleRefresh(selectedDirection)}
+            disabled={refreshing || loading || Boolean(activeJob)}
+            className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-mono transition border ${
+              activeJob
+                ? 'bg-slate-900 text-slate-600 border-slate-800 cursor-not-allowed'
+                : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700 hover:border-cyan-500'
+            }`}
+            title={activeJob ? 'Complete active flight before generating new jobs' : `Refresh contracts ${selectedDirection !== 'any' ? `heading ${selectedDirection}` : ''}`}
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-cyan-400' : ''}`} />
+            <span>{refreshing ? 'GENERATING...' : 'REFRESH'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Notice if a job is already active */}
@@ -417,6 +458,11 @@ export function JobBoard({
                       <span className="inline-flex items-center space-x-1 px-2 py-1 rounded-lg bg-slate-800 text-xs font-mono text-cyan-300 border border-slate-700">
                         <Navigation className="w-3 h-3 text-cyan-400" />
                         <span>{job.distance_nm} NM</span>
+                        {job.bearing != null && (
+                          <span className="text-slate-400 font-normal pl-1 border-l border-slate-700">
+                            {Math.round(job.bearing)}° {job.cardinal_direction || ''}
+                          </span>
+                        )}
                       </span>
                       <div className="flex items-center gap-1">
                         <span

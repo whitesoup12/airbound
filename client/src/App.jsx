@@ -208,10 +208,10 @@ export function App() {
     }
   };
 
-  const handleRefreshJobs = async () => {
+  const handleRefreshJobs = async (direction = 'any') => {
     if (!pilot?.current_icao) return;
     try {
-      const res = await refreshJobs(pilot.current_icao);
+      const res = await refreshJobs(pilot.current_icao, 3000, direction);
       const refreshed = res.jobs || [];
       setJobs(refreshed);
       if (refreshed.length > 0) {

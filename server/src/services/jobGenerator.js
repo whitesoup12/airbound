@@ -1,6 +1,6 @@
 import Airport from '../models/Airport.js';
 import Job from '../models/Job.js';
-import { NM_TO_METERS, calculateDistanceNm } from './geoUtils.js';
+import { NM_TO_METERS, calculateDistanceNm, calculateBearing } from './geoUtils.js';
 import { normalizeTo4CharIcao } from '../utils/icaoUtils.js';
 
 export const BASE_RATE_PER_NM = 15; // $15 per NM base rate
@@ -9,6 +9,55 @@ export const PASSENGER_RATE = 150; // $150 per pax
 export const SHORT_RUNWAY_BONUS = 750; // Challenge bonus for runways < 4500 ft
 export const NON_SMALL_RUNWAY_FT = 4500; // Threshold for favoring non-small (regional/commercial/executive) airports
 export const EXPLORATION_BONUS = 500; // Bonus payout for featured unvisited airport exploration jobs
+
+/**
+ * Returns cardinal compass abbreviation (N, NE, E, SE, S, SW, W, NW) for a bearing in degrees
+ */
+export function getCardinalDirection(bearing) {
+  if (bearing === null || bearing === undefined || isNaN(bearing)) return '';
+  const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  const index = Math.round(((bearing % 360) / 45)) % 8;
+  return directions[index];
+}
+
+/**
+ * Checks whether a destination bearing falls within the cone of a requested cardinal direction
+ * Uses a ±55° sector cone so pilots get broad variety in their chosen direction
+ */
+export function matchesDirection(bearing, targetDirection = 'any') {
+  if (!targetDirection || targetDirection === 'any' || targetDirection === 'all') return true;
+  const dir = targetDirection.toLowerCase().trim();
+  const b = ((bearing % 360) + 360) % 360;
+
+  switch (dir) {
+    case 'north':
+    case 'n':
+      return b >= 305 || b <= 55;
+    case 'south':
+    case 's':
+      return b >= 125 && b <= 235;
+    case 'east':
+    case 'e':
+      return b >= 35 && b <= 145;
+    case 'west':
+    case 'w':
+      return b >= 215 && b <= 325;
+    case 'northeast':
+    case 'ne':
+      return b >= 0 && b <= 90;
+    case 'southeast':
+    case 'se':
+      return b >= 90 && b <= 180;
+    case 'southwest':
+    case 'sw':
+      return b >= 180 && b <= 270;
+    case 'northwest':
+    case 'nw':
+      return b >= 270 || b <= 360;
+    default:
+      return true;
+  }
+}
 
 /**
  * Scores an airport candidate to favor non-small airports and unvisited destinations
@@ -148,6 +197,7 @@ export async function generateJobsForAirport(originIcao, options = {}) {
     maxDistanceNm,
     minRunwayFt,
     count = 5,
+    direction = 'any',
     aircraft = null,
     visitedAirports = null,
     seniorityMultiplier = null
@@ -219,6 +269,7 @@ export async function generateJobsForAirport(originIcao, options = {}) {
     const maxMeters = effectiveMaxNm * NM_TO_METERS;
 
     // 1. Try querying non-small airports first
+    const customLimit = (direction && direction !== 'any' && direction !== 'all') ? 40 : 25;
     let candidateAirports = await Airport.find({
       icao: { $ne: originAirport.icao, $regex: '^[A-Z0-9]{4}$' },
       longest_runway_ft: { $gte: nonSmallMinRunway },
@@ -229,7 +280,7 @@ export async function generateJobsForAirport(originIcao, options = {}) {
           $maxDistance: maxMeters
         }
       }
-    }).limit(25);
+    }).limit(customLimit);
 
     // 2. Fallback to include smaller runways if insufficient candidates
     if (!candidateAirports || candidateAirports.length < count) {
@@ -244,7 +295,7 @@ export async function generateJobsForAirport(originIcao, options = {}) {
             $maxDistance: maxMeters
           }
         }
-      }).limit(25 - (candidateAirports?.length || 0));
+      }).limit(customLimit - (candidateAirports?.length || 0));
 
       candidateAirports = [...(candidateAirports || []), ...moreAirports];
     }
@@ -256,11 +307,24 @@ export async function generateJobsForAirport(originIcao, options = {}) {
       }).limit(10);
     }
 
-    // Score and rank candidates, favoring non-small runways and unvisited airports
-    const scored = candidateAirports.map((ap) => ({
-      airport: ap,
-      score: scoreAirport(ap, !visitedSet.has(ap.icao)) + Math.random() * 15
-    }));
+    // Score and rank candidates, favoring non-small runways, unvisited airports, and requested direction
+    const scored = candidateAirports.map((ap) => {
+      const [destLon, destLat] = ap.location.coordinates;
+      const bearing = calculateBearing(originLat, originLon, destLat, destLon);
+      const dirMatch = matchesDirection(bearing, direction);
+      let score = scoreAirport(ap, !visitedSet.has(ap.icao)) + Math.random() * 15;
+      if (direction && direction !== 'any' && direction !== 'all') {
+        if (dirMatch) {
+          score += 140;
+        } else {
+          score -= 150;
+        }
+      }
+      return {
+        airport: ap,
+        score
+      };
+    });
     scored.sort((a, b) => b.score - a.score);
 
     const selected = scored.slice(0, Math.min(count, scored.length)).map((s) => s.airport);
@@ -278,6 +342,7 @@ export async function generateJobsForAirport(originIcao, options = {}) {
       if (tierMinMeters >= tierMaxMeters) continue;
 
       // 1. First attempt to query non-small airports in this tier bracket
+      const tierLimit = (direction && direction !== 'any' && direction !== 'all') ? 35 : 20;
       let tierCandidates = await Airport.find({
         icao: { $nin: Array.from(seenIcaos), $regex: '^[A-Z0-9]{4}$' },
         longest_runway_ft: { $gte: nonSmallMinRunway },
@@ -288,7 +353,7 @@ export async function generateJobsForAirport(originIcao, options = {}) {
             $maxDistance: tierMaxMeters
           }
         }
-      }).limit(20);
+      }).limit(tierLimit);
 
       // 2. Fallback to include smaller runways if insufficient candidates
       if (tierCandidates.length < 4 && nonSmallMinRunway > minRunwayFt) {
@@ -303,16 +368,29 @@ export async function generateJobsForAirport(originIcao, options = {}) {
               $maxDistance: tierMaxMeters
             }
           }
-        }).limit(20 - tierCandidates.length);
+        }).limit(tierLimit - tierCandidates.length);
 
         tierCandidates = [...tierCandidates, ...fallbackCandidates];
       }
 
-      // Score candidates, favoring non-small runways and unvisited destinations
-      const scoredCandidates = tierCandidates.map((ap) => ({
-        airport: ap,
-        score: scoreAirport(ap, !visitedSet.has(ap.icao)) + Math.random() * 20
-      }));
+      // Score candidates, favoring non-small runways, unvisited destinations, and requested direction
+      const scoredCandidates = tierCandidates.map((ap) => {
+        const [destLon, destLat] = ap.location.coordinates;
+        const bearing = calculateBearing(originLat, originLon, destLat, destLon);
+        const dirMatch = matchesDirection(bearing, direction);
+        let score = scoreAirport(ap, !visitedSet.has(ap.icao)) + Math.random() * 20;
+        if (direction && direction !== 'any' && direction !== 'all') {
+          if (dirMatch) {
+            score += 140;
+          } else {
+            score -= 150;
+          }
+        }
+        return {
+          airport: ap,
+          score
+        };
+      });
       scoredCandidates.sort((a, b) => b.score - a.score);
 
       const picked = scoredCandidates.slice(0, 3).map((item) => item.airport);
@@ -340,6 +418,7 @@ export async function generateJobsForAirport(originIcao, options = {}) {
   // Ensure 1 or 2 unvisited airports are included if any unvisited airports exist in range
   let unvisitedCount = candidatePairs.filter((p) => !visitedSet.has(p.airport.icao)).length;
   if (unvisitedCount < 2) {
+    const unvisitedLimit = (direction && direction !== 'any' && direction !== 'all') ? 15 : 6;
     // Actively seek unvisited non-small airports in the aircraft's radius
     let unvisitedAvailable = await Airport.find({
       icao: { $nin: [...Array.from(seenIcaos), ...Array.from(visitedSet)], $regex: '^[A-Z0-9]{4}$' },
@@ -351,7 +430,7 @@ export async function generateJobsForAirport(originIcao, options = {}) {
           $maxDistance: Math.round(maxRange * 0.95) * NM_TO_METERS
         }
       }
-    }).limit(6);
+    }).limit(unvisitedLimit);
 
     // If no non-small unvisited found, broaden search to minRunwayFt
     if (unvisitedAvailable.length === 0 && nonSmallMinRunway > minRunwayFt) {
@@ -365,7 +444,19 @@ export async function generateJobsForAirport(originIcao, options = {}) {
             $maxDistance: Math.round(maxRange * 0.95) * NM_TO_METERS
           }
         }
-      }).limit(6);
+      }).limit(unvisitedLimit);
+    }
+
+    if (direction && direction !== 'any' && direction !== 'all') {
+      unvisitedAvailable.sort((a, b) => {
+        const [aLon, aLat] = a.location.coordinates;
+        const [bLon, bLat] = b.location.coordinates;
+        const bA = calculateBearing(originLat, originLon, aLat, aLon);
+        const bB = calculateBearing(originLat, originLon, bLat, bLon);
+        const matchA = matchesDirection(bA, direction) ? 1 : 0;
+        const matchB = matchesDirection(bB, direction) ? 1 : 0;
+        return matchB - matchA;
+      });
     }
 
     for (const ap of unvisitedAvailable) {
@@ -409,6 +500,8 @@ export async function generateJobsForAirport(originIcao, options = {}) {
     const dest = pair.airport;
     const [destLon, destLat] = dest.location.coordinates;
     const distanceNm = calculateDistanceNm(originLat, originLon, destLat, destLon);
+    const bearing = Math.round(calculateBearing(originLat, originLon, destLat, destLon));
+    const cardinalDir = getCardinalDirection(bearing);
 
     // Randomize payload complexity based on aircraft capabilities
     const isCargoHeavy = Math.random() > 0.45;
@@ -457,6 +550,8 @@ export async function generateJobsForAirport(originIcao, options = {}) {
       origin_icao: originAirport.icao,
       destination_icao: dest.icao,
       distance_nm: distanceNm,
+      bearing,
+      cardinal_direction: cardinalDir,
       cargo_lbs: cargoLbs,
       pax_count: paxCount,
       payout: totalPayout,
@@ -472,6 +567,8 @@ export async function generateJobsForAirport(originIcao, options = {}) {
 
     generatedJobs.push({
       ...job.toObject(),
+      bearing,
+      cardinal_direction: cardinalDir,
       destination_name: dest.name,
       destination_city: dest.city,
       destination_country: dest.country,

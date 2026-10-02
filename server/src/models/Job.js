@@ -96,6 +96,14 @@ const JobSchema = new mongoose.Schema(
     approach_speed_kts: {
       type: Number,
       default: null
+    },
+    bearing: {
+      type: Number,
+      default: null
+    },
+    cardinal_direction: {
+      type: String,
+      default: ''
     }
   },
   {
