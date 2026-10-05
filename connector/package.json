@@ -1,0 +1,16 @@
+{
+  "name": "airbound-connector",
+  "version": "1.0.0",
+  "description": "Airbound MSFS 2024 / 2020 Local Telemetry Bridge",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "mock": "node index.js --mock"
+  },
+  "dependencies": {
+    "airbound": "file:..",
+    "dotenv": "^16.4.7",
+    "node-simconnect": "^3.6.2"
+  }
+}

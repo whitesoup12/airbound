@@ -18,7 +18,8 @@ export function useTelemetry(onFlightCompleted) {
   const [phase, setPhase] = useState('STANDBY');
   const [connectionStatus, setConnectionStatus] = useState({
     connected: false,
-    isMock: false
+    isMock: false,
+    app: null
   });
   const [destDist, setDestDist] = useState(null);
   const [originDist, setOriginDist] = useState(null);
@@ -30,78 +31,143 @@ export function useTelemetry(onFlightCompleted) {
   const [isPaused, setIsPaused] = useState(false);
 
   const socketRef = useRef(null);
+  const isSocketConnectedRef = useRef(false);
+  const lastCompletedFlightIdRef = useRef(null);
 
   useEffect(() => {
-    // Socket.IO client connects to current host or proxy
-    const socket = io('/', {
-      transports: ['websocket', 'polling']
-    });
-    socketRef.current = socket;
+    let pollInterval = null;
 
-    socket.on('connect', () => {
-      console.log('[Socket] Connected to backend');
-    });
+    // Polling function for REST telemetry fallback (Vercel cloud mode)
+    const pollTelemetry = async () => {
+      // Skip polling if Socket.IO is actively connected
+      if (isSocketConnectedRef.current) return;
 
-    socket.on('connectionStatus', (status) => {
-      setConnectionStatus(status);
-    });
+      try {
+        const res = await fetch('/api/telemetry');
+        if (!res.ok) return;
+        const data = await res.json();
 
-    socket.on('telemetry', (data) => {
-      if (data.telemetry) {
-        setTelemetry(data.telemetry);
-      }
-      if (data.phase) {
-        setPhase(data.phase);
-      }
-      if (data.activeJob !== undefined) {
-        setActiveJob(data.activeJob);
-      }
-      if (data.destDist !== undefined) {
-        setDestDist(data.destDist);
-      }
-      if (data.originDist !== undefined) {
-        setOriginDist(data.originDist);
-      }
-      if (data.aircraftValidation !== undefined) {
-        setAircraftValidation(data.aircraftValidation);
-      }
-      if (data.flightSeconds !== undefined) {
-        setFlightSeconds(data.flightSeconds);
-      }
-      if (data.airborneSeconds !== undefined) {
-        setAirborneSeconds(data.airborneSeconds);
-      }
-      if (data.isPaused !== undefined) {
-        setIsPaused(Boolean(data.isPaused));
-      }
-    });
+        setConnectionStatus({
+          connected: Boolean(data.connected),
+          isMock: Boolean(data.isMock),
+          app: data.app || null
+        });
 
-    socket.on('phaseChange', ({ phase: newPhase, details }) => {
-      setPhase(newPhase);
-      if (details?.aircraftValidation !== undefined) {
-        setAircraftValidation(details.aircraftValidation);
-      }
-      if (details?.flightSeconds !== undefined) {
-        setFlightSeconds(details.flightSeconds);
-      }
-      if (details?.airborneSeconds !== undefined) {
-        setAirborneSeconds(details.airborneSeconds);
-      }
-      if (details?.isPaused !== undefined) {
-        setIsPaused(Boolean(details.isPaused));
-      }
-    });
+        if (data.telemetry) {
+          setTelemetry(data.telemetry);
+        }
+        if (data.phase) {
+          setPhase(data.phase);
+        }
+        if (data.activeJob !== undefined) {
+          setActiveJob(data.activeJob);
+        }
+        if (data.destDist !== undefined) {
+          setDestDist(data.destDist);
+        }
+        if (data.originDist !== undefined) {
+          setOriginDist(data.originDist);
+        }
+        if (data.aircraftValidation !== undefined) {
+          setAircraftValidation(data.aircraftValidation);
+        }
+        if (data.flightSeconds !== undefined) {
+          setFlightSeconds(data.flightSeconds);
+        }
+        if (data.airborneSeconds !== undefined) {
+          setAirborneSeconds(data.airborneSeconds);
+        }
+        if (data.isPaused !== undefined) {
+          setIsPaused(Boolean(data.isPaused));
+        }
 
-    socket.on('flightCompleted', (result) => {
-      setCompletedFlight(result);
-      setActiveJob(null);
-      if (onFlightCompleted) {
-        onFlightCompleted(result);
+        // Detect remote flight completion
+        if (data.completedFlight) {
+          const compId = data.completedFlight.summary?.job_id ||
+            `${data.completedFlight.summary?.origin_icao}-${data.completedFlight.summary?.destination_icao}-${data.completedFlight.summary?.completed_at}`;
+
+          if (lastCompletedFlightIdRef.current !== compId) {
+            lastCompletedFlightIdRef.current = compId;
+            setCompletedFlight(data.completedFlight);
+            setActiveJob(null);
+            if (onFlightCompleted) {
+              onFlightCompleted(data.completedFlight);
+            }
+            // Acknowledge completion on server so it doesn't re-trigger
+            fetch('/api/telemetry/ack-completion', { method: 'POST' }).catch(() => {});
+          }
+        }
+      } catch (err) {
+        // Network blip / serverless spin-up
       }
-    });
+    };
+
+    // Attempt Socket.IO connection (for local development)
+    let socket = null;
+    try {
+      socket = io('/', {
+        transports: ['websocket', 'polling'],
+        timeout: 2500,
+        reconnectionAttempts: 3
+      });
+      socketRef.current = socket;
+
+      socket.on('connect', () => {
+        isSocketConnectedRef.current = true;
+      });
+
+      socket.on('disconnect', () => {
+        isSocketConnectedRef.current = false;
+      });
+
+      socket.on('connect_error', () => {
+        isSocketConnectedRef.current = false;
+      });
+
+      socket.on('connectionStatus', (status) => {
+        setConnectionStatus(status);
+      });
+
+      socket.on('telemetry', (data) => {
+        if (data.telemetry) setTelemetry(data.telemetry);
+        if (data.phase) setPhase(data.phase);
+        if (data.activeJob !== undefined) setActiveJob(data.activeJob);
+        if (data.destDist !== undefined) setDestDist(data.destDist);
+        if (data.originDist !== undefined) setOriginDist(data.originDist);
+        if (data.aircraftValidation !== undefined) setAircraftValidation(data.aircraftValidation);
+        if (data.flightSeconds !== undefined) setFlightSeconds(data.flightSeconds);
+        if (data.airborneSeconds !== undefined) setAirborneSeconds(data.airborneSeconds);
+        if (data.isPaused !== undefined) setIsPaused(Boolean(data.isPaused));
+      });
+
+      socket.on('phaseChange', ({ phase: newPhase, details }) => {
+        setPhase(newPhase);
+        if (details?.aircraftValidation !== undefined) setAircraftValidation(details.aircraftValidation);
+        if (details?.flightSeconds !== undefined) setFlightSeconds(details.flightSeconds);
+        if (details?.airborneSeconds !== undefined) setAirborneSeconds(details.airborneSeconds);
+        if (details?.isPaused !== undefined) setIsPaused(Boolean(details.isPaused));
+      });
+
+      socket.on('flightCompleted', (result) => {
+        setCompletedFlight(result);
+        setActiveJob(null);
+        if (onFlightCompleted) {
+          onFlightCompleted(result);
+        }
+      });
+    } catch {
+      isSocketConnectedRef.current = false;
+    }
+
+    // Immediate initial poll
+    pollTelemetry();
+
+    // Start 1 Hz polling fallback
+    pollInterval = setInterval(pollTelemetry, 1000);
 
     return () => {
-      socket.disconnect();
+      if (pollInterval) clearInterval(pollInterval);
+      if (socket) socket.disconnect();
     };
   }, [onFlightCompleted]);
 
@@ -122,3 +188,4 @@ export function useTelemetry(onFlightCompleted) {
   };
 }
 
+export default useTelemetry;

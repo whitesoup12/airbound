@@ -2,9 +2,12 @@
   "name": "airbound",
   "version": "1.0.0",
   "description": "MSFS 2024 Career & Logbook Tracker",
+  "type": "module",
   "scripts": {
     "dev:server": "npm --prefix server run dev",
     "dev:client": "npm --prefix client run dev",
+    "connector": "node connector/index.js",
+    "connector:mock": "node connector/index.js --mock",
     "start": "npm --prefix server start",
     "seed": "npm --prefix server run seed",
     "seed:full": "npm --prefix server run seed:full",
@@ -12,15 +15,22 @@
     "build": "npm --prefix client run build",
     "export:msfs": "npm --prefix server run export:msfs"
   },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "csv-parser": "^3.2.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mongoose": "^8.9.5"
+  },
   "keywords": [
     "msfs",
     "msfs2024",
     "simconnect",
     "flight-simulator",
     "logbook",
-    "career"
+    "career",
+    "vercel"
   ],
   "author": "",
   "license": "MIT"
 }
-

@@ -1,9 +1,8 @@
 import http from 'http';
-import express from 'express';
-import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import { Server as SocketIOServer } from 'socket.io';
+import { app } from './app.js';
 import { connectDB } from './config/db.js';
 import { seedAirports } from './seeds/seedAirports.js';
 import Airport from './models/Airport.js';
@@ -11,63 +10,16 @@ import Job from './models/Job.js';
 import Pilot from './models/Pilot.js';
 import simConnectBridge from './services/simconnect.js';
 import flightStateMachine from './services/stateMachine.js';
-
-import pilotRoutes from './routes/pilot.js';
-import jobsRoutes from './routes/jobs.js';
-import airportsRoutes from './routes/airports.js';
-import simulatorRoutes from './routes/simulator.js';
-import fleetRoutes from './routes/fleet.js';
-import freeFlightRoutes from './routes/freeFlight.js';
 import { seedAircraftCatalog } from './seeds/seedAircraft.js';
 import { healPilotData } from './controllers/pilotController.js';
-
 import { calculateDistanceNm } from './services/geoUtils.js';
 
 dotenv.config();
 
-const app = express();
 const server = http.createServer(app);
 
 const PORT = process.env.PORT || 3001;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
-
-// Middleware
-app.use(cors({ origin: '*' }));
-app.use(express.json());
-
-// REST Routes
-app.use('/api/pilot', pilotRoutes);
-app.use('/api/jobs', jobsRoutes);
-app.use('/api/airports', airportsRoutes);
-app.use('/api/simulator', simulatorRoutes);
-app.use('/api/fleet', fleetRoutes);
-app.use('/api/free-flight', freeFlightRoutes);
-
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    simConnectConnected: simConnectBridge.isConnected,
-    isMockMode: simConnectBridge.isMockMode,
-    app: simConnectBridge.appName,
-    currentPhase: flightStateMachine.phase,
-    activeJob: flightStateMachine.activeJob?._id || null,
-    mongooseState: mongoose.connection.readyState,
-    dbName: mongoose.connection.name
-  });
-});
-
-// 404 Fallback for unknown API routes (returns JSON, never HTML)
-app.all('/api/*', (req, res) => {
-  res.status(404).json({ error: `API route ${req.method} ${req.originalUrl} not found` });
-});
-
-// Global Express error handler to guarantee valid JSON responses
-app.use((err, req, res, next) => {
-  console.error('[API Server Error]:', err);
-  if (!res.headersSent) {
-    res.status(500).json({ error: err.message || 'Internal server error' });
-  }
-});
 
 // Setup Socket.IO for real-time telemetry stream (1-2 Hz)
 const io = new SocketIOServer(server, {

@@ -254,6 +254,24 @@ const PilotSchema = new mongoose.Schema(
       departed_at: { type: Date, default: null },
       created_at: { type: Date, default: Date.now },
       active: { type: Boolean, default: false }
+    },
+    active_telemetry: {
+      telemetry: { type: Object, default: null },
+      phase: { type: String, default: 'STANDBY' },
+      originDist: { type: Number, default: null },
+      destDist: { type: Number, default: null },
+      aircraftValidation: { type: Object, default: null },
+      flightSeconds: { type: Number, default: 0 },
+      airborneSeconds: { type: Number, default: 0 },
+      isPaused: { type: Boolean, default: false },
+      connected: { type: Boolean, default: false },
+      isMock: { type: Boolean, default: false },
+      app: { type: String, default: null },
+      touchdownFpm: { type: Number, default: null },
+      approachSpeedKts: { type: Number, default: null },
+      landingRating: { type: String, default: '' },
+      completedFlight: { type: Object, default: null },
+      lastSeen: { type: Date, default: null }
     }
   },
   {

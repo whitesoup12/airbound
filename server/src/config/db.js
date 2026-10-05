@@ -20,22 +20,37 @@ export async function connectTestDB() {
   return memUri;
 }
 
+let cachedPromise = null;
+
 export async function connectDB(customUri = null) {
   // Hard guard: When running in test environment, NEVER connect to Atlas
   if (process.env.NODE_ENV === 'test') {
     return connectTestDB();
   }
 
+  // Reuse existing active connection if already connected (state 1 = connected)
+  if (mongoose.connection.readyState === 1) {
+    return mongoose.connection;
+  }
+
+  // Reuse pending connection promise if currently connecting
+  if (cachedPromise && mongoose.connection.readyState === 2) {
+    return cachedPromise;
+  }
+
   const uri = customUri || process.env.MONGODB_URI;
 
   if (uri) {
     try {
-      await mongoose.connect(uri, {
-        serverSelectionTimeoutMS: 15000
+      cachedPromise = mongoose.connect(uri, {
+        serverSelectionTimeoutMS: 15000,
+        maxPoolSize: 10
       });
+      await cachedPromise;
       console.log(`[Database] Connected to MongoDB at: ${uri.replace(/\/\/.*@/, '//<credentials>@')}`);
-      return;
+      return mongoose.connection;
     } catch (err) {
+      cachedPromise = null;
       console.error(`[Database] Connection to specified URI failed: ${err.message}`);
       if (process.env.ALLOW_MEMORY_FALLBACK === 'true') {
         console.warn('[Database] Falling back to in-memory database...');

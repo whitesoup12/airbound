@@ -5,8 +5,8 @@ import Pilot from '../models/Pilot.js';
 import { generateJobsForAirport } from './jobGenerator.js';
 import { computeFlightSettlement } from './economyService.js';
 import { validateAircraftMatch } from '../utils/aircraftValidator.js';
-import { normalizeTo4CharIcao } from '../utils/icaoUtils.js';
 import { calculateFlightXp, rateLandingTouchdown, getPilotRank } from './xpService.js';
+import { settleCompletedFlight } from './flightSettlement.js';
 
 export const FLIGHT_PHASES = {
   STANDBY: 'STANDBY',
@@ -630,241 +630,21 @@ export class FlightStateMachine {
     if (!this.activeJob) return;
 
     try {
-      const completedAt = new Date();
-      const departedAt = this.departedAt || new Date(completedAt.getTime() - 15 * 60 * 1000);
-
-      // Raw wall-clock fallback if telemetry stream was not polled at 1Hz (e.g. instant unit tests)
-      const rawWallClockSeconds = Math.max(1, Math.round((completedAt.getTime() - departedAt.getTime()) / 1000));
-
-      // Active pause-free flight duration (takeoff to engine shutdown/parking)
-      const durationSeconds = this.activeFlightSeconds >= 1
-        ? Math.max(1, Math.round(this.activeFlightSeconds))
-        : rawWallClockSeconds;
-
-      // Pure airborne duration (takeoff to touchdown, pause-free)
-      const airborneSeconds = this.airborneSeconds >= 1
-        ? Math.max(1, Math.round(this.airborneSeconds))
-        : (this.touchdownAt && this.departedAt
-            ? Math.max(1, Math.round((this.touchdownAt.getTime() - this.departedAt.getTime()) / 1000))
-            : durationSeconds);
-
-      const durationHours = Math.round((durationSeconds / 3600) * 10) / 10;
-
-      const destCountry = this.destinationAirport?.country || 'US';
-      const destIcao = (await normalizeTo4CharIcao(this.activeJob.destination_icao)) || this.activeJob.destination_icao;
-      const destRunwayFt = this.destinationAirport?.longest_runway_ft || 5000;
-
-      // Fetch pilot and active aircraft specs for settlement
-      const pilot = await Pilot.findOne();
-      const activeAircraft = pilot?.active_aircraft || {
-        name: 'Cessna 172 Skyhawk',
-        fuel_burn_gph: 9.0,
-        fuel_type: '100LL'
-      };
-
-      const isFreeFlight = Boolean(this.activeJob.is_free_flight);
-
-      // Distance calculation for Free Flight if not set or 0
-      if (isFreeFlight && (!this.activeJob.distance_nm || this.activeJob.distance_nm <= 0)) {
-        if (this.originAirport?.location?.coordinates && this.destinationAirport?.location?.coordinates) {
-          const [oLon, oLat] = this.originAirport.location.coordinates;
-          const [dLon, dLat] = this.destinationAirport.location.coordinates;
-          this.activeJob.distance_nm = Math.round(calculateDistanceNm(oLat, oLon, dLat, dLon) * 10) / 10;
-        } else {
-          this.activeJob.distance_nm = Math.max(1, Math.round(((airborneSeconds || 60) / 3600) * (telemetry.groundSpeed || 110)));
-        }
-      }
-
-      // Calculate economic settlement: Gross - Fuel - Landing Fee = Net Payout
-      let settlement;
-      if (isFreeFlight) {
-        if (this.activeJob.deduct_fees) {
-          settlement = computeFlightSettlement({
-            grossPayout: 0,
-            durationSeconds,
-            fuelBurnGph: activeAircraft.fuel_burn_gph || 9.0,
-            fuelType: activeAircraft.fuel_type || '100LL',
-            destRunwayFt,
-            aircraftName: activeAircraft.name || 'Cessna 172 Skyhawk'
-          });
-          // For free flight with deductions, net payout is negative (settles fuel + landing fees)
-          settlement.netPayout = -settlement.totalExpenses;
-        } else {
-          settlement = {
-            grossPayout: 0,
-            fuelCost: 0,
-            fuelGallons: 0,
-            landingFee: 0,
-            netPayout: 0,
-            aircraftName: activeAircraft.name || 'Cessna 172 Skyhawk'
-          };
-        }
-      } else {
-        settlement = computeFlightSettlement({
-          grossPayout: this.activeJob.payout,
-          durationSeconds,
-          fuelBurnGph: activeAircraft.fuel_burn_gph || 9.0,
-          fuelType: activeAircraft.fuel_type || '100LL',
-          destRunwayFt,
-          aircraftName: activeAircraft.name || 'Cessna 172 Skyhawk'
-        });
-      }
-
-      const isUnvisited = Boolean(
-        this.activeJob.is_unvisited ||
-        (pilot && !pilot.visited_airports.includes(destIcao))
-      );
-
-      const flightXp = calculateFlightXp({
-        distanceNm: this.activeJob.distance_nm,
-        isUnvisited,
-        destRunwayFt,
+      const result = await settleCompletedFlight({
+        job: this.activeJob,
+        telemetry,
         touchdownFpm: this.touchdownFpm,
-        category: activeAircraft.category,
-        aircraftName: activeAircraft.name,
-        approachKts: this.approachSpeedKts,
-        landingClass: this.landingClass
+        approachSpeedKts: this.approachSpeedKts,
+        flightSeconds: this.activeFlightSeconds,
+        airborneSeconds: this.airborneSeconds,
+        departedAt: this.departedAt,
+        touchdownAt: this.touchdownAt,
+        originAirport: this.originAirport,
+        destinationAirport: this.destinationAirport
       });
-
-      // 1. Update Job status to 'completed' with touchdown and XP metadata
-      await Job.findByIdAndUpdate(this.activeJob._id, {
-        status: 'completed',
-        completed_at: completedAt,
-        touchdown_fpm: this.touchdownFpm,
-        landing_rating: flightXp.landingRating,
-        landing_class: flightXp.aircraftClass,
-        approach_speed_kts: this.approachSpeedKts,
-        xp_reward: flightXp.totalXp
-      });
-      // 1. Update Job status to 'completed' with touchdown and XP metadata (only if job contract exists)
-      if (this.activeJob._id) {
-        await Job.findByIdAndUpdate(this.activeJob._id, {
-          status: 'completed',
-          completed_at: completedAt,
-          touchdown_fpm: this.touchdownFpm,
-          landing_rating: flightXp.landingRating,
-          landing_class: flightXp.aircraftClass,
-          approach_speed_kts: this.approachSpeedKts,
-          xp_reward: flightXp.totalXp
-        });
-      }
-
-      // 2. Flight summary for logbook with detailed financial ledger and XP
-      const flightSummary = {
-        job_id: this.activeJob._id,
-        origin_icao: this.activeJob.origin_icao,
-        job_id: this.activeJob._id || null,
-        origin_icao: this.activeJob.origin_icao || 'UNKN',
-        destination_icao: destIcao,
-        distance_nm: this.activeJob.distance_nm || 1,
-        cargo_lbs: this.activeJob.cargo_lbs || 0,
-        pax_count: this.activeJob.pax_count || 0,
-        payout: settlement.netPayout, // Persisted reward
-        gross_payout: settlement.grossPayout,
-        fuel_cost: settlement.fuelCost,
-        fuel_gallons: settlement.fuelGallons,
-        landing_fee: settlement.landingFee,
-        net_payout: settlement.netPayout,
-        exploration_bonus: this.activeJob.exploration_bonus || 0,
-        rental_fee: isFreeFlight ? 0 : (this.activeJob.rental_fee_charged || (activeAircraft.is_rental && !activeAircraft.is_loaner ? (activeAircraft.rental_price_per_flight || 0) : 0)),
-        aircraft_name: telemetry.simAircraftTitle || activeAircraft.name || settlement.aircraftName,
-        category: activeAircraft?.category || 'single_prop',
-        duration_seconds: durationSeconds,
-        airborne_seconds: airborneSeconds,
-        touchdown_fpm: this.touchdownFpm,
-        landing_rating: flightXp.landingRating,
-        landing_class: flightXp.aircraftClass,
-        approach_speed_kts: this.approachSpeedKts,
-        xp_earned: flightXp.totalXp,
-        departed_at: departedAt,
-        completed_at: completedAt,
-        source: isFreeFlight ? 'free_flight' : 'airbound_dispatch'
-      };
-
-      // 3. Update Pilot persistence:
-      // Increment pilot.balance by the net payout
-      // Set pilot.current_icao to destination airport
-      // Append destination ICAO and country code using $addToSet (preventing duplicates)
-      // Append flight summary to flight_log
-      // Increment career XP, recalculate level, and detect promotion
-      let insufficientRentalFunds = false;
-      let rentalPrice = 0;
-      let leveledUp = false;
-      let rankInfo = null;
-
-      if (pilot) {
-        if (isFreeFlight) {
-          pilot.active_free_flight = null;
-        }
-        // Increment flight hours for the flown aircraft in pilot's fleet if matching
-        let fleetPlane = null;
-        if (pilot.fleet && pilot.fleet.length > 0 && activeAircraft.tail_number) {
-          fleetPlane = pilot.fleet.find((p) => p.tail_number === activeAircraft.tail_number);
-          if (fleetPlane) {
-            fleetPlane.flight_hours = Math.round(((fleetPlane.flight_hours || 0) + durationHours) * 10) / 10;
-          }
-        }
-
-        // If flown aircraft is a rental, reset prepaid flight status so the next flight requires renewal fee
-        if (activeAircraft.is_rental && !activeAircraft.is_loaner) {
-          if (pilot.active_aircraft) {
-            pilot.active_aircraft.rental_flights_paid = 0;
-          }
-          if (fleetPlane) {
-            fleetPlane.rental_flights_paid = 0;
-          }
-        }
-
-        const prevLevel = pilot.level || 1;
-        pilot.xp = (pilot.xp || 0) + flightXp.totalXp;
-        rankInfo = getPilotRank(pilot.xp);
-        pilot.level = rankInfo.level;
-        pilot.rank_title = rankInfo.title;
-        leveledUp = pilot.level > prevLevel;
-
-        pilot.balance = Math.max(0, (pilot.balance || 0) + settlement.netPayout);
-        pilot.current_icao = destIcao;
-        if (!pilot.visited_airports.includes(destIcao)) {
-          pilot.visited_airports.push(destIcao);
-        }
-        if (destCountry && !pilot.visited_countries.includes(destCountry)) {
-          pilot.visited_countries.push(destCountry);
-        }
-        pilot.flight_log.push(flightSummary);
-
-        // Check if balance after settlement is insufficient for another flight with this rental
-        if (activeAircraft.is_rental && !activeAircraft.is_loaner) {
-          rentalPrice = activeAircraft.rental_price_per_flight || 0;
-          if (pilot.balance < rentalPrice) {
-            insufficientRentalFunds = true;
-          }
-        }
-
-        await pilot.save();
-      }
-
-      console.log(
-        `[StateMachine] Flight completed! Gross: $${settlement.grossPayout}, Net: +$${settlement.netPayout}, XP: +${flightXp.totalXp} (${flightXp.landingLabel}). Pilot Level: ${rankInfo?.level || 1} (${rankInfo?.title || 'Junior Aviator'})`
-      );
-
-      // 4. Auto-generate new jobs for the new location scaled to the active aircraft and pilot seniority
-      await generateJobsForAirport(destIcao, { aircraft: pilot?.active_aircraft });
 
       if (this.onFlightCompletedCallback) {
-        this.onFlightCompletedCallback({
-          summary: flightSummary,
-          payout: settlement.netPayout,
-          settlement,
-          flightXp,
-          touchdownFpm: this.touchdownFpm,
-          landingRating: flightXp.landingRating,
-          rankInfo,
-          leveledUp,
-          newIcao: destIcao,
-          insufficientRentalFunds,
-          rentalPrice,
-          aircraftName: activeAircraft.name
-        });
+        this.onFlightCompletedCallback(result);
       }
 
       // Conclude active contract upon successful flight completion
