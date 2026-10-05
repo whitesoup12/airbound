@@ -1,6 +1,12 @@
 import { execSync } from 'child_process';
 import fs from 'fs';
 
+console.log('[Build] Checking client dependencies for production build...');
+if (!fs.existsSync('client/node_modules') || !fs.existsSync('client/node_modules/vite')) {
+  console.log('[Build] Installing client dependencies (npm --prefix client install)...');
+  execSync('npm --prefix client install --include=dev', { stdio: 'inherit' });
+}
+
 console.log('[Build] Building React client with Vite...');
 execSync('npm --prefix client run build', { stdio: 'inherit' });
 
