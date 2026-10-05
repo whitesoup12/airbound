@@ -12,7 +12,7 @@
     "seed": "npm --prefix server run seed",
     "seed:full": "npm --prefix server run seed:full",
     "test": "npm --prefix server test",
-    "build": "npm --prefix client run build",
+    "build": "node scripts/build.js",
     "export:msfs": "npm --prefix server run export:msfs"
   },
   "dependencies": {
