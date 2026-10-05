@@ -1,10 +1,32 @@
 const API_BASE = '/api';
 
+export function getStoredPasscode() {
+  return localStorage.getItem('airbound_passcode') || '';
+}
+
+export function setStoredPasscode(code) {
+  if (code && code.trim()) {
+    localStorage.setItem('airbound_passcode', code.trim());
+  } else {
+    localStorage.removeItem('airbound_passcode');
+  }
+}
+
+export function clearStoredPasscode() {
+  localStorage.removeItem('airbound_passcode');
+}
+
 /**
  * Robust fetch wrapper that gracefully parses JSON and handles empty or non-JSON error bodies
  */
 async function safeFetchJson(url, options = {}, defaultError = 'Request failed') {
-  const res = await fetch(url, options);
+  const headers = { ...options.headers };
+  const passcode = getStoredPasscode();
+  if (passcode) {
+    headers['x-pilot-passcode'] = passcode;
+  }
+
+  const res = await fetch(url, { ...options, headers });
   const text = await res.text();
   let data = null;
   if (text) {
@@ -13,6 +35,10 @@ async function safeFetchJson(url, options = {}, defaultError = 'Request failed')
     } catch {
       // Body is not valid JSON (e.g. empty or proxy error)
     }
+  }
+
+  if (res.status === 401) {
+    window.dispatchEvent(new CustomEvent('airbound:unauthorized'));
   }
 
   if (!res.ok) {
@@ -24,6 +50,22 @@ async function safeFetchJson(url, options = {}, defaultError = 'Request failed')
   }
 
   return data ?? {};
+}
+
+export async function checkAuthStatus() {
+  return safeFetchJson(`${API_BASE}/auth/status`, {}, 'Failed to check auth status');
+}
+
+export async function verifyPasscode(passcode) {
+  return safeFetchJson(
+    `${API_BASE}/auth/verify`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ passcode })
+    },
+    'Invalid Passcode'
+  );
 }
 
 export async function fetchPilot() {

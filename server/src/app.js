@@ -12,6 +12,8 @@ import fleetRoutes from './routes/fleet.js';
 import freeFlightRoutes from './routes/freeFlight.js';
 import telemetryRoutes from './routes/telemetry.js';
 import flightRoutes from './routes/flight.js';
+import authRoutes from './routes/auth.js';
+import requirePilotAuth from './middleware/auth.js';
 
 import simConnectBridge from './services/simconnect.js';
 import flightStateMachine from './services/stateMachine.js';
@@ -36,6 +38,12 @@ app.use(async (req, res, next) => {
     }
   }
 });
+
+// Public Auth Endpoints
+app.use('/api/auth', authRoutes);
+
+// Protect all remaining /api/* routes with Pilot Passcode Authentication
+app.use('/api', requirePilotAuth);
 
 // Mount API REST Routes
 app.use('/api/pilot', pilotRoutes);

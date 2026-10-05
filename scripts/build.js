@@ -16,3 +16,4 @@ if (fs.existsSync('client/dist')) {
 }
 
 console.log('[Build] Build complete! Output available in both ./dist and ./client/dist');
+

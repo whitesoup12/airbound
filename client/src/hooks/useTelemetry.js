@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
+import { getStoredPasscode } from '../api/client.js';
 
 export function useTelemetry(onFlightCompleted) {
   const [telemetry, setTelemetry] = useState({
@@ -43,7 +44,15 @@ export function useTelemetry(onFlightCompleted) {
       if (isSocketConnectedRef.current) return;
 
       try {
-        const res = await fetch('/api/telemetry');
+        const passcode = getStoredPasscode();
+        const headers = passcode ? { 'x-pilot-passcode': passcode } : {};
+        const res = await fetch('/api/telemetry', { headers });
+
+        if (res.status === 401) {
+          window.dispatchEvent(new CustomEvent('airbound:unauthorized'));
+          return;
+        }
+
         if (!res.ok) return;
         const data = await res.json();
 
@@ -94,7 +103,7 @@ export function useTelemetry(onFlightCompleted) {
               onFlightCompleted(data.completedFlight);
             }
             // Acknowledge completion on server so it doesn't re-trigger
-            fetch('/api/telemetry/ack-completion', { method: 'POST' }).catch(() => {});
+            fetch('/api/telemetry/ack-completion', { method: 'POST', headers }).catch(() => {});
           }
         }
       } catch (err) {

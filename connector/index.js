@@ -27,6 +27,7 @@ class AirboundSimConnector {
   constructor() {
     this.apiUrl = API_URL;
     this.pilotCallsign = PILOT_CALLSIGN;
+    this.passcode = (process.env.AIRBOUND_PASSCODE || process.env.PILOT_PASSCODE || '').trim();
     this.isMock = IS_MOCK_ARG;
     this.isConnected = false;
     this.appName = null;
@@ -108,9 +109,20 @@ class AirboundSimConnector {
     await this.syncActiveFlight();
   }
 
+  getHeaders(extra = {}) {
+    const headers = { ...extra };
+    if (this.passcode) {
+      headers['x-pilot-passcode'] = this.passcode;
+    }
+    return headers;
+  }
+
   async testApiConnection() {
     try {
-      const res = await fetch(`${this.apiUrl}/api/health`, { signal: AbortSignal.timeout(4000) });
+      const res = await fetch(`${this.apiUrl}/api/health`, {
+        headers: this.getHeaders(),
+        signal: AbortSignal.timeout(4000)
+      });
       if (res.ok) {
         console.log(`\x1b[32m✓ Connected to Airbound Backend at ${this.apiUrl}\x1b[0m`);
       } else {
@@ -387,6 +399,7 @@ class AirboundSimConnector {
   async syncActiveFlight() {
     try {
       const res = await fetch(`${this.apiUrl}/api/telemetry/active-flight`, {
+        headers: this.getHeaders(),
         signal: AbortSignal.timeout(3000)
       });
       if (!res.ok) return;
@@ -432,7 +445,7 @@ class AirboundSimConnector {
 
       const res = await fetch(`${this.apiUrl}/api/flight/complete`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.getHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(payload)
       });
 
@@ -506,7 +519,7 @@ class AirboundSimConnector {
 
     fetch(`${this.apiUrl}/api/telemetry`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.getHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(payload)
     }).catch(() => {
       // Silent error on transient blip

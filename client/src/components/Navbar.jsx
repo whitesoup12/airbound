@@ -11,7 +11,8 @@ import {
   Warehouse,
   Sparkles,
   ArrowRight,
-  Award
+  Award,
+  Lock
 } from 'lucide-react';
 import { getPilotRank } from '../utils/xpUtils.js';
 
@@ -25,7 +26,9 @@ export function Navbar({
   destDist = null,
   availableJobsCount = 0,
   onResetPilot,
-  onOpenChangeBase
+  onOpenChangeBase,
+  onLockCockpit,
+  isAuthRequired = false
 }) {
   const isMock = connectionStatus?.isMock;
   const isConnected = connectionStatus?.connected;
@@ -200,6 +203,18 @@ export function Navbar({
               {(pilot?.balance || 0).toLocaleString()}
             </span>
           </button>
+
+          {/* Lock Cockpit Button */}
+          {onLockCockpit && isAuthRequired && (
+            <button
+              type="button"
+              onClick={onLockCockpit}
+              className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-cyan-400 border border-slate-800 hover:border-cyan-800 transition"
+              title="Lock Flight Deck"
+            >
+              <Lock className="w-3.5 h-3.5" />
+            </button>
+          )}
 
           {/* Reset Career Button */}
           {onResetPilot && (

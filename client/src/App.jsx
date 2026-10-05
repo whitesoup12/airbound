@@ -8,6 +8,7 @@ import CareerLogbookView from './components/views/CareerLogbookView.jsx';
 import CareerProgressView from './components/views/CareerProgressView.jsx';
 import ChangeBaseModal from './components/ChangeBaseModal.jsx';
 import ResetCareerModal from './components/ResetCareerModal.jsx';
+import CockpitLockModal from './components/CockpitLockModal.jsx';
 import { useTelemetry } from './hooks/useTelemetry.js';
 import {
   fetchPilot,
@@ -19,7 +20,10 @@ import {
   fetchAirports,
   updateBaseAirport,
   startFreeFlight,
-  cancelFreeFlight
+  cancelFreeFlight,
+  checkAuthStatus,
+  getStoredPasscode,
+  clearStoredPasscode
 } from './api/client.js';
 import { Trophy, X, Award, Sparkles } from 'lucide-react';
 import { formatLandingRating } from './utils/xpUtils.js';
@@ -46,6 +50,38 @@ export function App() {
   const [isResetCareerOpen, setIsResetCareerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [completionBanner, setCompletionBanner] = useState(null);
+  const [isLocked, setIsLocked] = useState(false);
+  const [isAuthRequired, setIsAuthRequired] = useState(false);
+
+  // Check auth requirement on startup
+  useEffect(() => {
+    checkAuthStatus()
+      .then((status) => {
+        if (status?.authRequired) {
+          setIsAuthRequired(true);
+          if (!getStoredPasscode()) {
+            setIsLocked(true);
+          }
+        }
+      })
+      .catch(() => {});
+
+    const handleUnauthorized = () => {
+      setIsLocked(true);
+    };
+    window.addEventListener('airbound:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('airbound:unauthorized', handleUnauthorized);
+  }, []);
+
+  const handleUnlockSuccess = () => {
+    setIsLocked(false);
+    loadInitialData();
+  };
+
+  const handleLockCockpit = () => {
+    clearStoredPasscode();
+    setIsLocked(true);
+  };
 
   // Sync hash changes with tab state
   useEffect(() => {
@@ -278,6 +314,8 @@ export function App() {
         availableJobsCount={jobs.length}
         onResetPilot={handleResetPilot}
         onOpenChangeBase={() => setIsChangeBaseOpen(true)}
+        onLockCockpit={handleLockCockpit}
+        isAuthRequired={isAuthRequired}
       />
 
       {/* Completion Banner Alert with Financial Ledger & XP Breakdown */}
@@ -489,6 +527,12 @@ export function App() {
         currentIcao={pilot?.current_icao || 'KXNA'}
         allAirports={allAirports}
         onConfirmReset={handleConfirmResetCareer}
+      />
+
+      {/* Cockpit Security Lock Modal */}
+      <CockpitLockModal
+        isOpen={isLocked}
+        onSuccess={handleUnlockSuccess}
       />
     </div>
   );
