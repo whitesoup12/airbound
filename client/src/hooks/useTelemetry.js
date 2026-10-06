@@ -19,8 +19,14 @@ export function useTelemetry(onFlightCompleted) {
   const [phase, setPhase] = useState('STANDBY');
   const [connectionStatus, setConnectionStatus] = useState({
     connected: false,
+    connectorActive: false,
+    simConnected: false,
+    lastSeenAgoSeconds: null,
+    source: 'none',
     isMock: false,
-    app: null
+    app: null,
+    simAircraftTitle: null,
+    connectorVersion: '1.2.0'
   });
   const [destDist, setDestDist] = useState(null);
   const [originDist, setOriginDist] = useState(null);
@@ -56,10 +62,28 @@ export function useTelemetry(onFlightCompleted) {
         if (!res.ok) return;
         const data = await res.json();
 
+        const cs = data.connectorStatus || {
+          connected: Boolean(data.connected),
+          connectorActive: Boolean(data.connected),
+          simConnected: Boolean(data.connected),
+          lastSeenAgoSeconds: null,
+          source: 'cloud',
+          isMock: Boolean(data.isMock),
+          app: data.app || null,
+          simAircraftTitle: data.telemetry?.simAircraftTitle || null,
+          connectorVersion: '1.2.0'
+        };
+
         setConnectionStatus({
           connected: Boolean(data.connected),
+          connectorActive: Boolean(cs.connectorActive),
+          simConnected: Boolean(cs.simConnected),
+          lastSeenAgoSeconds: cs.lastSeenAgoSeconds,
+          source: cs.source || 'cloud',
           isMock: Boolean(data.isMock),
-          app: data.app || null
+          app: data.app || cs.app || null,
+          simAircraftTitle: data.telemetry?.simAircraftTitle || cs.simAircraftTitle || null,
+          connectorVersion: cs.connectorVersion || '1.2.0'
         });
 
         if (data.telemetry) {
@@ -134,7 +158,15 @@ export function useTelemetry(onFlightCompleted) {
       });
 
       socket.on('connectionStatus', (status) => {
-        setConnectionStatus(status);
+        setConnectionStatus((prev) => ({
+          ...prev,
+          ...status,
+          connected: Boolean(status?.connected),
+          connectorActive: status?.connectorActive !== undefined ? Boolean(status.connectorActive) : Boolean(status?.connected),
+          simConnected: status?.simConnected !== undefined ? Boolean(status.simConnected) : Boolean(status?.connected),
+          source: status?.source || 'local',
+          lastSeenAgoSeconds: 0
+        }));
       });
 
       socket.on('telemetry', (data) => {

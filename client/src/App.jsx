@@ -9,6 +9,7 @@ import CareerProgressView from './components/views/CareerProgressView.jsx';
 import ChangeBaseModal from './components/ChangeBaseModal.jsx';
 import ResetCareerModal from './components/ResetCareerModal.jsx';
 import CockpitLockModal from './components/CockpitLockModal.jsx';
+import ConnectorStatusModal from './components/ConnectorStatusModal.jsx';
 import { useTelemetry } from './hooks/useTelemetry.js';
 import {
   fetchPilot,
@@ -48,6 +49,7 @@ export function App() {
   const [visitedAirportsDetails, setVisitedAirportsDetails] = useState([]);
   const [isChangeBaseOpen, setIsChangeBaseOpen] = useState(false);
   const [isResetCareerOpen, setIsResetCareerOpen] = useState(false);
+  const [isConnectorStatusOpen, setIsConnectorStatusOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [completionBanner, setCompletionBanner] = useState(null);
   const [isLocked, setIsLocked] = useState(false);
@@ -316,6 +318,7 @@ export function App() {
         onOpenChangeBase={() => setIsChangeBaseOpen(true)}
         onLockCockpit={handleLockCockpit}
         isAuthRequired={isAuthRequired}
+        onOpenConnectorStatus={() => setIsConnectorStatusOpen(true)}
       />
 
       {/* Completion Banner Alert with Financial Ledger & XP Breakdown */}
@@ -448,6 +451,8 @@ export function App() {
             onAcceptJob={handleAcceptJob}
             onSwitchToDispatch={() => handleTabChange('dispatch')}
             onOpenCareer={() => handleTabChange('progression')}
+            connectionStatus={connectionStatus}
+            onOpenConnectorStatus={() => setIsConnectorStatusOpen(true)}
           />
         )}
 
@@ -533,6 +538,13 @@ export function App() {
       <CockpitLockModal
         isOpen={isLocked}
         onSuccess={handleUnlockSuccess}
+      />
+
+      {/* Simulator Connector Diagnostics Modal */}
+      <ConnectorStatusModal
+        isOpen={isConnectorStatusOpen}
+        onClose={() => setIsConnectorStatusOpen(false)}
+        connectionStatus={connectionStatus}
       />
     </div>
   );

@@ -512,7 +512,10 @@ class AirboundSimConnector {
       airborneSeconds: Math.round(this.airborneSeconds),
       isPaused: Boolean(this.telemetry.isPaused),
       isMock: this.isMock,
-      app: this.appName || (this.isMock ? 'Mock Bridge' : 'MSFS 2024'),
+      simConnected: Boolean(this.isConnected),
+      connectorActive: true,
+      connectorVersion: '1.2.0',
+      app: this.appName || (this.isMock ? 'Mock Bridge' : (this.isConnected ? 'MSFS 2024' : 'Waiting for MSFS')),
       touchdownFpm: this.touchdownFpm,
       approachSpeedKts: this.approachSpeedKts
     };

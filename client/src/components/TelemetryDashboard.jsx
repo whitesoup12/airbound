@@ -15,7 +15,8 @@ import {
   Clock,
   MapPin,
   Award,
-  Plane
+  Plane,
+  Radio
 } from 'lucide-react';
 import { calculateNavEstimates } from '../utils/navigation.js';
 
@@ -62,7 +63,9 @@ export function TelemetryDashboard({
   onCancelJob,
   pilot,
   allAirports = [],
-  onOpenCareer
+  onOpenCareer,
+  connectionStatus,
+  onOpenConnectorStatus
 }) {
   const phaseInfo = PHASE_CONFIG[phase] || PHASE_CONFIG.STANDBY;
 
@@ -115,13 +118,51 @@ export function TelemetryDashboard({
             </span>
           </div>
           <div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 flex-wrap gap-y-1">
               <span className="text-xs uppercase font-mono tracking-widest text-slate-400">FLIGHT PHASE:</span>
               <span className="font-mono font-bold tracking-wider text-base sm:text-lg">{phaseInfo.label}</span>
               {telemetry?.isPaused && (
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500 text-slate-950 font-bold animate-pulse shadow-sm">
                   PAUSED
                 </span>
+              )}
+              {/* Cockpit Connector Badge */}
+              {onOpenConnectorStatus && (
+                <button
+                  type="button"
+                  onClick={onOpenConnectorStatus}
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold tracking-wider border flex items-center space-x-1.5 transition cursor-pointer ${
+                    connectionStatus?.isMock
+                      ? 'bg-purple-950/80 border-purple-500/60 text-purple-300'
+                      : connectionStatus?.connectorActive && connectionStatus?.simConnected
+                      ? 'bg-emerald-950/80 border-emerald-500/60 text-emerald-300'
+                      : connectionStatus?.connectorActive && !connectionStatus?.simConnected
+                      ? 'bg-amber-950/80 border-amber-500/60 text-amber-300'
+                      : 'bg-rose-950/80 border-rose-500/60 text-rose-300 hover:bg-rose-900'
+                  }`}
+                  title="Click to view simulator connector status"
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      connectionStatus?.isMock
+                        ? 'bg-purple-400'
+                        : connectionStatus?.connectorActive && connectionStatus?.simConnected
+                        ? 'bg-emerald-400 animate-pulse'
+                        : connectionStatus?.connectorActive && !connectionStatus?.simConnected
+                        ? 'bg-amber-400 animate-pulse'
+                        : 'bg-rose-400'
+                    }`}
+                  ></span>
+                  <span>
+                    {connectionStatus?.isMock
+                      ? 'MOCK SIM'
+                      : connectionStatus?.connectorActive && connectionStatus?.simConnected
+                      ? 'CONNECTOR LINKED'
+                      : connectionStatus?.connectorActive && !connectionStatus?.simConnected
+                      ? 'WAITING FOR SIM'
+                      : 'CONNECTOR OFFLINE'}
+                  </span>
+                </button>
               )}
             </div>
             <p className="text-xs text-slate-300/80">
@@ -155,6 +196,30 @@ export function TelemetryDashboard({
           })}
         </div>
       </div>
+
+      {/* Desktop Connector Offline Helper Banner */}
+      {!connectionStatus?.connectorActive && !connectionStatus?.isMock && (
+        <div className="p-3 sm:p-3.5 rounded-xl bg-slate-900/90 border border-slate-800/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs font-mono text-slate-400 shadow-lg">
+          <div className="flex items-center space-x-2.5">
+            <Radio className="w-4 h-4 text-rose-500 shrink-0 animate-pulse" />
+            <span>
+              <strong className="text-slate-200">MSFS Connector Offline:</strong> Run{' '}
+              <code className="text-cyan-300 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 font-bold">
+                start-connector.bat
+              </code>{' '}
+              on your PC to stream live MSFS 2024 / 2020 telemetry.
+            </span>
+          </div>
+          {onOpenConnectorStatus && (
+            <button
+              onClick={onOpenConnectorStatus}
+              className="px-3 py-1 rounded-lg bg-cyan-950/90 hover:bg-cyan-900 text-cyan-300 border border-cyan-700/60 text-[11px] font-bold transition whitespace-nowrap shrink-0 cursor-pointer"
+            >
+              How to Connect
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Airframe Mismatch Alert Banner (Takes priority when mismatch is detected) */}
       {activeJob && aircraftValidation && !aircraftValidation.matches && (

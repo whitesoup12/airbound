@@ -25,12 +25,19 @@ router.get('/', async (req, res) => {
     const now = Date.now();
     const lastSeenTime = stored.lastSeen ? new Date(stored.lastSeen).getTime() : 0;
     const isRemoteConnectorActive = (now - lastSeenTime) <= 7000;
+    const lastSeenAgoMs = lastSeenTime > 0 ? Math.max(0, now - lastSeenTime) : null;
+    const lastSeenAgoSeconds = lastSeenAgoMs !== null ? Math.round(lastSeenAgoMs / 1000) : null;
+
+    const isConnectorActive = isLocalBridgeConnected || isRemoteConnectorActive;
+    const isSimConnected = isLocalBridgeConnected
+      ? Boolean(simConnectBridge.isConnected)
+      : (isRemoteConnectorActive && (stored.simConnected !== undefined ? Boolean(stored.simConnected) : true));
 
     const isConnected = isLocalBridgeConnected || isRemoteConnectorActive;
     const isMock = isLocalBridgeConnected ? simConnectBridge.isMockMode : Boolean(stored.isMock);
     const app = isLocalBridgeConnected
       ? (simConnectBridge.appName || 'MSFS 2024')
-      : (stored.app || 'MSFS 2024 (Remote Connector)');
+      : (stored.app || (isRemoteConnectorActive ? (stored.simConnected ? 'MSFS 2024' : 'Waiting for MSFS') : 'MSFS 2024'));
 
     // Priority: live local bridge telemetry if connected, otherwise stored cloud telemetry
     const telemetry = isLocalBridgeConnected
@@ -47,6 +54,20 @@ router.get('/', async (req, res) => {
           engineRunning: true,
           timestamp: now
         });
+
+    const connectorStatus = {
+      connected: isConnected,
+      connectorActive: isConnectorActive,
+      simConnected: isSimConnected,
+      lastSeenAgoSeconds: isLocalBridgeConnected ? 0 : lastSeenAgoSeconds,
+      lastSeen: stored.lastSeen || null,
+      source: isLocalBridgeConnected ? 'local' : (isRemoteConnectorActive ? 'remote_connector' : 'none'),
+      app,
+      isMock,
+      simAircraftTitle: telemetry?.simAircraftTitle || stored.telemetry?.simAircraftTitle || null,
+      simAircraftModel: telemetry?.simAircraftModel || stored.telemetry?.simAircraftModel || null,
+      connectorVersion: stored.connectorVersion || '1.2.0'
+    };
 
     // Active Job / Free Flight resolution
     let activeJob = flightStateMachine.activeJob;
@@ -99,6 +120,7 @@ router.get('/', async (req, res) => {
       connected: isConnected,
       isMock,
       app,
+      connectorStatus,
       telemetry,
       phase,
       activeJob,
@@ -132,6 +154,9 @@ router.post('/', async (req, res) => {
       isPaused,
       isMock = false,
       app = 'MSFS 2024',
+      simConnected = true,
+      connectorActive = true,
+      connectorVersion = '1.2.0',
       aircraftValidation = null,
       touchdownFpm = null,
       approachSpeedKts = null,
@@ -152,6 +177,9 @@ router.post('/', async (req, res) => {
       'active_telemetry.isPaused': Boolean(isPaused),
       'active_telemetry.isMock': Boolean(isMock),
       'active_telemetry.app': app,
+      'active_telemetry.simConnected': Boolean(simConnected),
+      'active_telemetry.connectorActive': Boolean(connectorActive),
+      'active_telemetry.connectorVersion': connectorVersion,
       'active_telemetry.aircraftValidation': aircraftValidation,
       'active_telemetry.touchdownFpm': touchdownFpm,
       'active_telemetry.approachSpeedKts': approachSpeedKts,

@@ -132,9 +132,12 @@ async function runTests() {
     const getRes = await makeRequest('GET', '/api/telemetry');
     assert.strictEqual(getRes.status, 200, 'Expected HTTP 200 on telemetry get');
     assert.strictEqual(getRes.body.connected, true, 'Telemetry should report connected');
+    assert.strictEqual(getRes.body.connectorStatus.connectorActive, true, 'Connector should report active');
+    assert.strictEqual(getRes.body.connectorStatus.simConnected, true, 'SimConnect should report connected');
+    assert.strictEqual(getRes.body.connectorStatus.source, 'remote_connector');
     assert.strictEqual(getRes.body.phase, 'IDLE');
     assert.strictEqual(getRes.body.telemetry.altitude, 125);
-    console.log('✓ Client poll returned active telemetry and connection status.');
+    console.log('✓ Client poll returned active telemetry and rich connector status.');
 
     // 3. Test GET /api/telemetry/active-flight with an accepted contract
     console.log('3. Testing active flight sync via GET /api/telemetry/active-flight...');

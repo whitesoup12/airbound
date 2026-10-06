@@ -60,6 +60,17 @@ io.on('connection', (socket) => {
     }
   }
 
+  socket.emit('connectionStatus', {
+    connected: simConnectBridge.isConnected,
+    connectorActive: simConnectBridge.isConnected,
+    simConnected: simConnectBridge.isConnected,
+    isMock: simConnectBridge.isMockMode,
+    app: simConnectBridge.appName || 'MSFS 2024',
+    source: 'local',
+    lastSeenAgoSeconds: 0,
+    simAircraftTitle: simConnectBridge.telemetry?.simAircraftTitle || null
+  });
+
   socket.emit('telemetry', {
     telemetry: simConnectBridge.telemetry,
     phase: flightStateMachine.phase,
@@ -76,7 +87,13 @@ io.on('connection', (socket) => {
 
 // Broadcast SimConnect connection changes
 simConnectBridge.on('connectionStatus', (status) => {
-  io.emit('connectionStatus', status);
+  io.emit('connectionStatus', {
+    ...status,
+    connectorActive: status.connected,
+    simConnected: status.connected,
+    source: 'local',
+    lastSeenAgoSeconds: 0
+  });
 });
 
 // Broadcast Telemetry updates (1-2 Hz)

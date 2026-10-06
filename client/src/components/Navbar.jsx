@@ -28,11 +28,14 @@ export function Navbar({
   onResetPilot,
   onOpenChangeBase,
   onLockCockpit,
-  isAuthRequired = false
+  isAuthRequired = false,
+  onOpenConnectorStatus
 }) {
   const isMock = connectionStatus?.isMock;
-  const isConnected = connectionStatus?.connected;
+  const connectorActive = connectionStatus?.connectorActive;
+  const simConnected = connectionStatus?.simConnected;
   const appName = connectionStatus?.app || 'MSFS 2024';
+  const lastSeenAgoSeconds = connectionStatus?.lastSeenAgoSeconds;
   const isEnRoute = activeJob && phase !== 'STANDBY';
 
   const rankInfo = getPilotRank(pilot?.xp || 0);
@@ -156,30 +159,56 @@ export function Navbar({
 
         {/* Right Status & Controls */}
         <div className="flex items-center space-x-2 shrink-0">
-          {/* SimConnect Status Dot */}
-          <div
-            className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-[11px] font-mono text-slate-400"
-            title={
-              isConnected
-                ? isMock
-                  ? 'Mock Telemetry Active'
-                  : `${appName} SimConnect Connected`
-                : 'Searching for MSFS 2024...'
+          {/* Connector & Telemetry Status Indicator */}
+          {(() => {
+            let pillClass = 'bg-slate-900/90 hover:bg-slate-800 border-rose-900/60 text-slate-300 hover:text-white shadow-sm';
+            let dotPing = 'bg-rose-500';
+            let dotColor = 'bg-rose-500';
+            let radioClass = 'text-rose-500';
+            let label = 'CONNECTOR OFFLINE';
+            let tooltip = 'MSFS desktop connector is offline. Click to view quick connection guide.';
+
+            if (isMock) {
+              pillClass = 'bg-purple-950/70 hover:bg-purple-900/80 border-purple-700/60 text-purple-300';
+              dotPing = 'bg-purple-400';
+              dotColor = 'bg-purple-400';
+              radioClass = 'text-purple-400 animate-pulse';
+              label = 'MOCK SIM';
+              tooltip = 'Synthetic mock flight telemetry active. Click for details.';
+            } else if (connectorActive && simConnected) {
+              pillClass = 'bg-emerald-950/70 hover:bg-emerald-900/80 border-emerald-600/70 text-emerald-300 shadow-sm shadow-emerald-950/50';
+              dotPing = 'bg-emerald-400';
+              dotColor = 'bg-emerald-400';
+              radioClass = 'text-emerald-400 animate-pulse';
+              label = appName || 'CONNECTOR LINKED';
+              tooltip = `Connector & MSFS SimConnect linked (${lastSeenAgoSeconds !== null ? `${lastSeenAgoSeconds}s ago` : 'Live'}). Click for details.`;
+            } else if (connectorActive && !simConnected) {
+              pillClass = 'bg-amber-950/70 hover:bg-amber-900/80 border-amber-600/70 text-amber-300 shadow-sm shadow-amber-950/50';
+              dotPing = 'bg-amber-400';
+              dotColor = 'bg-amber-400';
+              radioClass = 'text-amber-400 animate-pulse';
+              label = 'WAITING FOR SIM';
+              tooltip = 'Connector active on PC, waiting for MSFS to launch or load flight. Click for details.';
             }
-          >
-            <Radio
-              className={`w-3.5 h-3.5 ${
-                isConnected
-                  ? isMock
-                    ? 'text-amber-400 animate-pulse'
-                    : 'text-emerald-400 animate-pulse'
-                  : 'text-rose-500'
-              }`}
-            />
-            <span className="hidden lg:inline">
-              {isConnected ? (isMock ? 'MOCK SIM' : appName) : 'OFFLINE'}
-            </span>
-          </div>
+
+            return (
+              <button
+                type="button"
+                onClick={onOpenConnectorStatus}
+                className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] font-mono transition cursor-pointer group ${pillClass}`}
+                title={tooltip}
+              >
+                <span className="relative flex h-2 w-2 shrink-0">
+                  {connectorActive && (
+                    <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${dotPing}`}></span>
+                  )}
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${dotColor}`}></span>
+                </span>
+                <Radio className={`w-3.5 h-3.5 shrink-0 ${radioClass} group-hover:scale-110 transition-transform`} />
+                <span className="hidden sm:inline font-bold tracking-wider">{label}</span>
+              </button>
+            );
+          })()}
 
           {/* Current Airport Button */}
           <button
