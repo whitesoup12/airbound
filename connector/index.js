@@ -333,13 +333,30 @@ class AirboundSimConnector {
     }
 
     // 5. TOUCHDOWN -> COMPLETED: Ground speed < 5 kts and secured (brake set or engines cut)
-    if (this.phase === 'TOUCHDOWN') {
-      const isStopped = groundSpeed < 5.0;
-      const isSecured = parkingBrake || !engineRunning;
+    const isStopped = groundSpeed < 5.0;
+    const isSecured = parkingBrake || !engineRunning;
 
+    if (this.phase === 'TOUCHDOWN') {
       if (isStopped && isSecured) {
         this.phase = 'COMPLETED';
         console.log('\x1b[32m[Flight] Aircraft stopped and secured. Completing flight...\x1b[0m');
+        this.submitFlightCompletion();
+      }
+    }
+
+    // Safety fallback: if stopped & secured within 3.5 NM of destination airport
+    if (
+      (this.activeJob || this.isFreeFlight) &&
+      this.phase !== 'COMPLETED' &&
+      this.phase !== 'STANDBY' &&
+      isStopped &&
+      isSecured
+    ) {
+      const destDist = this.getDestDistance();
+      const origDist = this.getOriginDistance();
+      if (destDist != null && destDist <= 3.5 && (origDist == null || origDist > 4.0)) {
+        this.phase = 'COMPLETED';
+        console.log(`\x1b[32m[Flight] Aircraft parked at destination airfield (${destDist} NM). Completing flight...\x1b[0m`);
         this.submitFlightCompletion();
       }
     }
@@ -430,6 +447,9 @@ class AirboundSimConnector {
   }
 
   async submitFlightCompletion() {
+    if (this.isSubmittingCompletion) return;
+    this.isSubmittingCompletion = true;
+
     try {
       console.log('\x1b[36m[Flight] Submitting completion payload to Airbound Cloud...\x1b[0m');
       const payload = {
@@ -439,8 +459,8 @@ class AirboundSimConnector {
         approachSpeedKts: this.approachSpeedKts,
         flightSeconds: Math.round(this.flightSeconds),
         airborneSeconds: Math.round(this.airborneSeconds),
-        departedAt: this.departedAt,
-        touchdownAt: this.touchdownAt
+        departedAt: this.departedAt ? (this.departedAt instanceof Date ? this.departedAt.toISOString() : this.departedAt) : null,
+        touchdownAt: this.touchdownAt ? (this.touchdownAt instanceof Date ? this.touchdownAt.toISOString() : this.touchdownAt) : null
       };
 
       const res = await fetch(`${this.apiUrl}/api/flight/complete`, {
@@ -460,6 +480,14 @@ class AirboundSimConnector {
         console.log(`  Net Payout: $${(f?.payout || 0).toLocaleString()}`);
         console.log(`  XP Earned:  +${(f?.flightXp?.totalXp || 0).toLocaleString()} XP (Level ${f?.rankInfo?.level || 1}: ${f?.rankInfo?.title || 'Aviator'})`);
         console.log('\x1b[32m===================================================================\x1b[0m\n');
+
+        // Reset for next flight ONLY upon successful settlement
+        this.activeJob = null;
+        this.isFreeFlight = false;
+        this.phase = 'STANDBY';
+        this.flightSeconds = 0;
+        this.airborneSeconds = 0;
+        this.touchdownFpm = null;
       } else {
         const text = await res.text();
         console.warn(`\x1b[31m[Flight Completion Error]: Server returned ${res.status}: ${text}\x1b[0m`);
@@ -467,13 +495,7 @@ class AirboundSimConnector {
     } catch (err) {
       console.error(`\x1b[31m[Flight Completion Error]: Failed to post completion: ${err.message}\x1b[0m`);
     } finally {
-      // Reset for next flight
-      this.activeJob = null;
-      this.isFreeFlight = false;
-      this.phase = 'STANDBY';
-      this.flightSeconds = 0;
-      this.airborneSeconds = 0;
-      this.touchdownFpm = null;
+      this.isSubmittingCompletion = false;
     }
   }
 

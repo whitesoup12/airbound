@@ -279,8 +279,14 @@ export async function cancelFreeFlight() {
   );
 }
 
-
-
-
-
-
+export async function completeFlightApi(payload = {}) {
+  return safeFetchJson(
+    `${API_BASE}/flight/complete`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    },
+    'Failed to settle flight'
+  );
+}

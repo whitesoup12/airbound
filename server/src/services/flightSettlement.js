@@ -67,14 +67,22 @@ export async function settleCompletedFlight(params = {}) {
   }
 
   const completedAt = new Date();
-  const actualDepartedAt = departedAt || (job.accepted_at ? new Date(job.accepted_at) : new Date(completedAt.getTime() - 15 * 60 * 1000));
+  let actualDepartedAt = departedAt ? new Date(departedAt) : (job.accepted_at ? new Date(job.accepted_at) : null);
+  if (!actualDepartedAt || isNaN(actualDepartedAt.getTime())) {
+    actualDepartedAt = new Date(completedAt.getTime() - 15 * 60 * 1000);
+  }
+
+  let actualTouchdownAt = touchdownAt ? new Date(touchdownAt) : null;
+  if (actualTouchdownAt && isNaN(actualTouchdownAt.getTime())) {
+    actualTouchdownAt = null;
+  }
 
   // Compute flight duration in seconds
   const rawWallClockSeconds = Math.max(1, Math.round((completedAt.getTime() - actualDepartedAt.getTime()) / 1000));
   const durationSeconds = flightSeconds >= 1 ? Math.max(1, Math.round(flightSeconds)) : rawWallClockSeconds;
   const finalAirborneSeconds = airborneSeconds >= 1
     ? Math.max(1, Math.round(airborneSeconds))
-    : (touchdownAt && actualDepartedAt ? Math.max(1, Math.round((touchdownAt.getTime() - actualDepartedAt.getTime()) / 1000)) : durationSeconds);
+    : (actualTouchdownAt && actualDepartedAt ? Math.max(1, Math.round((actualTouchdownAt.getTime() - actualDepartedAt.getTime()) / 1000)) : durationSeconds);
   const durationHours = Math.round((durationSeconds / 3600) * 10) / 10;
 
   // Fetch Pilot profile & active aircraft

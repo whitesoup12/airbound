@@ -22,6 +22,7 @@ import {
   updateBaseAirport,
   startFreeFlight,
   cancelFreeFlight,
+  completeFlightApi,
   checkAuthStatus,
   getStoredPasscode,
   clearStoredPasscode
@@ -246,6 +247,26 @@ export function App() {
     }
   };
 
+  const handleManualCompleteFlight = async () => {
+    try {
+      setLoading(true);
+      const res = await completeFlightApi({
+        job: activeJob,
+        telemetry,
+        flightSeconds,
+        airborneSeconds
+      });
+      if (res?.flight) {
+        await handleFlightCompleted(res.flight);
+      }
+    } catch (err) {
+      console.error('[App] Manual flight completion error:', err);
+      alert(`Could not settle flight: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleRefreshJobs = async (direction = 'any') => {
     const targetDir = typeof direction === 'string' && direction ? direction : 'any';
     if (!pilot?.current_icao) return;
@@ -453,6 +474,7 @@ export function App() {
             onOpenCareer={() => handleTabChange('progression')}
             connectionStatus={connectionStatus}
             onOpenConnectorStatus={() => setIsConnectorStatusOpen(true)}
+            onCompleteFlight={handleManualCompleteFlight}
           />
         )}
 

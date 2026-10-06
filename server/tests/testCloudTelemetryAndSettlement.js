@@ -176,7 +176,9 @@ async function runTests() {
       touchdownFpm: -130, // Butter landing
       approachSpeedKts: 65,
       flightSeconds: 4200, // 1.16 hours
-      airborneSeconds: 3900
+      airborneSeconds: 3900,
+      departedAt: new Date(Date.now() - 4200000).toISOString(),
+      touchdownAt: new Date().toISOString()
     });
 
     assert.strictEqual(completeRes.status, 200, 'Expected HTTP 200 on flight complete');

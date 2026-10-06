@@ -65,7 +65,8 @@ export function TelemetryDashboard({
   allAirports = [],
   onOpenCareer,
   connectionStatus,
-  onOpenConnectorStatus
+  onOpenConnectorStatus,
+  onCompleteFlight
 }) {
   const phaseInfo = PHASE_CONFIG[phase] || PHASE_CONFIG.STANDBY;
 
@@ -600,6 +601,19 @@ export function TelemetryDashboard({
                     </div>
                   )}
                 </>
+              )}
+
+              {/* Manual Arrival Settlement Button */}
+              {onCompleteFlight && (destDist !== null && destDist <= 3.5) && Boolean(telemetry?.simOnGround) && (
+                <button
+                  type="button"
+                  onClick={onCompleteFlight}
+                  className="mt-2.5 w-full py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-mono text-xs font-bold shadow-lg shadow-emerald-950/60 animate-pulse flex items-center justify-center space-x-1.5 transition cursor-pointer"
+                  title="Aircraft has arrived at destination airfield. Click to complete contract and credit balance."
+                >
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>COMPLETE & SETTLE FLIGHT</span>
+                </button>
               )}
 
               {/* Cancel Button */}

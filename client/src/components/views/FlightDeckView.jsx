@@ -18,7 +18,8 @@ export function FlightDeckView({
   onSwitchToDispatch,
   onOpenCareer,
   connectionStatus,
-  onOpenConnectorStatus
+  onOpenConnectorStatus,
+  onCompleteFlight
 }) {
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -36,6 +37,7 @@ export function FlightDeckView({
         onOpenCareer={onOpenCareer}
         connectionStatus={connectionStatus}
         onOpenConnectorStatus={onOpenConnectorStatus}
+        onCompleteFlight={onCompleteFlight}
       />
 
       {/* No Active Contract Banner */}
