@@ -170,7 +170,9 @@ export function App() {
     setActiveJob,
     aircraftValidation,
     destDist,
-    originDist
+    originDist,
+    flightSeconds = 0,
+    airborneSeconds = 0
   } = useTelemetry(handleFlightCompleted);
 
   // Contract Actions
