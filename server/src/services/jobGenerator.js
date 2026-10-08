@@ -503,8 +503,8 @@ export async function generateJobsForAirport(originIcao, options = {}) {
       .map((p) => p.airport.icao)
   );
 
-  // Remove stale unaccepted 'available' jobs for this origin
-  await Job.deleteMany({ origin_icao: originAirport.icao, status: 'available' });
+  // Remove all previous unaccepted jobs across the entire database so only the active 9-job board exists
+  await Job.deleteMany({ status: 'available' });
 
   const generatedJobs = [];
   for (const pair of candidatePairs) {

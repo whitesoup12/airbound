@@ -19,6 +19,7 @@ export async function getJobs(req, res) {
 
     // Auto-generate if fewer than 3 available
     if (availableJobs.length < 3) {
+      await Job.deleteMany({ status: { $in: ['completed', 'failed'] } });
       await generateJobsForAirport(currentIcao, { aircraft: pilot?.active_aircraft });
       availableJobs = await Job.find({
         origin_icao: currentIcao,
@@ -87,6 +88,9 @@ export async function generateNewJobs(req, res) {
     const minRunwayFt = minRunwayRaw ? parseInt(minRunwayRaw, 10) : undefined;
     const rawDirection = req.body.direction;
     const direction = (typeof rawDirection === 'string' && rawDirection.trim()) ? rawDirection.trim().toLowerCase() : 'any';
+
+    // Prune completed or failed contracts on refresh to keep jobs table strictly lean
+    await Job.deleteMany({ status: { $in: ['completed', 'failed'] } });
 
     const newJobs = await generateJobsForAirport(icao, {
       minRunwayFt,

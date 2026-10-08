@@ -312,13 +312,13 @@ export async function updateBaseAirport(req, res) {
     }
     await pilot.save();
 
-    // Cancel any active accepted job if base airport changed
+    // Cancel and delete any active accepted job if base airport changed
     const activeJob = await Job.findOne({ status: 'accepted' });
     if (activeJob) {
-      activeJob.status = 'failed';
-      await activeJob.save();
+      await Job.findByIdAndDelete(activeJob._id);
       await flightStateMachine.clearActiveJob();
     }
+    await Job.deleteMany({ status: { $in: ['completed', 'failed'] } });
 
     // Teleport aircraft to new airport
     await simConnectBridge.teleportToAirport(targetIcao);
