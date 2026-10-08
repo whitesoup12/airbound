@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   MapContainer,
   TileLayer,
@@ -28,21 +28,91 @@ const CARTO_TILE_URL = CARTO_API_KEY
   : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 
 // Controller to auto-center the map on the aircraft when "Follow Aircraft" is active
-function MapRecenter({ center, followAircraft }) {
+function MapRecenter({ center, followAircraft, onUserPan }) {
   const map = useMap();
+  const isZoomingRef = useRef(false);
+  const latestCenterRef = useRef(center);
+  const pendingRecenterRef = useRef(false);
+
   useEffect(() => {
-    if (followAircraft && center && center[0] && center[1]) {
-      map.setView(center, map.getZoom(), { animate: true });
+    latestCenterRef.current = center;
+  }, [center]);
+
+  // If user manually drags/pans the map while in locked mode, automatically release lock to Free Cam
+  useEffect(() => {
+    const onDragStart = () => {
+      if (followAircraft && onUserPan) {
+        onUserPan();
+      }
+    };
+    map.on('dragstart', onDragStart);
+    return () => {
+      map.off('dragstart', onDragStart);
+    };
+  }, [map, followAircraft, onUserPan]);
+
+  // Listen to Leaflet zoom events to avoid interrupting zoom animations and wheel zooming
+  useEffect(() => {
+    const onZoomStart = () => {
+      isZoomingRef.current = true;
+    };
+    const onZoomEnd = () => {
+      isZoomingRef.current = false;
+      if (followAircraft && pendingRecenterRef.current && latestCenterRef.current) {
+        pendingRecenterRef.current = false;
+        map.panTo(latestCenterRef.current, { animate: true });
+      }
+    };
+
+    map.on('zoomstart', onZoomStart);
+    map.on('zoomend', onZoomEnd);
+
+    return () => {
+      map.off('zoomstart', onZoomStart);
+      map.off('zoomend', onZoomEnd);
+    };
+  }, [map, followAircraft]);
+
+  // Pan smoothly to aircraft updates without altering the map's current zoom level
+  useEffect(() => {
+    if (!followAircraft || !center || !center[0] || !center[1]) return;
+
+    if (isZoomingRef.current) {
+      pendingRecenterRef.current = true;
+      return;
     }
+
+    map.panTo(center, { animate: true });
   }, [center, followAircraft, map]);
+
   return null;
 }
 
 // Controller to execute explicit pan/zoom actions from toolbar
-function MapActionsController({ actionTrigger, origCoords, destCoords, aircraftPos, routeBounds, baseCoords }) {
+function MapActionsController({
+  actionTrigger,
+  origCoords,
+  destCoords,
+  aircraftPos,
+  routeBounds,
+  baseCoords,
+  onActionHandled
+}) {
   const map = useMap();
+  const lastHandledTsRef = useRef(null);
+  const dataRef = useRef({ origCoords, destCoords, aircraftPos, routeBounds, baseCoords });
+
   useEffect(() => {
-    if (!actionTrigger) return;
+    dataRef.current = { origCoords, destCoords, aircraftPos, routeBounds, baseCoords };
+  }, [origCoords, destCoords, aircraftPos, routeBounds, baseCoords]);
+
+  useEffect(() => {
+    if (!actionTrigger || !actionTrigger.ts) return;
+    if (lastHandledTsRef.current === actionTrigger.ts) return;
+    lastHandledTsRef.current = actionTrigger.ts;
+
+    const { origCoords, destCoords, aircraftPos, routeBounds, baseCoords } = dataRef.current;
+
     if (actionTrigger.type === 'fitRoute' && routeBounds && routeBounds.length >= 2) {
       map.fitBounds(routeBounds, { padding: [65, 65], maxZoom: 10, animate: true });
     } else if (actionTrigger.type === 'panOrigin' && origCoords) {
@@ -50,11 +120,16 @@ function MapActionsController({ actionTrigger, origCoords, destCoords, aircraftP
     } else if (actionTrigger.type === 'panDest' && destCoords) {
       map.setView([destCoords[1], destCoords[0]], Math.max(map.getZoom(), 11), { animate: true });
     } else if (actionTrigger.type === 'centerPlane' && aircraftPos) {
-      map.setView(aircraftPos, Math.max(map.getZoom(), 10), { animate: true });
+      map.panTo(aircraftPos, { animate: true });
     } else if (actionTrigger.type === 'panBase' && baseCoords) {
-      map.setView(baseCoords, Math.max(map.getZoom(), 10), { animate: true });
+      map.panTo(baseCoords, { animate: true });
     }
-  }, [actionTrigger, map, origCoords, destCoords, aircraftPos, routeBounds, baseCoords]);
+
+    if (onActionHandled) {
+      onActionHandled();
+    }
+  }, [actionTrigger, map, onActionHandled]);
+
   return null;
 }
 
@@ -305,12 +380,24 @@ export function FlightMap({
   const displayedJobId = displayedJob?._id;
   useEffect(() => {
     if (displayedJobId && routeBounds && routeBounds.length >= 2) {
-      setFollowAircraft(false);
-      setActionTrigger({ type: 'fitRoute', ts: Date.now() });
+      if (isPreview || !hasValidSimLocation) {
+        setFollowAircraft(false);
+        setActionTrigger({ type: 'fitRoute', ts: Date.now() });
+      } else {
+        setActionTrigger({ type: 'centerPlane', ts: Date.now() });
+      }
     } else if (!displayedJobId && baseCoords) {
       setActionTrigger({ type: 'panBase', ts: Date.now() });
     }
   }, [displayedJobId]);
+
+  const handleUserPan = useCallback(() => {
+    setFollowAircraft(false);
+  }, []);
+
+  const handleActionHandled = useCallback(() => {
+    setActionTrigger(null);
+  }, []);
 
   // Filter visited airports from all airports list
   const visitedAirportObjects = allAirports.filter((a) =>
@@ -450,7 +537,11 @@ export function FlightMap({
           />
 
           {/* Real-Time Recenter & Manual Camera Actions */}
-          <MapRecenter center={aircraftPos} followAircraft={followAircraft} />
+          <MapRecenter
+            center={aircraftPos}
+            followAircraft={followAircraft}
+            onUserPan={handleUserPan}
+          />
           <MapActionsController
             actionTrigger={actionTrigger}
             origCoords={origCoords}
@@ -458,6 +549,7 @@ export function FlightMap({
             aircraftPos={aircraftPos}
             routeBounds={routeBounds}
             baseCoords={baseCoords}
+            onActionHandled={handleActionHandled}
           />
 
           {/* Live Aircraft Marker */}
