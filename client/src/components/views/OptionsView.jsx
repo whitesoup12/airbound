@@ -786,8 +786,24 @@ export function OptionsView({
       <div className="glass-panel rounded-2xl p-5 border border-slate-800/80 bg-slate-900/40 text-xs text-slate-400 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <span className="font-bold text-slate-300">Airbound Desktop v1.0.0</span>
-          <p className="text-[11px] text-slate-500">
-            Pilot: <strong className="text-cyan-400">{pilot?.callsign || 'James'}</strong> • Current Base: <strong className="text-white">{pilot?.current_icao || 'KLAX'}</strong> • Fleet: <strong className="text-white">{pilot?.fleet?.length || 1} aircraft</strong>
+          <p className="text-[11px] text-slate-500 flex items-center flex-wrap gap-1">
+            <span>Pilot: <strong className="text-cyan-400">{pilot?.callsign || 'James'}</strong></span>
+            <span>•</span>
+            <span>Current Base: <strong className="text-white">{pilot?.current_icao || 'KLAX'}</strong></span>
+            <span>•</span>
+            <span>Fleet: <strong className="text-white">{pilot?.fleet?.length || 1} aircraft</strong></span>
+            {onOpenOnboarding && (
+              <>
+                <span>•</span>
+                <button
+                  type="button"
+                  onClick={onOpenOnboarding}
+                  className="text-cyan-400 hover:text-cyan-300 underline font-mono text-[11px] cursor-pointer"
+                >
+                  Edit in Setup Wizard
+                </button>
+              </>
+            )}
           </p>
         </div>
         <div className="flex items-center space-x-3 text-[11px]">

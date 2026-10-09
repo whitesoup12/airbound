@@ -630,6 +630,7 @@ export function App() {
           loadInitialData();
         }}
         pilot={pilot}
+        allAirports={allAirports}
       />
     </div>
   );

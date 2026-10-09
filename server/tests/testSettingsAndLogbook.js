@@ -197,13 +197,44 @@ async function runTests() {
     );
     console.log('✓ MongoDB URI normalization verified: default DB name is "airbound".');
 
-    // 9. Test POST /api/settings/complete-onboarding
+    // 9. Test POST /api/settings/complete-onboarding (with and without pilot credentials)
     console.log('9. Testing POST /api/settings/complete-onboarding...');
     const onboardingRes = await makeRequest('POST', '/api/settings/complete-onboarding');
     assert.strictEqual(onboardingRes.status, 200);
     assert.strictEqual(onboardingRes.body.success, true);
     assert.strictEqual(onboardingRes.body.settings.hasCompletedOnboarding, true);
     console.log('✓ Onboarding completion flag saved successfully.');
+
+    // 9b. Test saving customized pilot callsign and homeBase in onboarding
+    console.log('9b. Testing onboarding with custom Pilot Name (Callsign) & Home Airport (KDTO)...');
+    const customOnboardRes = await makeRequest('POST', '/api/settings/complete-onboarding', {
+      callsign: 'Maverick',
+      homeBase: 'KDTO'
+    });
+    assert.strictEqual(customOnboardRes.status, 200);
+    assert.strictEqual(customOnboardRes.body.success, true);
+    assert.strictEqual(customOnboardRes.body.pilot.callsign, 'Maverick', 'Callsign should be updated to Maverick');
+    assert.strictEqual(customOnboardRes.body.pilot.current_icao, 'KDTO', 'Home base should be KDTO');
+    console.log('✓ Custom pilot callsign and home airport successfully saved in onboarding.');
+
+    // 9c. Test onboarding validation with non-existent airport
+    console.log('9c. Testing onboarding validation error for non-existent airport...');
+    const invalidAirportRes = await makeRequest('POST', '/api/settings/complete-onboarding', {
+      callsign: 'Maverick',
+      homeBase: 'Z999'
+    });
+    assert.strictEqual(invalidAirportRes.status, 404);
+    assert(invalidAirportRes.body.error.includes('Z999'), 'Error message should reference invalid ICAO');
+    console.log('✓ Invalid airport rejected with 404 and informative error message.');
+
+    // 9d. Test POST /api/pilot/profile
+    console.log('9d. Testing POST /api/pilot/profile endpoint...');
+    const profileRes = await makeRequest('POST', '/api/pilot/profile', {
+      callsign: 'TopGun'
+    });
+    assert.strictEqual(profileRes.status, 200);
+    assert.strictEqual(profileRes.body.pilot.callsign, 'TopGun');
+    console.log('✓ Pilot profile endpoint verified: updated callsign to TopGun.');
 
     // 10. Test Job Distance Variety from KXNA
     console.log('10. Testing Job Distance Tier Variety (Short, Medium, Long)...');

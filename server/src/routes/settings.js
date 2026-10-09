@@ -6,6 +6,11 @@ import { seedAirports } from '../seeds/seedAirports.js';
 import { seedAircraftCatalog } from '../seeds/seedAircraft.js';
 import Airport from '../models/Airport.js';
 import Pilot from '../models/Pilot.js';
+import Job from '../models/Job.js';
+import flightStateMachine from '../services/stateMachine.js';
+import simConnectBridge from '../services/simconnect.js';
+import { generateJobsForAirport } from '../services/jobGenerator.js';
+import { normalizeTo4CharIcao } from '../utils/icaoUtils.js';
 import {
   detectLogbookFiles,
   parseBinaryLogbook,
@@ -271,12 +276,88 @@ router.post('/msfs-logbook/import', async (req, res) => {
 
 /**
  * POST /api/settings/complete-onboarding
- * Marks onboarding as completed in settings
+ * Marks onboarding as completed in settings and optionally saves pilot callsign & home airport
  */
 router.post('/complete-onboarding', async (req, res) => {
   try {
+    const { callsign, homeBase, current_icao } = req.body || {};
+    let pilot = await Pilot.findOne();
+
+    if (callsign && typeof callsign === 'string' && callsign.trim()) {
+      if (!pilot) {
+        pilot = new Pilot({ callsign: callsign.trim() });
+      } else {
+        pilot.callsign = callsign.trim();
+      }
+    }
+
+    const rawIcao = (homeBase || current_icao || '').toString().trim().toUpperCase();
+    if (rawIcao) {
+      const targetIcao = await normalizeTo4CharIcao(rawIcao);
+      let airport = await Airport.findOne({ icao: targetIcao });
+
+      if (!airport) {
+        const totalAirports = await Airport.countDocuments();
+        if (totalAirports === 0) {
+          airport = await Airport.create({
+            icao: targetIcao,
+            name: `${targetIcao} Airfield`,
+            type: 'medium_airport',
+            country: 'US',
+            runway_length_ft: 5000,
+            location: { type: 'Point', coordinates: [-93.0, 36.0] }
+          });
+        } else {
+          return res.status(404).json({
+            error: `Airport '${targetIcao}' was not found in the database. Please verify the 4-letter ICAO code.`
+          });
+        }
+      }
+
+      if (!pilot) {
+        pilot = new Pilot({
+          callsign: (callsign && typeof callsign === 'string' && callsign.trim()) ? callsign.trim() : 'James',
+          current_icao: targetIcao,
+          visited_airports: [targetIcao],
+          visited_countries: airport?.country ? [airport.country] : ['US']
+        });
+      } else {
+        pilot.current_icao = targetIcao;
+        if (!pilot.visited_airports) pilot.visited_airports = [];
+        if (!pilot.visited_airports.includes(targetIcao)) {
+          pilot.visited_airports.push(targetIcao);
+        }
+        if (airport?.country) {
+          if (!pilot.visited_countries) pilot.visited_countries = [];
+          if (!pilot.visited_countries.includes(airport.country)) {
+            pilot.visited_countries.push(airport.country);
+          }
+        }
+      }
+
+      // Clear any accepted/stale jobs and regenerate for the new home airport
+      const activeJob = await Job.findOne({ status: 'accepted' });
+      if (activeJob) {
+        await Job.findByIdAndDelete(activeJob._id);
+        await flightStateMachine.clearActiveJob();
+      }
+      await Job.deleteMany({ status: { $in: ['completed', 'failed'] } });
+
+      try {
+        await simConnectBridge.teleportToAirport(targetIcao);
+      } catch (tpErr) {
+        console.warn('[Onboarding] Teleport notice:', tpErr.message);
+      }
+
+      await generateJobsForAirport(targetIcao, { aircraft: pilot.active_aircraft });
+    }
+
+    if (pilot) {
+      await pilot.save();
+    }
+
     const updated = saveSettings({ hasCompletedOnboarding: true });
-    res.json({ success: true, settings: updated });
+    res.json({ success: true, settings: updated, pilot });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -350,3 +350,63 @@ export async function importMsfsLogs(req, res) {
     res.status(500).json({ error: err.message });
   }
 }
+
+/**
+ * Update pilot profile (callsign and/or home base)
+ */
+export async function updatePilotProfile(req, res) {
+  try {
+    const { callsign, homeBase, current_icao } = req.body || {};
+    let pilot = await Pilot.findOne();
+    if (!pilot) {
+      pilot = new Pilot({ callsign: 'James' });
+    }
+
+    if (callsign && typeof callsign === 'string' && callsign.trim()) {
+      pilot.callsign = callsign.trim();
+    }
+
+    const rawIcao = (homeBase || current_icao || '').toString().trim().toUpperCase();
+    let airport = null;
+    if (rawIcao) {
+      const targetIcao = await normalizeTo4CharIcao(rawIcao);
+      airport = await Airport.findOne({ icao: targetIcao });
+      if (!airport) {
+        return res.status(404).json({ error: `Airport '${targetIcao}' not found in database.` });
+      }
+
+      pilot.current_icao = targetIcao;
+      if (!pilot.visited_airports.includes(targetIcao)) {
+        pilot.visited_airports.push(targetIcao);
+      }
+      if (airport.country && !pilot.visited_countries.includes(airport.country)) {
+        pilot.visited_countries.push(airport.country);
+      }
+
+      const activeJob = await Job.findOne({ status: 'accepted' });
+      if (activeJob) {
+        await Job.findByIdAndDelete(activeJob._id);
+        await flightStateMachine.clearActiveJob();
+      }
+      await Job.deleteMany({ status: { $in: ['completed', 'failed'] } });
+
+      try {
+        await simConnectBridge.teleportToAirport(targetIcao);
+      } catch (tpErr) {
+        console.warn('[Pilot Profile] Teleport notice:', tpErr.message);
+      }
+
+      await generateJobsForAirport(targetIcao, { aircraft: pilot.active_aircraft });
+    }
+
+    await pilot.save();
+
+    res.json({
+      message: 'Pilot profile updated successfully',
+      pilot,
+      currentAirport: airport
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}

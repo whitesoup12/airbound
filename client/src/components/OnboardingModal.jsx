@@ -16,7 +16,10 @@ import {
   Globe,
   Download,
   RefreshCw,
-  Layers
+  Layers,
+  User,
+  MapPin,
+  Search
 } from 'lucide-react';
 import {
   fetchSettings,
@@ -27,10 +30,11 @@ import {
   completeOnboarding,
   fetchAirportSyncStatus,
   triggerAirportSync,
-  subscribeAirportSyncStream
+  subscribeAirportSyncStream,
+  fetchAirports
 } from '../api/client.js';
 
-export function OnboardingModal({ isOpen, onClose, onComplete, pilot }) {
+export function OnboardingModal({ isOpen, onClose, onComplete, pilot, allAirports = [] }) {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
@@ -59,6 +63,62 @@ export function OnboardingModal({ isOpen, onClose, onComplete, pilot }) {
   });
   const [totalDbAirports, setTotalDbAirports] = useState(123);
   const streamUnsubscribeRef = useRef(null);
+
+  // Step 3: Pilot Name & Home Base configuration state
+  const [callsign, setCallsign] = useState(pilot?.callsign || 'James');
+  const [homeBase, setHomeBase] = useState(pilot?.current_icao || 'KLAX');
+  const [homeAirportInfo, setHomeAirportInfo] = useState(null);
+  const [searchingAirport, setSearchingAirport] = useState(false);
+  const [step3Error, setStep3Error] = useState('');
+
+  // Keep state in sync when pilot prop loads or updates
+  useEffect(() => {
+    if (pilot?.callsign) setCallsign(pilot.callsign);
+    if (pilot?.current_icao) setHomeBase(pilot.current_icao);
+  }, [pilot]);
+
+  // Live lookup / validation for chosen Home Base ICAO
+  useEffect(() => {
+    const raw = (homeBase || '').trim().toUpperCase();
+    if (!raw || raw.length < 3) {
+      setHomeAirportInfo(null);
+      setSearchingAirport(false);
+      return;
+    }
+
+    // Check local allAirports first
+    const localMatch = allAirports.find(
+      (a) => a.icao === raw || (raw.length === 3 && a.icao === 'K' + raw)
+    );
+    if (localMatch) {
+      setHomeAirportInfo(localMatch);
+      setStep3Error('');
+      return;
+    }
+
+    setSearchingAirport(true);
+    const timer = setTimeout(async () => {
+      try {
+        const results = await fetchAirports(raw);
+        const match =
+          results?.find((a) => a.icao === raw) ||
+          results?.find((a) => raw.length === 3 && a.icao === 'K' + raw) ||
+          (results && results.length > 0 ? results[0] : null);
+        if (match) {
+          setHomeAirportInfo(match);
+          setStep3Error('');
+        } else {
+          setHomeAirportInfo(null);
+        }
+      } catch {
+        setHomeAirportInfo(null);
+      } finally {
+        setSearchingAirport(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [homeBase, allAirports]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -194,12 +254,24 @@ export function OnboardingModal({ isOpen, onClose, onComplete, pilot }) {
   const handleFinishOnboarding = async () => {
     try {
       setLoading(true);
-      await completeOnboarding();
+      setStep3Error('');
+
+      const cleanCallsign = (callsign || '').trim() || pilot?.callsign || 'James';
+      let cleanHomeBase = (homeBase || '').trim().toUpperCase() || pilot?.current_icao || 'KLAX';
+      if (cleanHomeBase.length === 3 && homeAirportInfo?.icao) {
+        cleanHomeBase = homeAirportInfo.icao;
+      }
+
+      await completeOnboarding({
+        callsign: cleanCallsign,
+        homeBase: cleanHomeBase
+      });
+
       if (onComplete) onComplete();
       if (onClose) onClose();
     } catch (err) {
       console.warn('Could not complete onboarding:', err.message);
-      if (onClose) onClose();
+      setStep3Error(err.message || 'Failed to complete preflight setup.');
     } finally {
       setLoading(false);
     }
@@ -268,7 +340,7 @@ export function OnboardingModal({ isOpen, onClose, onComplete, pilot }) {
                 : 'border-transparent text-slate-500'
             }`}
           >
-            3. Departure
+            3. Pilot & Departure
           </div>
         </div>
 
@@ -598,34 +670,136 @@ export function OnboardingModal({ isOpen, onClose, onComplete, pilot }) {
             </div>
           )}
 
-          {/* STEP 3: PREFLIGHT COMPLETE • TAKEOFF */}
+          {/* STEP 3: PREFLIGHT COMPLETE • PILOT & TAKEOFF */}
           {step === 3 && (
-            <div className="space-y-5 animate-fadeIn text-center py-2">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-emerald-500/20 border border-cyan-500/40 flex items-center justify-center mx-auto text-cyan-400">
-                <Compass className="w-8 h-8 animate-pulse" />
-              </div>
-
-              <div>
-                <h4 className="text-lg font-bold text-white mb-1">Preflight Checklist Complete</h4>
-                <p className="text-xs text-slate-400 max-w-md mx-auto">
-                  Your aircraft is fueled, the world airport catalog is indexed, and SimConnect bridge is standing by.
+            <div className="space-y-4 animate-fadeIn">
+              <div className="text-center space-y-1">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-emerald-500/20 border border-cyan-500/40 flex items-center justify-center mx-auto text-cyan-400 shadow-lg shadow-cyan-950/40">
+                  <Compass className="w-6 h-6 animate-pulse" />
+                </div>
+                <h4 className="text-base font-bold text-white tracking-wide">
+                  Pilot Credentials & Home Airfield
+                </h4>
+                <p className="text-xs text-slate-400 max-w-lg mx-auto">
+                  Customize your callsign and initial home base airport before entering the cockpit.
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 text-left font-mono text-xs bg-slate-900/50 border border-slate-800 rounded-xl p-4 max-w-md mx-auto">
-                <div>
-                  <span className="text-[10px] text-slate-500 block uppercase">Pilot Callsign</span>
-                  <span className="font-bold text-white">{pilot?.callsign || 'James'}</span>
+              {step3Error && (
+                <div className="p-3 rounded-lg bg-rose-950/60 border border-rose-500/50 flex items-center gap-2.5 text-xs text-rose-300 font-mono">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                  <span>{step3Error}</span>
                 </div>
-                <div>
-                  <span className="text-[10px] text-slate-500 block uppercase">Home Base</span>
-                  <span className="font-bold text-cyan-400">{pilot?.current_icao || 'KLAX'}</span>
+              )}
+
+              {/* Editable Fields Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {/* Field 1: Pilot Callsign */}
+                <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 space-y-2 shadow-md">
+                  <label className="text-[11px] font-mono font-bold text-cyan-400 flex items-center gap-1.5 uppercase">
+                    <User className="w-3.5 h-3.5 text-cyan-400" />
+                    Pilot Name / Callsign
+                  </label>
+                  <input
+                    type="text"
+                    value={callsign}
+                    onChange={(e) => setCallsign(e.target.value)}
+                    placeholder="e.g. James, Maverick, Skyhawk1"
+                    maxLength={24}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white font-mono placeholder-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition"
+                  />
+                  <p className="text-[10px] text-slate-400 font-mono">
+                    Shown on dispatch strips, flight logs, and pilot certificates.
+                  </p>
                 </div>
-                <div className="pt-2 border-t border-slate-800">
+
+                {/* Field 2: Home Base Airport */}
+                <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 space-y-2 shadow-md">
+                  <label className="text-[11px] font-mono font-bold text-cyan-400 flex items-center justify-between uppercase">
+                    <span className="flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-cyan-400" />
+                      Home Base (ICAO)
+                    </span>
+                    {searchingAirport && (
+                      <span className="flex items-center gap-1 text-[10px] text-cyan-400 normal-case font-normal">
+                        <Loader2 className="w-3 h-3 animate-spin" /> Verifying...
+                      </span>
+                    )}
+                  </label>
+                  <div>
+                    <input
+                      type="text"
+                      value={homeBase}
+                      onChange={(e) => setHomeBase(e.target.value.toUpperCase())}
+                      placeholder="e.g. KXNA, KLAX, EGLL"
+                      maxLength={5}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-cyan-300 font-mono font-bold uppercase placeholder-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition"
+                    />
+                  </div>
+
+                  {/* Airfield Match Indicator */}
+                  {homeAirportInfo ? (
+                    <div className="text-[11px] font-mono text-emerald-400 flex items-center gap-1.5 bg-emerald-950/40 border border-emerald-500/30 px-2.5 py-1.5 rounded-lg truncate">
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+                      <span className="truncate">
+                        <strong>{homeAirportInfo.icao}</strong> • {homeAirportInfo.name} ({homeAirportInfo.city || homeAirportInfo.country})
+                      </span>
+                    </div>
+                  ) : homeBase.trim().length >= 3 && !searchingAirport ? (
+                    <div className="text-[10px] font-mono text-amber-400/90 flex items-center gap-1 bg-amber-950/30 border border-amber-500/30 px-2.5 py-1 rounded-lg">
+                      <AlertCircle className="w-3 h-3 shrink-0 text-amber-400" />
+                      <span>Unverified ICAO. Contracts will generate from catalog.</span>
+                    </div>
+                  ) : (
+                    <p className="text-[10px] text-slate-400 font-mono">
+                      Your starting airport where contracts will be generated.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Quick Hub Presets */}
+              <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3 space-y-2">
+                <span className="text-[10px] font-mono uppercase text-slate-400 flex items-center gap-1">
+                  <Plane className="w-3 h-3 text-cyan-400" /> Quick Select Operating Base:
+                </span>
+                <div className="flex flex-wrap gap-1.5 font-mono text-xs">
+                  {[
+                    { icao: 'KXNA', name: 'NW Arkansas' },
+                    { icao: 'KLAX', name: 'Los Angeles' },
+                    { icao: 'KORD', name: 'Chicago OHare' },
+                    { icao: 'KJFK', name: 'New York JFK' },
+                    { icao: 'EGLL', name: 'London Heathrow' },
+                    { icao: 'LFPG', name: 'Paris CDG' }
+                  ].map((hub) => (
+                    <button
+                      key={hub.icao}
+                      type="button"
+                      onClick={() => setHomeBase(hub.icao)}
+                      className={`px-2.5 py-1 rounded-md text-[11px] transition border flex items-center gap-1.5 ${
+                        homeBase.toUpperCase() === hub.icao
+                          ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 font-bold'
+                          : 'bg-slate-900 border-slate-700/70 text-slate-300 hover:border-slate-500 hover:text-white'
+                      }`}
+                    >
+                      <span className="font-bold">{hub.icao}</span>
+                      <span className="text-[10px] text-slate-400">{hub.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Preflight Summary Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-left font-mono text-xs bg-slate-900/50 border border-slate-800 rounded-xl p-3">
+                <div>
                   <span className="text-[10px] text-slate-500 block uppercase">Starting Funds</span>
                   <span className="font-bold text-emerald-400">${(pilot?.balance || 15000).toLocaleString()}</span>
                 </div>
-                <div className="pt-2 border-t border-slate-800">
+                <div>
+                  <span className="text-[10px] text-slate-500 block uppercase">Assigned Aircraft</span>
+                  <span className="font-bold text-white truncate block">Cessna 172 Skyhawk</span>
+                </div>
+                <div className="col-span-2 sm:col-span-1">
                   <span className="text-[10px] text-slate-500 block uppercase">Database Airfields</span>
                   <span className="font-bold text-cyan-300">{totalDbAirports.toLocaleString()} Airports</span>
                 </div>

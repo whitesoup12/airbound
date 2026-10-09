@@ -369,11 +369,27 @@ export async function importMsfsLogbook(customPath = '') {
   );
 }
 
-export async function completeOnboarding() {
+export async function completeOnboarding(payload = {}) {
   return safeFetchJson(
     `${API_BASE}/settings/complete-onboarding`,
-    { method: 'POST' },
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    },
     'Failed to complete onboarding'
+  );
+}
+
+export async function updatePilotProfile(payload = {}) {
+  return safeFetchJson(
+    `${API_BASE}/pilot/profile`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    },
+    'Failed to update pilot profile'
   );
 }
 
