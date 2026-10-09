@@ -9,11 +9,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const PORT = process.env.PORT || 3001;
+let splashWindow = null;
 let mainWindow = null;
 let serverProcess = null;
 
 /**
- * Wait for Express server to be healthy and responsive
+ * Fast health check for Express backend server
  */
 function waitForServer(url, timeoutMs = 45000) {
   const startTime = Date.now();
@@ -35,7 +36,7 @@ function waitForServer(url, timeoutMs = 45000) {
         if (Date.now() - startTime > timeoutMs) {
           reject(new Error(`Server startup timed out after ${timeoutMs}ms`));
         } else {
-          setTimeout(check, 300);
+          setTimeout(check, 250);
         }
       }
     };
@@ -56,26 +57,39 @@ function getServerScriptPath() {
 function startBackendServer() {
   const serverScript = getServerScriptPath();
 
-  // Set persistent data directory in AppData / userData (standard for desktop Windows apps)
+  // Set persistent data directory in AppData / userData (guaranteed user write permissions)
   const userDataDir = app.getPath('userData');
   const dataDir = path.join(userDataDir, 'data', 'db');
   fs.mkdirSync(dataDir, { recursive: true });
+
+  const clientDistDir = app.isPackaged
+    ? path.join(process.resourcesPath, 'app.asar.unpacked', 'dist')
+    : path.resolve(__dirname, '..', 'dist');
 
   const env = {
     ...process.env,
     PORT: String(PORT),
     AIRBOUND_DATA_DIR: dataDir,
+    AIRBOUND_CLIENT_DIST: clientDistDir,
     AIRBOUND_DESKTOP: 'true',
-    NODE_ENV: 'production'
+    NODE_ENV: 'production',
+    ELECTRON_RUN_AS_NODE: '1'
   };
 
   console.log(`[Electron] Starting backend server from: ${serverScript}`);
   console.log(`[Electron] Database directory: ${dataDir}`);
+  console.log(`[Electron] Static frontend directory: ${clientDistDir}`);
 
-  serverProcess = fork(serverScript, [], {
+  const forkOptions = {
     env,
     stdio: 'inherit'
-  });
+  };
+
+  if (app.isPackaged) {
+    forkOptions.execPath = process.execPath;
+  }
+
+  serverProcess = fork(serverScript, [], forkOptions);
 
   serverProcess.on('exit', (code) => {
     console.log(`[Electron] Backend server exited with code ${code}`);
@@ -83,7 +97,32 @@ function startBackendServer() {
   });
 }
 
-async function createWindow() {
+function createSplashWindow() {
+  const iconPath = path.join(__dirname, 'assets', 'icon.png');
+  splashWindow = new BrowserWindow({
+    width: 500,
+    height: 320,
+    frame: false,
+    resizable: false,
+    center: true,
+    alwaysOnTop: true,
+    show: true,
+    backgroundColor: '#0a0d14',
+    icon: fs.existsSync(iconPath) ? iconPath : undefined,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true
+    }
+  });
+
+  splashWindow.loadFile(path.join(__dirname, 'splash.html'));
+
+  splashWindow.on('closed', () => {
+    splashWindow = null;
+  });
+}
+
+async function createMainWindow() {
   const iconPath = path.join(__dirname, 'assets', 'icon.png');
   mainWindow = new BrowserWindow({
     width: 1440,
@@ -110,21 +149,31 @@ async function createWindow() {
     return { action: 'allow' };
   });
 
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
+
   try {
     console.log('[Electron] Waiting for backend server on port ' + PORT + '...');
     await waitForServer(`http://localhost:${PORT}/api/health`);
     console.log('[Electron] Server ready, loading dashboard...');
     await mainWindow.loadURL(`http://localhost:${PORT}`);
+
+    // Seamless handoff: Show main window and close splash screen
     mainWindow.show();
+    if (splashWindow && !splashWindow.isDestroyed()) {
+      splashWindow.destroy();
+      splashWindow = null;
+    }
   } catch (err) {
     console.error('[Electron] Failed to connect to server:', err);
-    mainWindow.loadURL(`data:text/html,<html><body style="background:#0a0d14;color:#f87171;font-family:sans-serif;padding:40px;"><h2>Airbound Startup Error</h2><p>${err.message}</p></body></html>`);
+    if (splashWindow && !splashWindow.isDestroyed()) {
+      splashWindow.destroy();
+      splashWindow = null;
+    }
+    mainWindow.loadURL(`data:text/html,<html><body style="background:#0a0d14;color:#f87171;font-family:sans-serif;padding:40px;"><h2>Airbound Startup Error</h2><p>${err.message}</p><p style="color:#94a3b8;font-size:13px;">Please check whether another application is occupying port ${PORT} or check the backend logs.</p></body></html>`);
     mainWindow.show();
   }
-
-  mainWindow.on('closed', () => {
-    mainWindow = null;
-  });
 }
 
 // Single instance lock (prevent multiple concurrent copies)
@@ -140,12 +189,18 @@ if (!gotLock) {
   });
 
   app.whenReady().then(async () => {
+    // 1. Show instant splash screen (< 200ms)
+    createSplashWindow();
+
+    // 2. Start Express / MongoDB backend in background
     startBackendServer();
-    await createWindow();
+
+    // 3. Create main window and wait for server
+    await createMainWindow();
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) {
-        createWindow();
+        createMainWindow();
       }
     });
   });

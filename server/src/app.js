@@ -86,12 +86,17 @@ app.all('/api/*', (req, res) => {
 
 // Serve production static frontend if built (Desktop / Standalone Mode)
 const possibleDistPaths = [
-  path.resolve(process.cwd(), 'client', 'dist'),
-  path.resolve(process.cwd(), 'dist'),
+  process.env.AIRBOUND_CLIENT_DIST,
+  path.resolve(__dirname, '../../dist'),
   path.resolve(__dirname, '../../client/dist'),
-  path.resolve(__dirname, '../../dist')
-];
+  process.resourcesPath ? path.resolve(process.resourcesPath, 'app.asar.unpacked', 'dist') : null,
+  process.resourcesPath ? path.resolve(process.resourcesPath, 'dist') : null,
+  path.resolve(process.cwd(), 'client', 'dist'),
+  path.resolve(process.cwd(), 'dist')
+].filter(Boolean);
+
 const resolvedClientDist = possibleDistPaths.find((p) => fs.existsSync(p));
+console.log(`[Server] Static frontend directory: ${resolvedClientDist || 'NOT FOUND (API-only mode)'}`);
 
 if (resolvedClientDist) {
   app.use(express.static(resolvedClientDist));

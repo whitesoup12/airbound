@@ -71,8 +71,18 @@
     "extraMetadata": {
       "main": "electron/main.js"
     },
+    "extraResources": [
+      {
+        "from": "server/bin",
+        "to": "bin",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
     "asar": true,
     "asarUnpack": [
+      "dist/**/*",
       "server/**/*",
       "**/node_modules/mongodb-memory-server/**/*",
       "**/node_modules/node-simconnect/**/*"

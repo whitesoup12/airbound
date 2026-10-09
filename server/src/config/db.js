@@ -1,6 +1,10 @@
 import mongoose from 'mongoose';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 let memoryServer = null;
 let cachedPromise = null;
@@ -74,6 +78,21 @@ export async function connectDB(customUri = null) {
       : path.resolve(process.cwd(), 'data', 'db');
 
     fs.mkdirSync(dbDir, { recursive: true });
+
+    // Detect bundled or system MongoDB binary to skip download and start instantly
+    const possibleMongodPaths = [
+      process.env.MONGOMS_SYSTEM_BINARY,
+      process.resourcesPath ? path.join(process.resourcesPath, 'bin', 'mongod.exe') : null,
+      process.resourcesPath ? path.join(process.resourcesPath, 'server', 'bin', 'mongod.exe') : null,
+      path.resolve(__dirname, '../bin/mongod.exe'),
+      path.resolve(__dirname, '../../bin/mongod.exe')
+    ].filter(Boolean);
+
+    const foundMongod = possibleMongodPaths.find((p) => fs.existsSync(p));
+    if (foundMongod && !process.env.MONGOMS_SYSTEM_BINARY) {
+      process.env.MONGOMS_SYSTEM_BINARY = foundMongod;
+      console.log(`[Database] Using pre-bundled MongoDB engine: ${foundMongod}`);
+    }
 
     if (!memoryServer) {
       const { MongoMemoryServer } = await import('mongodb-memory-server');

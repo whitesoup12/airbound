@@ -40,5 +40,7 @@ server/data/
 # Executable Build Artifacts
 release/
 *.blockmap
+/server/bin/
+server/bin/
 
 

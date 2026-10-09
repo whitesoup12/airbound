@@ -15,5 +15,10 @@ if (fs.existsSync('client/dist')) {
   fs.cpSync('client/dist', 'dist', { recursive: true });
 }
 
+console.log('[Build] Ensuring server/bin directory exists...');
+if (!fs.existsSync('server/bin')) {
+  fs.mkdirSync('server/bin', { recursive: true });
+}
+
 console.log('[Build] Build complete! Output available in both ./dist and ./client/dist');
 

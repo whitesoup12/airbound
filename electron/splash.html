@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Airbound — Loading</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      background: radial-gradient(circle at 50% 20%, #151d2f 0%, #0a0d14 70%);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 12px;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #f1f5f9;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      padding: 36px 32px 28px 32px;
+      -webkit-app-region: drag;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    .brand-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .icon-wrapper {
+      position: relative;
+      width: 80px;
+      height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+
+    .radar-pulse {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      border: 2px solid rgba(56, 189, 248, 0.5);
+      animation: pulse 2s infinite ease-out;
+    }
+
+    .radar-pulse-2 {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      border: 2px solid rgba(14, 165, 233, 0.3);
+      animation: pulse 2s infinite ease-out 0.8s;
+    }
+
+    .icon-box {
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 24px rgba(2, 132, 199, 0.45);
+      z-index: 2;
+    }
+
+    .icon-box svg {
+      width: 36px;
+      height: 36px;
+      fill: none;
+      stroke: #ffffff;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+    }
+
+    h1 {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: 4px;
+      color: #ffffff;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      background: linear-gradient(180deg, #ffffff 30%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: #38bdf8;
+      opacity: 0.9;
+    }
+
+    .loading-section {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .progress-bar-container {
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 2px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .progress-bar-indicator {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 40%;
+      background: linear-gradient(90deg, #0284c7, #38bdf8, #818cf8);
+      border-radius: 2px;
+      animation: sweep 1.6s infinite ease-in-out;
+    }
+
+    .status-text {
+      font-size: 12px;
+      color: #94a3b8;
+      letter-spacing: 0.5px;
+      font-weight: 500;
+      transition: opacity 0.2s ease;
+      min-height: 16px;
+    }
+
+    .version-tag {
+      font-size: 10px;
+      color: #475569;
+      letter-spacing: 1px;
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(0.7);
+        opacity: 0.8;
+      }
+      100% {
+        transform: scale(1.6);
+        opacity: 0;
+      }
+    }
+
+    @keyframes sweep {
+      0% {
+        left: -40%;
+        width: 30%;
+      }
+      50% {
+        width: 60%;
+      }
+      100% {
+        left: 100%;
+        width: 30%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="brand-section">
+    <div class="icon-wrapper">
+      <div class="radar-pulse"></div>
+      <div class="radar-pulse-2"></div>
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24">
+          <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.3c.4-.2.6-.6.5-1.1z"/>
+        </svg>
+      </div>
+    </div>
+    <h1>Airbound</h1>
+    <div class="subtitle">MSFS 2024 Avionics Companion</div>
+  </div>
+
+  <div class="loading-section">
+    <div class="progress-bar-container">
+      <div class="progress-bar-indicator"></div>
+    </div>
+    <div id="status" class="status-text">Starting flight deck & avionics...</div>
+    <div class="version-tag">STANDALONE DESKTOP EDITION</div>
+  </div>
+
+  <script>
+    const messages = [
+      'Starting flight deck & avionics...',
+      'Initializing local persistent database...',
+      'Connecting to MSFS 2024 SimConnect bridge...',
+      'Preparing tactical radar and dispatch maps...',
+      'Ready. Launching cockpit display...'
+    ];
+    let index = 0;
+    const statusEl = document.getElementById('status');
+
+    setInterval(() => {
+      index = (index + 1) % messages.length;
+      statusEl.style.opacity = '0';
+      setTimeout(() => {
+        statusEl.innerText = messages[index];
+        statusEl.style.opacity = '1';
+      }, 200);
+    }, 2400);
+
+    // Optional IPC listener from Electron
+    if (window.electronAPI && window.electronAPI.onStatus) {
+      window.electronAPI.onStatus((text) => {
+        statusEl.innerText = text;
+      });
+    }
+  </script>
+</body>
+</html>
