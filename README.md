@@ -57,7 +57,7 @@ Airbound generates distance- and runway-scaled contract jobs from your current l
 Airbound runs **100% locally on your PC** with zero external database configuration, no API keys, and automatic SimConnect integration.
 
 ### Method 1: Download Windows Executable (.exe) — *For Flight Simmers*
-1. Download **`Airbound Setup 1.0.0.exe`** (Installer) or **`Airbound 1.0.0.exe`** (Portable standalone) from [Releases](https://github.com/your-username/airbound/releases).
+1. Download **`Airbound Setup 1.0.0.exe`** (Installer) or **`Airbound 1.0.0.exe`** (Portable standalone) from [GitHub Releases](https://github.com/whitesoup12/airbound/releases).
 2. Run the executable.
 3. Airbound starts immediately with an embedded database, hooks into MSFS 2024, and launches the cockpit dashboard in a dedicated window.  
 *(No Node.js, terminal, or database installation required!)*
@@ -74,7 +74,7 @@ Airbound runs **100% locally on your PC** with zero external database configurat
 ### Method 3: Build & Package from Source
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/airbound.git
+git clone https://github.com/whitesoup12/airbound.git
 cd airbound
 
 # Install dependencies
@@ -166,6 +166,37 @@ npm run test:e2e
  ┌───────────┐
  │ COMPLETED │ ◄── Payout credited, destination saved, logbook updated
  └───────────┘
+```
+
+---
+
+## Release & Version Management
+
+Airbound supports two ways to version and publish Windows `.exe` releases:
+
+### Option A: Automatic CI/CD via GitHub Actions (Recommended)
+Pushing a semantic version tag automatically starts a Windows runner on GitHub Actions to test, build, and publish the release with executables and SHA-256 checksums:
+
+```bash
+# 1. Bump version across all packages
+npm run release:bump patch   # or 'minor', 'major', '1.0.1'
+
+# 2. Commit and push the tag to GitHub
+git commit -am "chore: bump version to v1.0.1"
+git tag v1.0.1
+git push origin main --tags
+```
+*You can also manually trigger builds in the GitHub repository under **Actions** → **Release Airbound Desktop**.*
+
+### Option B: Local One-Command Release via GitHub CLI
+If you have [GitHub CLI (`gh`)](https://cli.github.com/) authenticated locally:
+
+```bash
+# Package the binaries and publish directly to GitHub Releases in one command:
+npm run release patch        # Bumps, packages .exe binaries, and creates GitHub Release
+
+# Or publish currently built release binaries:
+npm run release:publish
 ```
 
 ---

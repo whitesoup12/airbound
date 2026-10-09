@@ -21,7 +21,12 @@
     "seed:full": "npm --prefix server run seed:full",
     "test": "npm --prefix server test",
     "build": "node scripts/build.js",
-    "export:msfs": "npm --prefix server run export:msfs"
+    "export:msfs": "npm --prefix server run export:msfs",
+    "release:bump": "node scripts/release.js bump",
+    "release:build": "node scripts/release.js build",
+    "release:checksums": "node scripts/release.js checksums",
+    "release:publish": "node scripts/release.js publish",
+    "release": "node scripts/release.js all"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -48,6 +53,11 @@
   "build": {
     "appId": "com.airbound.msfs",
     "productName": "Airbound",
+    "publish": {
+      "provider": "github",
+      "owner": "whitesoup12",
+      "repo": "airbound"
+    },
     "directories": {
       "output": "release"
     },
