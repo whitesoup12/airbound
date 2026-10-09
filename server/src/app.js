@@ -1,8 +1,14 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 import mongoose from 'mongoose';
 import { connectDB } from './config/db.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 import pilotRoutes from './routes/pilot.js';
 import jobsRoutes from './routes/jobs.js';
@@ -77,6 +83,23 @@ app.get('/api/health', (req, res) => {
 app.all('/api/*', (req, res) => {
   res.status(404).json({ error: `API route ${req.method} ${req.originalUrl} not found` });
 });
+
+// Serve production static frontend if built (Desktop / Standalone Mode)
+const possibleDistPaths = [
+  path.resolve(process.cwd(), 'client', 'dist'),
+  path.resolve(process.cwd(), 'dist'),
+  path.resolve(__dirname, '../../client/dist'),
+  path.resolve(__dirname, '../../dist')
+];
+const resolvedClientDist = possibleDistPaths.find((p) => fs.existsSync(p));
+
+if (resolvedClientDist) {
+  app.use(express.static(resolvedClientDist));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/')) return next();
+    res.sendFile(path.join(resolvedClientDist, 'index.html'));
+  });
+}
 
 // Global Express Error Handler
 app.use((err, req, res, next) => {

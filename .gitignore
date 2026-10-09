@@ -29,10 +29,16 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
-# Cached Aeronautical Data
+# Cached Aeronautical Data & Local Database
 /server/data/
 /data/
+data/
+server/data/
 *.csv
 !server/src/data/*.gz
+
+# Executable Build Artifacts
+release/
+*.blockmap
 
 

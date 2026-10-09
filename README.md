@@ -52,63 +52,71 @@ Airbound generates distance- and runway-scaled contract jobs from your current l
 
 ---
 
-## Quick Start
+## Quick Start (Desktop Standalone)
 
-### 1. Prerequisites
-- **Node.js**: v18+ (tested on Node v22)
-- **MSFS 2024**: (Optional for testing; built-in mock telemetry works out of the box)
-- **MongoDB**: Optional; if `MONGODB_URI` is not set in `server/.env`, an in-memory MongoDB instance starts automatically.
+Airbound runs **100% locally on your PC** with zero external database configuration, no API keys, and automatic SimConnect integration.
 
-### 2. Install Dependencies
-In the project root:
+### Method 1: Download Windows Executable (.exe) — *For Flight Simmers*
+1. Download **`Airbound Setup 1.0.0.exe`** (Installer) or **`Airbound 1.0.0.exe`** (Portable standalone) from [Releases](https://github.com/your-username/airbound/releases).
+2. Run the executable.
+3. Airbound starts immediately with an embedded database, hooks into MSFS 2024, and launches the cockpit dashboard in a dedicated window.  
+*(No Node.js, terminal, or database installation required!)*
+
+### Method 2: One-Click Windows Batch Launcher
+1. Install [Node.js](https://nodejs.org) (v18 or higher, LTS recommended).
+2. Double-click **`Airbound.bat`** in the repository folder.
+3. Airbound automatically:
+   - Sets up dependencies and builds the avionics client.
+   - Starts the built-in persistent local database (`./data/db`).
+   - Hooks directly into MSFS 2024 via SimConnect.
+   - Opens `http://localhost:3001` in your default browser!
+
+### Method 3: Build & Package from Source
 ```bash
-# Install server dependencies
-cd server
+# Clone the repository
+git clone https://github.com/your-username/airbound.git
+cd airbound
+
+# Install dependencies
 npm install
 
-# Install client dependencies
-cd ../client
-npm install
+# Option A: Run in development / local browser mode
+npm start
+
+# Option B: Run in native Electron desktop window
+npm run electron
+
+# Option C: Build standalone Windows .exe installer and portable binary
+npm run dist:exe
+# Output generated in ./release (Airbound Setup 1.0.0.exe & Airbound 1.0.0.exe)
 ```
-
-### 3. Seed Airport Database
-Airbound includes a curated set of popular international and regional airports with exact runway lengths and coordinates:
-```bash
-# Fast seed (Curated global airports)
-cd server
-npm run seed
-
-# Optional: Full OurAirports live download & ingestion
-npm run seed:full
-```
-
-### 4. Run the Application
-In separate terminal windows:
-
-**Start the Server & SimConnect Bridge:**
-```bash
-cd server
-npm run dev
-```
-*Server runs on `http://localhost:3001` with Socket.IO telemetry streaming.*
-
-**Start the React Avionics Dashboard:**
-```bash
-cd client
-npm run dev
-```
-*Open `http://localhost:5173` in your browser.*
 
 ---
 
-## Configuration (`server/.env`)
+## Developer & Cloud Setup (Optional)
+
+If you wish to modify the frontend in real time with Vite HMR, or deploy Airbound to Vercel with MongoDB Atlas:
+
+```bash
+# Terminal 1: Run Backend in watch mode
+npm run dev:server
+
+# Terminal 2: Run Frontend with Vite hot reload
+npm run dev:client
+```
+
+### Configuration (`.env`) — *100% Optional*
+Airbound requires **no `.env` file** to run locally. If you wish to customize your port, data directory, or point to a remote MongoDB Atlas cluster:
 
 ```env
+# Optional: Port (Default: 3001)
 PORT=3001
-MONGODB_URI=mongodb://localhost:27017/airbound
-# Leave USE_MOCK_SIMCONNECT=false to automatically connect to MSFS 2024
+
+# Optional: Remote MongoDB Atlas URI (Leave empty to use embedded local DB in ./data/db)
+# MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/airbound
+
+# Optional: SimConnect Mock Mode (Set to true to test flight mechanics without MSFS running)
 USE_MOCK_SIMCONNECT=false
-CLIENT_URL=http://localhost:5173
 ```
 
 ---

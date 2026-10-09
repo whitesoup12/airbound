@@ -169,10 +169,18 @@ async function startServer() {
 
     server.listen(PORT, () => {
       console.log(`====================================================`);
-      console.log(`  AIRBOUND MSFS Tracker Server running on port ${PORT}`);
+      console.log(`  ✈️  AIRBOUND Desktop Server running on http://localhost:${PORT}`);
       console.log(`  SimConnect Bridge: ${simConnectBridge.isConnected ? (simConnectBridge.isMockMode ? 'MOCK TELEMETRY' : `${simConnectBridge.appName || 'MSFS 2024'} CONNECTED`) : 'SEARCHING FOR SIMULATOR'}`);
       console.log(`  Database: ${Airport.db.name}`);
       console.log(`====================================================`);
+
+      if (process.argv.includes('--open') || process.env.AIRBOUND_AUTO_OPEN === 'true') {
+        const url = `http://localhost:${PORT}`;
+        const startCmd = process.platform === 'win32' ? `start ${url}` : process.platform === 'darwin' ? `open ${url}` : `xdg-open ${url}`;
+        import('child_process').then(({ exec }) => {
+          exec(startCmd);
+        }).catch(() => {});
+      }
     });
   } catch (err) {
     console.error('[Server Error]: Failed to start server:', err);

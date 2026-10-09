@@ -22,11 +22,7 @@ import {
   Locate,
   FileText
 } from 'lucide-react';
-
-const CARTO_API_KEY = import.meta.env.VITE_CARTO_API_KEY || '';
-const CARTO_TILE_URL = CARTO_API_KEY
-  ? `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${CARTO_API_KEY}`
-  : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+import { BASEMAP_PRESETS, getStoredBasemap, setStoredBasemap } from '../utils/mapTiles.js';
 
 // Controller to auto-center the map on the aircraft when "Follow Aircraft" is active
 function MapRecenter({ center, followAircraft, onUserPan }) {
@@ -281,6 +277,16 @@ export function FlightMap({
 
   const [followAircraft, setFollowAircraft] = useState(!isPreview && hasValidSimLocation);
   const [actionTrigger, setActionTrigger] = useState(null);
+  const [basemapId, setBasemapId] = useState(getStoredBasemap);
+  const activeBasemap = BASEMAP_PRESETS[basemapId] || BASEMAP_PRESETS.dark;
+
+  const handleCycleBasemap = () => {
+    const keys = Object.keys(BASEMAP_PRESETS);
+    const nextIdx = (keys.indexOf(basemapId) + 1) % keys.length;
+    const nextKey = keys[nextIdx];
+    setBasemapId(nextKey);
+    setStoredBasemap(nextKey);
+  };
 
   // Performance & Fuel Consumption estimates for displayedJob
   const cruiseSpeed = activeAircraft?.cruise_speed_kts || 120;
@@ -515,6 +521,17 @@ export function FlightMap({
             </div>
           ) : null}
 
+          {/* Basemap Switcher */}
+          <button
+            type="button"
+            onClick={handleCycleBasemap}
+            className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition cursor-pointer text-[11px]"
+            title={`Cycle Basemap Layer (Current: ${activeBasemap.name})`}
+          >
+            <Layers className="w-3 h-3 text-cyan-400" />
+            <span>{activeBasemap.name}</span>
+          </button>
+
           {/* Waypoint Legend */}
           <div className="hidden lg:flex items-center space-x-3 text-[11px] text-slate-300">
             <div className="flex items-center space-x-1.5">
@@ -543,12 +560,13 @@ export function FlightMap({
           className="w-full h-full"
         >
           <ZoomControl position="bottomright" />
-          {/* Dark Avionics Tile Layer */}
+          {/* Dynamic Open-Source Tile Layer */}
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
-            url={CARTO_TILE_URL}
-            subdomains="abcd"
-            maxZoom={18}
+            key={activeBasemap.id}
+            attribution={activeBasemap.attribution}
+            url={activeBasemap.url}
+            subdomains={activeBasemap.subdomains || 'abc'}
+            maxZoom={activeBasemap.maxZoom || 19}
           />
 
           {/* Real-Time Recenter & Manual Camera Actions */}

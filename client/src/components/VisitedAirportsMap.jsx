@@ -19,11 +19,7 @@ import {
   Compass,
   Plane
 } from 'lucide-react';
-
-const CARTO_API_KEY = import.meta.env.VITE_CARTO_API_KEY || '';
-const CARTO_TILE_URL = CARTO_API_KEY
-  ? `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${CARTO_API_KEY}`
-  : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+import { BASEMAP_PRESETS, getStoredBasemap } from '../utils/mapTiles.js';
 
 // Controller to auto-fit bounds on visited airports
 function MapBoundsFitter({ points }) {
@@ -227,12 +223,13 @@ export function VisitedAirportsMap({
         >
           <ZoomControl position="bottomright" />
 
-          {/* Dark Aviation Tile Layer */}
+          {/* Open-Source Tile Layer */}
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
-            url={CARTO_TILE_URL}
-            subdomains="abcd"
-            maxZoom={18}
+            key={BASEMAP_PRESETS[getStoredBasemap()]?.id || 'dark'}
+            attribution={(BASEMAP_PRESETS[getStoredBasemap()] || BASEMAP_PRESETS.dark).attribution}
+            url={(BASEMAP_PRESETS[getStoredBasemap()] || BASEMAP_PRESETS.dark).url}
+            subdomains={(BASEMAP_PRESETS[getStoredBasemap()] || BASEMAP_PRESETS.dark).subdomains || 'abcd'}
+            maxZoom={(BASEMAP_PRESETS[getStoredBasemap()] || BASEMAP_PRESETS.dark).maxZoom || 18}
           />
 
           {/* Auto-fit map bounds across all visited airfields */}

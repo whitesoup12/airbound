@@ -7,12 +7,16 @@
     "client",
     "server"
   ],
+  "main": "electron/main.js",
   "scripts": {
     "dev:server": "npm --prefix server run dev",
     "dev:client": "npm --prefix client run dev",
     "connector": "node connector/index.js",
-    "connector:mock": "node connector/index.js --mock",
-    "start": "npm --prefix server start",
+    "start": "node scripts/startDesktop.js",
+    "start:server": "npm --prefix server start",
+    "electron": "npm run build && electron .",
+    "dist:exe": "npm run build && electron-builder --win",
+    "dist:portable": "npm run build && electron-builder --win portable",
     "seed": "npm --prefix server run seed",
     "seed:full": "npm --prefix server run seed:full",
     "test": "npm --prefix server test",
@@ -36,5 +40,56 @@
     "vercel"
   ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^44.7.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.airbound.msfs",
+    "productName": "Airbound",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "server/src/**/*",
+      "server/package.json",
+      "electron/**/*",
+      "package.json"
+    ],
+    "extraMetadata": {
+      "main": "electron/main.js"
+    },
+    "asar": true,
+    "asarUnpack": [
+      "server/**/*",
+      "**/node_modules/mongodb-memory-server/**/*",
+      "**/node_modules/node-simconnect/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "electron/assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Airbound"
+    }
+  }
 }

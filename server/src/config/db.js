@@ -1,6 +1,9 @@
 import mongoose from 'mongoose';
+import fs from 'fs';
+import path from 'path';
 
 let memoryServer = null;
+let cachedPromise = null;
 
 /**
  * Connect to 100% In-Memory isolated MongoDB (RAM only)
@@ -20,10 +23,14 @@ export async function connectTestDB() {
   return memUri;
 }
 
-let cachedPromise = null;
-
+/**
+ * Connect to MongoDB database:
+ * 1. Test Mode: Ephemeral RAM-only database
+ * 2. Cloud Mode (MONGODB_URI provided): Connects to MongoDB Atlas / remote cluster
+ * 3. Desktop Mode (Default, no URI): Automatically boots embedded persistent MongoDB on local disk (./data/db)
+ */
 export async function connectDB(customUri = null) {
-  // Hard guard: When running in test environment, NEVER connect to Atlas
+  // Hard guard: When running in test environment, NEVER touch disk or Atlas
   if (process.env.NODE_ENV === 'test') {
     return connectTestDB();
   }
@@ -47,7 +54,7 @@ export async function connectDB(customUri = null) {
         maxPoolSize: 10
       });
       await cachedPromise;
-      console.log(`[Database] Connected to MongoDB at: ${uri.replace(/\/\/.*@/, '//<credentials>@')}`);
+      console.log(`[Database] Connected to external MongoDB at: ${uri.replace(/\/\/.*@/, '//<credentials>@')}`);
       return mongoose.connection;
     } catch (err) {
       cachedPromise = null;
@@ -60,9 +67,36 @@ export async function connectDB(customUri = null) {
     }
   }
 
-  // Fallback to in-memory MongoDB only if zero URI is configured
-  console.log('[Database] No MONGODB_URI configured, using in-memory database.');
-  return connectTestDB();
+  // Desktop Mode: Launch embedded persistent MongoDB storing data in ./data/db
+  try {
+    const dbDir = process.env.AIRBOUND_DATA_DIR
+      ? path.resolve(process.env.AIRBOUND_DATA_DIR)
+      : path.resolve(process.cwd(), 'data', 'db');
+
+    fs.mkdirSync(dbDir, { recursive: true });
+
+    if (!memoryServer) {
+      const { MongoMemoryServer } = await import('mongodb-memory-server');
+      memoryServer = await MongoMemoryServer.create({
+        instance: {
+          dbPath: dbDir,
+          storageEngine: 'wiredTiger'
+        }
+      });
+    }
+
+    const localUri = memoryServer.getUri();
+    cachedPromise = mongoose.connect(localUri);
+    await cachedPromise;
+
+    console.log(`[Database] Connected to local persistent database at: ${dbDir}`);
+    console.log(`[Database] Embedded MongoDB engine active at: ${localUri}`);
+    return mongoose.connection;
+  } catch (embeddedErr) {
+    cachedPromise = null;
+    console.warn(`[Database] Could not launch persistent embedded MongoDB (${embeddedErr.message}). Falling back to ephemeral in-memory.`);
+    return connectTestDB();
+  }
 }
 
 export async function disconnectDB() {
@@ -74,4 +108,3 @@ export async function disconnectDB() {
     memoryServer = null;
   }
 }
-
