@@ -6,10 +6,9 @@ export const BASEMAP_PRESETS = {
   dark: {
     id: 'dark',
     name: 'Cockpit Dark',
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noreferrer">CARTO</a>',
-    subdomains: 'abcd',
-    maxZoom: 19
+    url: 'https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    attribution: '&copy; <a href="https://www.esri.com/" target="_blank" rel="noreferrer">Esri</a>, DeLorme, NAVTEQ',
+    maxZoom: 16
   },
   osm: {
     id: 'osm',

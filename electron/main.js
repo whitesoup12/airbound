@@ -114,7 +114,6 @@ function createSplashWindow() {
     frame: false,
     resizable: false,
     center: true,
-    alwaysOnTop: true,
     show: true,
     backgroundColor: '#0a0d14',
     icon: fs.existsSync(iconPath) ? iconPath : undefined,
