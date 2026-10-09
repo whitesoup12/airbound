@@ -73,23 +73,36 @@ export function FleetDealershipModal({ isOpen, onClose, pilot, onAircraftChanged
   const activeTail = hangarData.activeAircraft?.tail_number || pilot?.active_aircraft?.tail_number;
 
   const handleBuy = async (plane) => {
-    if (currentBalance < plane.purchase_price) {
-      alert(`Insufficient funds. You need $${(plane.purchase_price - currentBalance).toLocaleString()} more.`);
+    const equity = plane.accumulated_equity || (hangarData.rentToOwnEquity && Number(hangarData.rentToOwnEquity[plane.model_id])) || 0;
+    const effectivePrice = Math.max(0, (plane.purchase_price || plane.catalog_purchase_price || 0) - equity);
+
+    if (currentBalance < effectivePrice) {
+      alert(`Insufficient funds. Buyout price is $${effectivePrice.toLocaleString()} (after $${equity.toLocaleString()} rent-to-own credit). You need $${(effectivePrice - currentBalance).toLocaleString()} more.`);
       return;
     }
 
-    if (!confirm(`Confirm purchase of ${plane.name} for $${plane.purchase_price.toLocaleString()}?`)) {
+    const confirmMsg = equity > 0
+      ? effectivePrice === 0
+        ? `Claim permanent ownership of ${plane.name} for FREE? (100% paid off through rent-to-own!)`
+        : `Confirm buyout of ${plane.name} for $${effectivePrice.toLocaleString()}? ($${equity.toLocaleString()} rent-to-own credit applied!)`
+      : `Confirm purchase of ${plane.name} for $${plane.purchase_price.toLocaleString()}?`;
+
+    if (!confirm(confirmMsg)) {
       return;
     }
 
     try {
-      setActionLoading(`buy-${plane.model_id}`);
-      const res = await buyAircraft(plane.model_id);
+      setActionLoading(`buy-${plane.tail_number || plane.model_id}`);
+      const res = await buyAircraft(plane.model_id, plane.tail_number || '');
       setFeedback({ type: 'success', message: res.message });
+
+      const [catRes, hangRes] = await Promise.all([fetchAircraftCatalog(), fetchHangar()]);
+      setCatalog(catRes.catalog || []);
       setHangarData({
-        fleet: res.pilot.fleet || [],
-        activeAircraft: res.activeAircraft,
-        balance: res.pilot.balance
+        fleet: hangRes.fleet || res.pilot.fleet || [],
+        activeAircraft: hangRes.activeAircraft || res.activeAircraft,
+        balance: hangRes.balance !== undefined ? hangRes.balance : res.pilot.balance,
+        rentToOwnEquity: hangRes.rentToOwnEquity || {}
       });
       if (onAircraftChanged) onAircraftChanged(res.pilot, res.activeAircraft);
     } catch (err) {
@@ -105,7 +118,8 @@ export function FleetDealershipModal({ isOpen, onClose, pilot, onAircraftChanged
       return;
     }
 
-    if (!confirm(`Rent ${plane.name} for this flight? Fee of $${plane.rental_price_per_flight.toLocaleString()} will be deducted.`)) {
+    const equityCredit = Math.round(plane.rental_price_per_flight * 0.75);
+    if (!confirm(`Rent ${plane.name} for this flight? Fee of $${plane.rental_price_per_flight.toLocaleString()} will be deducted (+$${equityCredit.toLocaleString()} credited to Rent-to-Own purchase!).`)) {
       return;
     }
 
@@ -113,10 +127,14 @@ export function FleetDealershipModal({ isOpen, onClose, pilot, onAircraftChanged
       setActionLoading(`rent-${plane.model_id}`);
       const res = await rentAircraft(plane.model_id);
       setFeedback({ type: 'success', message: res.message });
+
+      const [catRes, hangRes] = await Promise.all([fetchAircraftCatalog(), fetchHangar()]);
+      setCatalog(catRes.catalog || []);
       setHangarData({
-        fleet: res.pilot.fleet || [],
-        activeAircraft: res.activeAircraft,
-        balance: res.pilot.balance
+        fleet: hangRes.fleet || res.pilot.fleet || [],
+        activeAircraft: hangRes.activeAircraft || res.activeAircraft,
+        balance: hangRes.balance !== undefined ? hangRes.balance : res.pilot.balance,
+        rentToOwnEquity: hangRes.rentToOwnEquity || {}
       });
       if (onAircraftChanged) onAircraftChanged(res.pilot, res.activeAircraft);
     } catch (err) {
@@ -167,10 +185,13 @@ export function FleetDealershipModal({ isOpen, onClose, pilot, onAircraftChanged
       setActionLoading(`return-${plane.tail_number}`);
       const res = await returnAircraft(plane.tail_number);
       setFeedback({ type: 'success', message: res.message });
+      const [catRes, hangRes] = await Promise.all([fetchAircraftCatalog(), fetchHangar()]);
+      setCatalog(catRes.catalog || []);
       setHangarData({
-        fleet: res.pilot.fleet || [],
-        activeAircraft: res.activeAircraft,
-        balance: res.pilot.balance
+        fleet: hangRes.fleet || res.pilot.fleet || [],
+        activeAircraft: hangRes.activeAircraft || res.activeAircraft,
+        balance: hangRes.balance !== undefined ? hangRes.balance : res.pilot.balance,
+        rentToOwnEquity: hangRes.rentToOwnEquity || {}
       });
       setReturnModalPlane(null);
       if (onAircraftChanged) onAircraftChanged(res.pilot, res.activeAircraft);
@@ -316,10 +337,16 @@ export function FleetDealershipModal({ isOpen, onClose, pilot, onAircraftChanged
             /* DEALERSHIP TAB */
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {filteredCatalog.map((plane) => {
-                const canAffordBuy = currentBalance >= plane.purchase_price;
+                const equity = plane.accumulated_equity || (hangarData.rentToOwnEquity && Number(hangarData.rentToOwnEquity[plane.model_id])) || 0;
+                const effectivePrice = Math.max(0, plane.purchase_price - equity);
+                const equityPercent = Math.min(100, Math.round((equity / plane.purchase_price) * 100));
+                const canAffordBuy = currentBalance >= effectivePrice;
                 const canAffordRent = currentBalance >= plane.rental_price_per_flight;
                 const ownedInHangar = (hangarData.fleet || []).some(
                   (f) => f.model_id === plane.model_id && !f.is_rental
+                );
+                const isRentalInHangar = (hangarData.fleet || []).some(
+                  (f) => f.model_id === plane.model_id && f.is_rental
                 );
                 const isActive = hangarData.activeAircraft?.model_id === plane.model_id;
 
@@ -429,16 +456,46 @@ export function FleetDealershipModal({ isOpen, onClose, pilot, onAircraftChanged
                     </div>
 
                     {/* Actions: Purchase & Rental */}
-                    <div className="mt-5 pt-4 border-t border-slate-800/80 space-y-2">
+                    <div className="mt-5 pt-4 border-t border-slate-800/80 space-y-2.5">
+                      {/* Rent-to-Own Accrued Equity Bar */}
+                      {equity > 0 && (
+                        <div className="bg-emerald-950/40 border border-emerald-800/60 rounded-xl p-2.5 space-y-1.5">
+                          <div className="flex items-center justify-between text-[11px] font-mono">
+                            <span className="text-emerald-400 font-bold flex items-center space-x-1">
+                              <Sparkles className="w-3 h-3 text-emerald-400" />
+                              <span>RENT-TO-OWN ACCRUED EQUITY</span>
+                            </span>
+                            <span className="text-emerald-300 font-bold">
+                              ${equity.toLocaleString()} ({equityPercent}%)
+                            </span>
+                          </div>
+                          <div className="w-full bg-slate-900/80 rounded-full h-1.5 overflow-hidden border border-emerald-900/50">
+                            <div
+                              className="bg-gradient-to-r from-emerald-500 to-cyan-400 h-1.5 rounded-full transition-all duration-300"
+                              style={{ width: `${Math.min(100, Math.max(2, equityPercent))}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex items-center justify-between text-xs font-mono">
-                        <span className="text-slate-400">PURCHASE PRICE:</span>
-                        <span className="text-emerald-400 font-bold text-sm">
-                          ${plane.purchase_price.toLocaleString()}
+                        <span className="text-slate-400">
+                          {equity > 0 ? 'BUYOUT BALANCE:' : 'PURCHASE PRICE:'}
                         </span>
+                        <div className="text-right">
+                          {equity > 0 && (
+                            <span className="line-through text-slate-500 text-[11px] mr-2">
+                              ${plane.purchase_price.toLocaleString()}
+                            </span>
+                          )}
+                          <span className={`${effectivePrice === 0 ? 'text-emerald-300' : 'text-emerald-400'} font-bold text-sm`}>
+                            {effectivePrice === 0 ? 'FREE ($0)' : `$${effectivePrice.toLocaleString()}`}
+                          </span>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-2">
-                        {/* Buy Button */}
+                        {/* Buy / Buyout Button */}
                         <button
                           onClick={() => handleBuy(plane)}
                           disabled={!canAffordBuy || actionLoading !== null}
@@ -450,7 +507,13 @@ export function FleetDealershipModal({ isOpen, onClose, pilot, onAircraftChanged
                         >
                           <ShoppingBag className="w-3.5 h-3.5" />
                           <span>
-                            {canAffordBuy
+                            {effectivePrice === 0
+                              ? 'CLAIM OWNERSHIP (FREE)'
+                              : equity > 0
+                              ? canAffordBuy
+                                ? `BUYOUT ($${effectivePrice.toLocaleString()})`
+                                : `NEED $${(effectivePrice - currentBalance).toLocaleString()}`
+                              : canAffordBuy
                               ? 'BUY AIRCRAFT'
                               : `NEED $${(plane.purchase_price - currentBalance).toLocaleString()}`}
                           </span>
@@ -460,14 +523,19 @@ export function FleetDealershipModal({ isOpen, onClose, pilot, onAircraftChanged
                         <button
                           onClick={() => handleRent(plane)}
                           disabled={!canAffordRent || actionLoading !== null}
-                          className={`w-full py-2 px-3 rounded-xl font-mono text-xs font-bold transition flex items-center justify-center space-x-1.5 ${
+                          className={`w-full py-1.5 px-3 rounded-xl font-mono text-xs font-bold transition flex flex-col items-center justify-center ${
                             canAffordRent
                               ? 'bg-cyan-950/80 hover:bg-cyan-900 text-cyan-300 border border-cyan-700/60 hover:border-cyan-500'
                               : 'bg-slate-800/40 text-slate-600 cursor-not-allowed border border-slate-800'
                           }`}
                         >
-                          <Clock className="w-3.5 h-3.5" />
-                          <span>RENT (${plane.rental_price_per_flight.toLocaleString()})</span>
+                          <div className="flex items-center space-x-1.5">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>RENT (${plane.rental_price_per_flight.toLocaleString()})</span>
+                          </div>
+                          <span className="text-[9px] text-cyan-400/80 font-normal mt-0.5">
+                            +${(plane.rental_equity_per_flight || Math.round(plane.rental_price_per_flight * 0.75)).toLocaleString()} equity/flight
+                          </span>
                         </button>
                       </div>
                     </div>
@@ -485,6 +553,12 @@ export function FleetDealershipModal({ isOpen, onClose, pilot, onAircraftChanged
                       hangarData.activeAircraft?.tail_number === plane.tail_number ||
                       (!hangarData.activeAircraft?.tail_number && idx === 0);
                     const modelSpecs = catalog.find((c) => c.model_id === plane.model_id) || {};
+                    const rentalEquity = plane.accumulated_equity || (hangarData.rentToOwnEquity && Number(hangarData.rentToOwnEquity[plane.model_id])) || 0;
+                    const fullPurchasePrice = modelSpecs.purchase_price || plane.catalog_purchase_price || 0;
+                    const buyoutPrice = plane.remaining_buyout_price !== undefined ? plane.remaining_buyout_price : Math.max(0, fullPurchasePrice - rentalEquity);
+                    const equityPercent = plane.equity_percent !== undefined ? plane.equity_percent : (fullPurchasePrice > 0 ? Math.min(100, Math.round((rentalEquity / fullPurchasePrice) * 100)) : 0);
+                    const canAffordBuyout = currentBalance >= buyoutPrice;
+                    const rentalEquityPerFlight = plane.rental_equity_per_flight || Math.round((modelSpecs.rental_price_per_flight || 0) * 0.75);
 
                     return (
                       <div
@@ -624,6 +698,49 @@ export function FleetDealershipModal({ isOpen, onClose, pilot, onAircraftChanged
                               </div>
                             </div>
                           )}
+
+                          {/* Rent-to-Own Equity Card for Leased Aircraft */}
+                          {plane.is_rental && (
+                            <div className="bg-emerald-950/30 border border-emerald-700/50 px-3 py-2.5 rounded-xl mt-3 text-xs font-mono space-y-2">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <span className="text-emerald-400 font-bold text-[10px] flex items-center space-x-1">
+                                    <Sparkles className="w-3 h-3 text-emerald-400" />
+                                    <span>RENT-TO-OWN ACCRUED EQUITY</span>
+                                  </span>
+                                  <span className="text-emerald-300 font-bold text-sm">
+                                    ${rentalEquity.toLocaleString()}
+                                    <span className="text-slate-400 text-[10px] font-normal ml-1">
+                                      / ${fullPurchasePrice.toLocaleString()} ({equityPercent}%)
+                                    </span>
+                                  </span>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-slate-400 text-[10px] block">REMAINING BUYOUT</span>
+                                  <span className="text-white font-bold text-sm">
+                                    {buyoutPrice === 0 ? (
+                                      <span className="text-emerald-400 font-bold">FREE ($0)</span>
+                                    ) : (
+                                      `$${buyoutPrice.toLocaleString()}`
+                                    )}
+                                  </span>
+                                </div>
+                              </div>
+                              {/* Progress Bar */}
+                              <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden border border-emerald-900/60">
+                                <div
+                                  className="bg-gradient-to-r from-emerald-500 to-cyan-400 h-1.5 rounded-full transition-all duration-300"
+                                  style={{ width: `${Math.min(100, Math.max(2, equityPercent))}%` }}
+                                />
+                              </div>
+                              <div className="flex items-center justify-between text-[10px] text-slate-400">
+                                <span>75% of rental payments credited</span>
+                                <span className="text-cyan-400 font-medium">
+                                  +${rentalEquityPerFlight.toLocaleString()} / flight
+                                </span>
+                              </div>
+                            </div>
+                          )}
                         </div>
 
                         {/* Action Buttons */}
@@ -645,14 +762,34 @@ export function FleetDealershipModal({ isOpen, onClose, pilot, onAircraftChanged
                           )}
 
                           {plane.is_rental ? (
-                            <button
-                              onClick={() => setReturnModalPlane(plane)}
-                              disabled={actionLoading !== null}
-                              className="w-full py-2 px-3 rounded-xl bg-amber-950/40 hover:bg-amber-900/60 text-amber-300 border border-amber-800/60 font-mono text-xs font-bold transition flex items-center justify-center space-x-2"
-                            >
-                              <Undo2 className="w-3.5 h-3.5 text-amber-400" />
-                              <span>RETURN LEASE TO LESSOR</span>
-                            </button>
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                onClick={() => handleBuy({ ...modelSpecs, ...plane, purchase_price: fullPurchasePrice, accumulated_equity: rentalEquity })}
+                                disabled={!canAffordBuyout || actionLoading !== null}
+                                className={`py-2 px-3 rounded-xl font-mono text-xs font-bold transition flex items-center justify-center space-x-1.5 ${
+                                  canAffordBuyout
+                                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-950/40'
+                                    : 'bg-slate-800/60 text-slate-500 cursor-not-allowed border border-slate-800'
+                                }`}
+                              >
+                                <ShoppingBag className="w-3.5 h-3.5" />
+                                <span>
+                                  {buyoutPrice === 0
+                                    ? 'CLAIM (FREE)'
+                                    : canAffordBuyout
+                                    ? `BUYOUT ($${buyoutPrice.toLocaleString()})`
+                                    : `NEED $${(buyoutPrice - currentBalance).toLocaleString()}`}
+                                </span>
+                              </button>
+                              <button
+                                onClick={() => setReturnModalPlane(plane)}
+                                disabled={actionLoading !== null}
+                                className="py-2 px-3 rounded-xl bg-amber-950/40 hover:bg-amber-900/60 text-amber-300 border border-amber-800/60 font-mono text-xs font-bold transition flex items-center justify-center space-x-1.5"
+                              >
+                                <Undo2 className="w-3.5 h-3.5 text-amber-400" />
+                                <span>RETURN LEASE</span>
+                              </button>
+                            </div>
                           ) : (
                             <button
                               onClick={() => setSellModalPlane(plane)}
@@ -777,6 +914,13 @@ export function FleetDealershipModal({ isOpen, onClose, pilot, onAircraftChanged
             <p className="text-[11px] text-slate-400 leading-relaxed bg-slate-950/80 p-3 rounded-xl border border-slate-800">
               This will terminate your lease and remove the aircraft from your hangar. If this plane is currently active in your cockpit, your flight deck will automatically switch to your next available aircraft.
             </p>
+
+            {/* Note about preserved Rent-to-Own equity */}
+            {((returnModalPlane.accumulated_equity || (hangarData.rentToOwnEquity && Number(hangarData.rentToOwnEquity[returnModalPlane.model_id])) || 0) > 0) && (
+              <p className="text-[11px] text-emerald-300/90 leading-relaxed bg-emerald-950/40 p-3 rounded-xl border border-emerald-800/60">
+                ✨ <strong>Your Rent-to-Own equity is safe!</strong> Your accrued credit of <strong>${(returnModalPlane.accumulated_equity || (hangarData.rentToOwnEquity && Number(hangarData.rentToOwnEquity[returnModalPlane.model_id])) || 0).toLocaleString()}</strong> remains banked on your pilot profile for whenever you decide to lease or buyout this model again.
+              </p>
+            )}
 
             <div className="flex space-x-3 pt-2">
               <button

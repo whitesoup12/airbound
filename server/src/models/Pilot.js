@@ -61,6 +61,10 @@ const FlightRecordSchema = new mongoose.Schema(
       type: Number,
       default: 0
     },
+    rent_to_own_equity_earned: {
+      type: Number,
+      default: 0
+    },
     aircraft_name: {
       type: String,
       default: 'Cessna 172 Skyhawk'
@@ -155,6 +159,10 @@ const OwnedAircraftSchema = new mongoose.Schema(
       type: Number,
       default: 0
     },
+    accumulated_equity: {
+      type: Number,
+      default: 0
+    },
     is_loaner: {
       type: Boolean,
       default: false
@@ -182,6 +190,10 @@ const PilotSchema = new mongoose.Schema(
       type: Number,
       default: 15000,
       min: 0
+    },
+    rent_to_own_equity: {
+      type: Object,
+      default: {}
     },
     current_icao: {
       type: String,
@@ -220,6 +232,8 @@ const PilotSchema = new mongoose.Schema(
       is_rental: { type: Boolean, default: false },
       rental_price_per_flight: { type: Number, default: 0 },
       rental_flights_paid: { type: Number, default: 0 },
+      accumulated_equity: { type: Number, default: 0 },
+      flight_hours: { type: Number, default: 0 },
       is_loaner: { type: Boolean, default: false },
       cruise_speed_kts: { type: Number, default: 120 },
       max_range_nm: { type: Number, default: 500 },

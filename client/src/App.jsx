@@ -447,6 +447,11 @@ export function App() {
                         <span>• Landing Fee: -${completionBanner.settlement.landingFee}</span>
                       </>
                     )}
+                    {completionBanner.rentToOwn?.isRental && completionBanner.rentToOwn?.equityEarned > 0 && (
+                      <span className="bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 px-2 py-0.5 rounded text-[11px] font-bold">
+                        🏷️ Rent-to-Own: +${completionBanner.rentToOwn.equityEarned.toLocaleString()} Equity Credited! (Total Banked: ${completionBanner.rentToOwn.totalEquity.toLocaleString()})
+                      </span>
+                    )}
                     {completionBanner.insufficientRentalFunds && (
                       <span className="bg-rose-900/90 text-rose-200 px-2 py-0.5 rounded text-[11px] font-bold">
                         ⚠️ Balance insufficient for active rental renewal (${completionBanner.rentalPrice?.toLocaleString()} required)

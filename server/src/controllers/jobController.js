@@ -146,6 +146,18 @@ export async function acceptJob(req, res) {
         if (fleetPlane) {
           fleetPlane.rental_flights_paid = 1;
         }
+
+        // Credit rent-to-own equity (75% of rental fee builds purchase equity)
+        const equityCredit = Math.round(rentalPrice * 0.75);
+        const modelId = pilot.active_aircraft.model_id;
+        if (!pilot.rent_to_own_equity) pilot.rent_to_own_equity = {};
+        pilot.rent_to_own_equity[modelId] = (Number(pilot.rent_to_own_equity[modelId]) || 0) + equityCredit;
+        pilot.markModified('rent_to_own_equity');
+        pilot.active_aircraft.accumulated_equity = pilot.rent_to_own_equity[modelId];
+        if (fleetPlane) {
+          fleetPlane.accumulated_equity = pilot.rent_to_own_equity[modelId];
+        }
+
         await pilot.save();
         rentalFeeCharged = rentalPrice;
       }
@@ -194,6 +206,21 @@ export async function cancelJob(req, res) {
       const fleetPlane = (pilot.fleet || []).find((p) => p.tail_number === activeTail);
       if (pilot.active_aircraft) pilot.active_aircraft.rental_flights_paid = 0;
       if (fleetPlane) fleetPlane.rental_flights_paid = 0;
+
+      // Reverse rent-to-own equity credit
+      const modelId = pilot.active_aircraft?.model_id;
+      if (modelId && pilot.rent_to_own_equity && pilot.rent_to_own_equity[modelId]) {
+        const equityToRefund = Math.round(job.rental_fee_charged * 0.75);
+        pilot.rent_to_own_equity[modelId] = Math.max(0, (Number(pilot.rent_to_own_equity[modelId]) || 0) - equityToRefund);
+        pilot.markModified('rent_to_own_equity');
+        if (pilot.active_aircraft) {
+          pilot.active_aircraft.accumulated_equity = pilot.rent_to_own_equity[modelId];
+        }
+        if (fleetPlane) {
+          fleetPlane.accumulated_equity = pilot.rent_to_own_equity[modelId];
+        }
+      }
+
       await pilot.save();
       job.rental_fee_charged = 0;
     }

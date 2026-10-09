@@ -214,35 +214,38 @@ export async function settleCompletedFlight(params = {}) {
     });
   }
 
-  // 5. Construct Logbook Summary
-  const flightSummary = {
-    job_id: job._id || null,
-    origin_icao: job.origin_icao || 'UNKN',
-    destination_icao: destIcao,
-    distance_nm: distanceNm || 1,
-    cargo_lbs: job.cargo_lbs || 0,
-    pax_count: job.pax_count || 0,
-    payout: settlement.netPayout,
-    gross_payout: settlement.grossPayout,
-    fuel_cost: settlement.fuelCost,
-    fuel_gallons: settlement.fuelGallons,
-    landing_fee: settlement.landingFee,
-    net_payout: settlement.netPayout,
-    exploration_bonus: job.exploration_bonus || 0,
-    rental_fee: isFreeFlight ? 0 : (job.rental_fee_charged || (activeAircraft.is_rental && !activeAircraft.is_loaner ? (activeAircraft.rental_price_per_flight || 0) : 0)),
-    aircraft_name: telemetry.simAircraftTitle || activeAircraft.name || settlement.aircraftName,
-    category: activeAircraft.category || 'single_prop',
-    duration_seconds: durationSeconds,
-    airborne_seconds: finalAirborneSeconds,
-    touchdown_fpm: touchdownFpm,
-    landing_rating: flightXp.landingRating,
-    landing_class: flightXp.aircraftClass,
-    approach_speed_kts: approachSpeedKts,
-    xp_earned: flightXp.totalXp,
-    departed_at: actualDepartedAt,
-    completed_at: completedAt,
-    source: isFreeFlight ? 'free_flight' : 'airbound_dispatch'
-  };
+    const rentalFeeCharged = isFreeFlight ? 0 : (job.rental_fee_charged || (activeAircraft.is_rental && !activeAircraft.is_loaner ? (activeAircraft.rental_price_per_flight || 0) : 0));
+    const rentalEquityEarned = rentalFeeCharged ? Math.round(rentalFeeCharged * 0.75) : 0;
+
+    const flightSummary = {
+      job_id: job._id || null,
+      origin_icao: job.origin_icao || 'UNKN',
+      destination_icao: destIcao,
+      distance_nm: distanceNm || 1,
+      cargo_lbs: job.cargo_lbs || 0,
+      pax_count: job.pax_count || 0,
+      payout: settlement.netPayout,
+      gross_payout: settlement.grossPayout,
+      fuel_cost: settlement.fuelCost,
+      fuel_gallons: settlement.fuelGallons,
+      landing_fee: settlement.landingFee,
+      net_payout: settlement.netPayout,
+      exploration_bonus: job.exploration_bonus || 0,
+      rental_fee: rentalFeeCharged,
+      rent_to_own_equity_earned: rentalEquityEarned,
+      aircraft_name: telemetry.simAircraftTitle || activeAircraft.name || settlement.aircraftName,
+      category: activeAircraft.category || 'single_prop',
+      duration_seconds: durationSeconds,
+      airborne_seconds: finalAirborneSeconds,
+      touchdown_fpm: touchdownFpm,
+      landing_rating: flightXp.landingRating,
+      landing_class: flightXp.aircraftClass,
+      approach_speed_kts: approachSpeedKts,
+      xp_earned: flightXp.totalXp,
+      departed_at: actualDepartedAt,
+      completed_at: completedAt,
+      source: isFreeFlight ? 'free_flight' : 'airbound_dispatch'
+    };
 
   // 6. Update Pilot Persistence
   let insufficientRentalFunds = false;
@@ -310,7 +313,13 @@ export async function settleCompletedFlight(params = {}) {
     newIcao: destIcao,
     insufficientRentalFunds,
     rentalPrice,
-    aircraftName: activeAircraft.name
+    aircraftName: activeAircraft.name,
+    rentToOwn: {
+      isRental: Boolean(activeAircraft.is_rental && !activeAircraft.is_loaner),
+      equityEarned: rentalEquityEarned,
+      totalEquity: (pilot.rent_to_own_equity && Number(pilot.rent_to_own_equity[activeAircraft.model_id])) || 0,
+      modelId: activeAircraft.model_id
+    }
   };
 
   // Store completedFlight in active_telemetry so polled web clients detect completion

@@ -3,6 +3,18 @@ export const FUEL_PRICES = {
   'Jet-A': 5.60  // $5.60 per gallon for Jet-A
 };
 
+export const RENT_TO_OWN_EQUITY_RATIO = 0.75; // 75% of rental fee applies toward aircraft purchase equity
+
+/**
+ * Calculates rent-to-own equity credit from a rental payment
+ * @param {number} rentalFee Rental price charged for flight
+ * @returns {number} Equity credit in USD
+ */
+export function calculateRentalEquityCredit(rentalFee) {
+  if (!rentalFee || rentalFee <= 0) return 0;
+  return Math.round(rentalFee * RENT_TO_OWN_EQUITY_RATIO);
+}
+
 /**
  * Calculates landing and ramp handling fee based on destination runway length
  * @param {number} runwayFt Longest runway length in feet

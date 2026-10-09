@@ -9,8 +9,28 @@ import { flightStateMachine, FLIGHT_PHASES } from '../services/stateMachine.js';
  */
 export async function getCatalog(req, res) {
   try {
+    const pilot = await Pilot.findOne().select('rent_to_own_equity balance').lean();
+    const equityMap = pilot?.rent_to_own_equity || {};
     const catalog = await Aircraft.find().sort({ purchase_price: 1 }).lean();
-    res.json({ catalog });
+
+    const enrichedCatalog = catalog.map((c) => {
+      const equity = Number(equityMap[c.model_id]) || 0;
+      const effectivePurchasePrice = Math.max(0, c.purchase_price - equity);
+      const equityPercent = Math.min(100, Math.round((equity / c.purchase_price) * 100));
+      const rentalEquityPerFlight = Math.round(c.rental_price_per_flight * 0.75);
+      return {
+        ...c,
+        accumulated_equity: equity,
+        effective_purchase_price: effectivePurchasePrice,
+        equity_percent: equityPercent,
+        rental_equity_per_flight: rentalEquityPerFlight
+      };
+    });
+
+    res.json({
+      catalog: enrichedCatalog,
+      rentToOwnEquity: equityMap
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -21,13 +41,14 @@ export async function getCatalog(req, res) {
  */
 export async function getHangar(req, res) {
   try {
-    let pilot = await Pilot.findOne().select('fleet active_aircraft balance').lean();
+    let pilot = await Pilot.findOne().select('fleet active_aircraft balance rent_to_own_equity').lean();
     if (!pilot) {
       pilot = await Pilot.create({ callsign: 'James' });
     }
 
     const catalog = await Aircraft.find().lean();
     const catalogMap = new Map(catalog.map((c) => [c.model_id, c]));
+    const equityMap = pilot.rent_to_own_equity || {};
 
     const enrichedFleet = (pilot.fleet || []).map((plane) => {
       const planeObj = plane.toObject ? plane.toObject() : { ...plane };
@@ -43,6 +64,13 @@ export async function getHangar(req, res) {
           planeObj.base_depreciation_percent = resale.baseDepreciationPercent;
           planeObj.hourly_depreciation_percent = resale.hourlyDepreciationPercent;
           planeObj.salvage_floor_reached = resale.salvageFloorReached;
+        } else {
+          // Rental lease rent-to-own equity details
+          const equity = Number(equityMap[plane.model_id]) || Number(plane.accumulated_equity) || 0;
+          planeObj.accumulated_equity = equity;
+          planeObj.remaining_buyout_price = Math.max(0, model.purchase_price - equity);
+          planeObj.equity_percent = Math.min(100, Math.round((equity / model.purchase_price) * 100));
+          planeObj.rental_equity_per_flight = Math.round(model.rental_price_per_flight * 0.75);
         }
       }
       return planeObj;
@@ -51,15 +79,24 @@ export async function getHangar(req, res) {
     let activeAircraft = pilot.active_aircraft;
     if (activeAircraft && activeAircraft.model_id) {
       const activeModel = catalogMap.get(activeAircraft.model_id);
-      if (activeModel && activeAircraft.category !== activeModel.category) {
-        activeAircraft.category = activeModel.category;
+      if (activeModel) {
+        if (activeAircraft.category !== activeModel.category) {
+          activeAircraft.category = activeModel.category;
+        }
+        if (activeAircraft.is_rental) {
+          const equity = Number(equityMap[activeAircraft.model_id]) || Number(activeAircraft.accumulated_equity) || 0;
+          activeAircraft.accumulated_equity = equity;
+          activeAircraft.remaining_buyout_price = Math.max(0, activeModel.purchase_price - equity);
+          activeAircraft.equity_percent = Math.min(100, Math.round((equity / activeModel.purchase_price) * 100));
+        }
       }
     }
 
     res.json({
       fleet: enrichedFleet,
       activeAircraft,
-      balance: pilot.balance || 0
+      balance: pilot.balance || 0,
+      rentToOwnEquity: equityMap
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -67,7 +104,7 @@ export async function getHangar(req, res) {
 }
 
 /**
- * Purchase an aircraft from dealership using career balance
+ * Purchase an aircraft from dealership using career balance or rent-to-own buyout
  */
 export async function buyAircraft(req, res) {
   try {
@@ -86,46 +123,79 @@ export async function buyAircraft(req, res) {
       pilot = await Pilot.create({ callsign: 'James' });
     }
 
-    if (pilot.balance < model.purchase_price) {
-      const shortage = model.purchase_price - pilot.balance;
+    const equityMap = pilot.rent_to_own_equity || {};
+    const accruedEquity = Number(equityMap[model.model_id]) || 0;
+    const effectivePrice = Math.max(0, model.purchase_price - accruedEquity);
+
+    if (pilot.balance < effectivePrice) {
+      const shortage = effectivePrice - pilot.balance;
       return res.status(400).json({
-        error: `Insufficient funds. You have $${pilot.balance.toLocaleString()} but ${model.name} costs $${model.purchase_price.toLocaleString()} ($${shortage.toLocaleString()} more needed).`
+        error: `Insufficient funds. Buyout price is $${effectivePrice.toLocaleString()} (after $${accruedEquity.toLocaleString()} rent-to-own credit), but you have $${pilot.balance.toLocaleString()} ($${shortage.toLocaleString()} more needed).`
       });
     }
 
-    // Deduct purchase price
-    pilot.balance -= model.purchase_price;
+    // Deduct effective buyout price
+    pilot.balance -= effectivePrice;
 
-    // Generate unique tail number if not supplied
-    const randomSuffix = Math.floor(100 + Math.random() * 899);
-    const resolvedTailNumber =
-      (tailNumber && tailNumber.trim().toUpperCase()) || `N${randomSuffix}AB`;
+    // Clear banked equity for this model since it is now owned
+    if (pilot.rent_to_own_equity) {
+      delete pilot.rent_to_own_equity[model.model_id];
+      pilot.markModified('rent_to_own_equity');
+    }
 
-    const newPlane = {
-      aircraft_id: model._id,
-      model_id: model.model_id,
-      name: model.name,
-      tail_number: resolvedTailNumber,
-      category: model.category,
-      is_rental: false,
-      rental_price_per_flight: 0,
-      rental_flights_paid: 0,
-      is_loaner: false,
-      purchased_at: new Date(),
-      flight_hours: 0
-    };
+    // Check if the pilot already has a rental of this model in their fleet
+    const existingRentalIndex = (pilot.fleet || []).findIndex(
+      (p) => p.model_id === model.model_id && p.is_rental
+    );
 
-    pilot.fleet.push(newPlane);
+    let resolvedPlane;
+    if (existingRentalIndex !== -1) {
+      // Convert existing rental directly into an owned aircraft!
+      const rentalPlane = pilot.fleet[existingRentalIndex];
+      rentalPlane.is_rental = false;
+      rentalPlane.name = model.name;
+      rentalPlane.rental_price_per_flight = 0;
+      rentalPlane.rental_flights_paid = 0;
+      rentalPlane.accumulated_equity = 0;
+      rentalPlane.purchased_at = new Date();
+      if (tailNumber && tailNumber.trim()) {
+        rentalPlane.tail_number = tailNumber.trim().toUpperCase();
+      }
+      resolvedPlane = rentalPlane;
+    } else {
+      // Create new owned aircraft
+      const randomSuffix = Math.floor(100 + Math.random() * 899);
+      const resolvedTailNumber =
+        (tailNumber && tailNumber.trim().toUpperCase()) || `N${randomSuffix}AB`;
+
+      resolvedPlane = {
+        aircraft_id: model._id,
+        model_id: model.model_id,
+        name: model.name,
+        tail_number: resolvedTailNumber,
+        category: model.category,
+        is_rental: false,
+        rental_price_per_flight: 0,
+        rental_flights_paid: 0,
+        accumulated_equity: 0,
+        is_loaner: false,
+        purchased_at: new Date(),
+        flight_hours: 0
+      };
+      pilot.fleet.push(resolvedPlane);
+    }
 
     // Automatically set as active aircraft
     pilot.active_aircraft = {
       model_id: model.model_id,
       name: model.name,
-      tail_number: resolvedTailNumber,
+      tail_number: resolvedPlane.tail_number,
       category: model.category,
       is_rental: false,
       rental_price_per_flight: 0,
       rental_flights_paid: 0,
+      accumulated_equity: 0,
+      flight_hours: resolvedPlane.flight_hours || 0,
       is_loaner: false,
       cruise_speed_kts: model.cruise_speed_kts,
       max_range_nm: model.max_range_nm,
@@ -146,11 +216,16 @@ export async function buyAircraft(req, res) {
       console.warn('[Fleet] Warning: Failed to regenerate jobs for airport after purchase:', jobErr.message);
     }
 
+    const message = accruedEquity > 0
+      ? `Successfully purchased ${model.name} (${resolvedPlane.tail_number}) for $${effectivePrice.toLocaleString()}! (Credited $${accruedEquity.toLocaleString()} in rent-to-own equity). Set as active aircraft.`
+      : `Successfully purchased ${model.name} (${resolvedPlane.tail_number})! Set as active flight aircraft.`;
+
     res.json({
-      message: `Successfully purchased ${model.name} (${resolvedTailNumber})! Set as active flight aircraft.`,
+      message,
       pilot,
       activeAircraft: pilot.active_aircraft,
-      purchasedPlane: newPlane
+      purchasedPlane: resolvedPlane,
+      rentToOwnEquity: pilot.rent_to_own_equity || {}
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -158,7 +233,7 @@ export async function buyAircraft(req, res) {
 }
 
 /**
- * Rent an aircraft for a flight
+ * Rent an aircraft for a flight (75% of rental fee builds Rent-to-Own purchase equity)
  */
 export async function rentAircraft(req, res) {
   try {
@@ -186,6 +261,15 @@ export async function rentAircraft(req, res) {
     // Deduct rental fee
     pilot.balance -= model.rental_price_per_flight;
 
+    // Credit rent-to-own equity (75%)
+    const equityCredit = Math.round(model.rental_price_per_flight * 0.75);
+    if (!pilot.rent_to_own_equity) {
+      pilot.rent_to_own_equity = {};
+    }
+    pilot.rent_to_own_equity[model.model_id] = (Number(pilot.rent_to_own_equity[model.model_id]) || 0) + equityCredit;
+    pilot.markModified('rent_to_own_equity');
+    const totalEquity = pilot.rent_to_own_equity[model.model_id];
+
     const rentalTail = `N${Math.floor(100 + Math.random() * 899)}RT`;
     const rentedPlane = {
       aircraft_id: model._id,
@@ -196,6 +280,7 @@ export async function rentAircraft(req, res) {
       is_rental: true,
       rental_price_per_flight: model.rental_price_per_flight,
       rental_flights_paid: 1, // Prepaid for flight 1
+      accumulated_equity: totalEquity,
       is_loaner: false,
       purchased_at: new Date(),
       flight_hours: 0
@@ -211,6 +296,7 @@ export async function rentAircraft(req, res) {
       is_rental: true,
       rental_price_per_flight: model.rental_price_per_flight,
       rental_flights_paid: 1, // Prepaid for flight 1
+      accumulated_equity: totalEquity,
       is_loaner: false,
       cruise_speed_kts: model.cruise_speed_kts,
       max_range_nm: model.max_range_nm,
@@ -232,10 +318,11 @@ export async function rentAircraft(req, res) {
     }
 
     res.json({
-      message: `Rented ${model.name} (${rentalTail}) for this flight. $${model.rental_price_per_flight.toLocaleString()} deducted.`,
+      message: `Rented ${model.name} (${rentalTail}) for this flight. $${model.rental_price_per_flight.toLocaleString()} deducted (+$${equityCredit.toLocaleString()} credited to rent-to-own equity!).`,
       pilot,
       activeAircraft: pilot.active_aircraft,
-      rentedPlane
+      rentedPlane,
+      rentToOwnEquity: pilot.rent_to_own_equity || {}
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -287,6 +374,10 @@ export async function selectActiveAircraft(req, res) {
       is_rental: Boolean(fleetPlane.is_rental),
       rental_price_per_flight: fleetPlane.is_rental ? (model.rental_price_per_flight || fleetPlane.rental_price_per_flight || 0) : 0,
       rental_flights_paid: fleetPlane.rental_flights_paid || 0,
+      accumulated_equity: fleetPlane.is_rental
+        ? ((pilot.rent_to_own_equity && Number(pilot.rent_to_own_equity[model.model_id])) || fleetPlane.accumulated_equity || 0)
+        : 0,
+      flight_hours: fleetPlane.flight_hours || 0,
       is_loaner: Boolean(fleetPlane.is_loaner),
       cruise_speed_kts: model.cruise_speed_kts,
       max_range_nm: model.max_range_nm,
