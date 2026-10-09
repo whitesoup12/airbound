@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { fetchAirportCharts, getStoredPasscode } from '../api/client.js';
 import WeatherBriefingCard from './WeatherBriefingCard.jsx';
+import InteractiveChartViewer from './InteractiveChartViewer.jsx';
 
 export function AirportChartsModal({
   isOpen,
@@ -32,7 +33,6 @@ export function AirportChartsModal({
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedChart, setSelectedChart] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [iframeLoading, setIframeLoading] = useState(true);
 
   // Sync active ICAO whenever incoming prop or modal open state changes
   useEffect(() => {
@@ -80,12 +80,6 @@ export function AirportChartsModal({
     };
   }, [isOpen, activeIcao]);
 
-  // When selectedChart changes, reset iframe loading indicator
-  useEffect(() => {
-    if (selectedChart) {
-      setIframeLoading(true);
-    }
-  }, [selectedChart]);
 
   // Build PDF URL with passcode parameter if configured
   const chartPdfUrl = useMemo(() => {
@@ -473,19 +467,12 @@ export function AirportChartsModal({
                   </div>
                 </div>
 
-                {/* PDF Viewer Container */}
-                <div className="flex-1 w-full h-full relative bg-slate-950">
-                  {iframeLoading && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/90 z-10 text-slate-400 font-mono text-xs space-y-2">
-                      <Loader2 className="w-6 h-6 animate-spin text-cyan-400" />
-                      <span>Rendering Chart PDF...</span>
-                    </div>
-                  )}
-                  <iframe
-                    src={chartPdfUrl}
-                    title={selectedChart.chart_name}
-                    onLoad={() => setIframeLoading(false)}
-                    className="w-full h-full border-none bg-slate-950"
+                {/* Interactive Chart Canvas Viewport */}
+                <div className="flex-1 w-full h-full relative bg-slate-950 overflow-hidden">
+                  <InteractiveChartViewer
+                    pdfUrl={chartPdfUrl}
+                    chartName={selectedChart.chart_name}
+                    fallbackUrl={selectedChart.url}
                   />
                 </div>
               </>
