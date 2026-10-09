@@ -70,6 +70,7 @@ export function TelemetryDashboard({
   onCompleteFlight,
   onOpenCharts
 }) {
+  const isDesktop = Boolean(connectionStatus?.isDesktop) || connectionStatus?.source === 'desktop' || (typeof navigator !== 'undefined' && /electron/i.test(navigator.userAgent));
   const phaseInfo = PHASE_CONFIG[phase] || PHASE_CONFIG.STANDBY;
 
   const activeAircraft = pilot?.active_aircraft || {
@@ -200,8 +201,28 @@ export function TelemetryDashboard({
         </div>
       </div>
 
-      {/* Desktop Connector Offline Helper Banner */}
-      {!connectionStatus?.connectorActive && !connectionStatus?.isMock && (
+      {/* Desktop Mode: Searching for MSFS Simulator Standby Banner */}
+      {isDesktop && !connectionStatus?.simConnected && !connectionStatus?.isMock && (
+        <div className="p-3 sm:p-3.5 rounded-xl bg-slate-900/90 border border-amber-900/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs font-mono text-slate-300 shadow-lg">
+          <div className="flex items-center space-x-2.5">
+            <Radio className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
+            <span>
+              <strong className="text-amber-300">Searching for MSFS 2024 / 2020:</strong> Launch Microsoft Flight Simulator and spawn at your airport to stream live telemetry automatically.
+            </span>
+          </div>
+          {onOpenConnectorStatus && (
+            <button
+              onClick={onOpenConnectorStatus}
+              className="px-3 py-1 rounded-lg bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-700/60 text-[11px] font-bold transition whitespace-nowrap shrink-0 cursor-pointer"
+            >
+              Connection Guide
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Cloud Mode: MSFS Desktop Connector Offline Helper Banner */}
+      {!isDesktop && !connectionStatus?.connectorActive && !connectionStatus?.isMock && (
         <div className="p-3 sm:p-3.5 rounded-xl bg-slate-900/90 border border-slate-800/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs font-mono text-slate-400 shadow-lg">
           <div className="flex items-center space-x-2.5">
             <Radio className="w-4 h-4 text-rose-500 shrink-0 animate-pulse" />

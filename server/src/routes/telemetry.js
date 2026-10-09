@@ -19,6 +19,7 @@ router.get('/', async (req, res) => {
     const stored = pilot?.active_telemetry || {};
 
     // Check if the local SimConnect bridge is actively connected in this process
+    const isDesktop = process.env.AIRBOUND_DESKTOP === 'true';
     const isLocalBridgeConnected = Boolean(simConnectBridge?.isConnected);
 
     // Check if a remote connector pushed telemetry within the last 7 seconds
@@ -28,7 +29,7 @@ router.get('/', async (req, res) => {
     const lastSeenAgoMs = lastSeenTime > 0 ? Math.max(0, now - lastSeenTime) : null;
     const lastSeenAgoSeconds = lastSeenAgoMs !== null ? Math.round(lastSeenAgoMs / 1000) : null;
 
-    const isConnectorActive = isLocalBridgeConnected || isRemoteConnectorActive;
+    const isConnectorActive = isDesktop || isLocalBridgeConnected || isRemoteConnectorActive;
     const isSimConnected = isLocalBridgeConnected
       ? Boolean(simConnectBridge.isConnected)
       : (isRemoteConnectorActive && (stored.simConnected !== undefined ? Boolean(stored.simConnected) : true));
@@ -59,9 +60,10 @@ router.get('/', async (req, res) => {
       connected: isConnected,
       connectorActive: isConnectorActive,
       simConnected: isSimConnected,
-      lastSeenAgoSeconds: isLocalBridgeConnected ? 0 : lastSeenAgoSeconds,
+      isDesktop,
+      lastSeenAgoSeconds: isDesktop ? 0 : (isLocalBridgeConnected ? 0 : lastSeenAgoSeconds),
       lastSeen: stored.lastSeen || null,
-      source: isLocalBridgeConnected ? 'local' : (isRemoteConnectorActive ? 'remote_connector' : 'none'),
+      source: isDesktop ? 'desktop' : (isLocalBridgeConnected ? 'local' : (isRemoteConnectorActive ? 'remote_connector' : 'none')),
       app,
       isMock,
       simAircraftTitle: telemetry?.simAircraftTitle || stored.telemetry?.simAircraftTitle || null,

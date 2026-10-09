@@ -30,12 +30,7 @@ const io = new SocketIOServer(server, {
 });
 
 io.on('connection', (socket) => {
-  // Send immediate state to newly connected client
-  socket.emit('connectionStatus', {
-    connected: simConnectBridge.isConnected,
-    isMock: simConnectBridge.isMockMode,
-    app: simConnectBridge.appName || 'MSFS 2024'
-  });
+  const isDesktop = process.env.AIRBOUND_DESKTOP === 'true';
 
   let initialOriginDist = null;
   let initialDestDist = null;
@@ -62,11 +57,12 @@ io.on('connection', (socket) => {
 
   socket.emit('connectionStatus', {
     connected: simConnectBridge.isConnected,
-    connectorActive: simConnectBridge.isConnected,
+    connectorActive: true,
     simConnected: simConnectBridge.isConnected,
+    isDesktop,
     isMock: simConnectBridge.isMockMode,
     app: simConnectBridge.appName || 'MSFS 2024',
-    source: 'local',
+    source: isDesktop ? 'desktop' : 'local',
     lastSeenAgoSeconds: 0,
     simAircraftTitle: simConnectBridge.telemetry?.simAircraftTitle || null
   });
@@ -87,11 +83,13 @@ io.on('connection', (socket) => {
 
 // Broadcast SimConnect connection changes
 simConnectBridge.on('connectionStatus', (status) => {
+  const isDesktop = process.env.AIRBOUND_DESKTOP === 'true';
   io.emit('connectionStatus', {
     ...status,
-    connectorActive: status.connected,
+    connectorActive: true,
     simConnected: status.connected,
-    source: 'local',
+    isDesktop,
+    source: isDesktop ? 'desktop' : 'local',
     lastSeenAgoSeconds: 0
   });
 });

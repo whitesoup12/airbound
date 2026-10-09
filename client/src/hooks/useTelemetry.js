@@ -16,13 +16,16 @@ export function useTelemetry(onFlightCompleted) {
     timestamp: Date.now()
   });
 
+  const isElectron = typeof navigator !== 'undefined' && /electron/i.test(navigator.userAgent);
+
   const [phase, setPhase] = useState('STANDBY');
   const [connectionStatus, setConnectionStatus] = useState({
     connected: false,
-    connectorActive: false,
+    connectorActive: isElectron,
     simConnected: false,
     lastSeenAgoSeconds: null,
-    source: 'none',
+    source: isElectron ? 'desktop' : 'none',
+    isDesktop: isElectron,
     isMock: false,
     app: null,
     simAircraftTitle: null,
@@ -64,26 +67,30 @@ export function useTelemetry(onFlightCompleted) {
 
         const cs = data.connectorStatus || {
           connected: Boolean(data.connected),
-          connectorActive: Boolean(data.connected),
+          connectorActive: Boolean(data.connected) || isElectron,
           simConnected: Boolean(data.connected),
           lastSeenAgoSeconds: null,
-          source: 'cloud',
+          source: isElectron ? 'desktop' : 'cloud',
           isMock: Boolean(data.isMock),
           app: data.app || null,
           simAircraftTitle: data.telemetry?.simAircraftTitle || null,
-          connectorVersion: '1.2.0'
+          connectorVersion: '1.2.0',
+          isDesktop: isElectron
         };
+
+        const resolvedIsDesktop = cs.isDesktop !== undefined ? Boolean(cs.isDesktop) : isElectron;
 
         setConnectionStatus({
           connected: Boolean(data.connected),
-          connectorActive: Boolean(cs.connectorActive),
+          connectorActive: Boolean(cs.connectorActive) || resolvedIsDesktop,
           simConnected: Boolean(cs.simConnected),
           lastSeenAgoSeconds: cs.lastSeenAgoSeconds,
-          source: cs.source || 'cloud',
+          source: cs.source || (resolvedIsDesktop ? 'desktop' : 'cloud'),
           isMock: Boolean(data.isMock),
           app: data.app || cs.app || null,
           simAircraftTitle: data.telemetry?.simAircraftTitle || cs.simAircraftTitle || null,
-          connectorVersion: cs.connectorVersion || '1.2.0'
+          connectorVersion: cs.connectorVersion || '1.2.0',
+          isDesktop: resolvedIsDesktop
         });
 
         if (data.telemetry) {
@@ -158,13 +165,15 @@ export function useTelemetry(onFlightCompleted) {
       });
 
       socket.on('connectionStatus', (status) => {
+        const resolvedIsDesktop = status?.isDesktop !== undefined ? Boolean(status.isDesktop) : isElectron;
         setConnectionStatus((prev) => ({
           ...prev,
           ...status,
           connected: Boolean(status?.connected),
-          connectorActive: status?.connectorActive !== undefined ? Boolean(status.connectorActive) : Boolean(status?.connected),
+          connectorActive: status?.connectorActive !== undefined ? Boolean(status.connectorActive) : (resolvedIsDesktop || Boolean(status?.connected)),
           simConnected: status?.simConnected !== undefined ? Boolean(status.simConnected) : Boolean(status?.connected),
-          source: status?.source || 'local',
+          isDesktop: resolvedIsDesktop,
+          source: status?.source || (resolvedIsDesktop ? 'desktop' : 'local'),
           lastSeenAgoSeconds: 0
         }));
       });

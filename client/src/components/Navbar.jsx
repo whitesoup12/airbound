@@ -33,8 +33,9 @@ export function Navbar({
   onOpenConnectorStatus,
   onOpenCharts
 }) {
+  const isDesktop = Boolean(connectionStatus?.isDesktop) || connectionStatus?.source === 'desktop' || (typeof navigator !== 'undefined' && /electron/i.test(navigator.userAgent));
   const isMock = connectionStatus?.isMock;
-  const connectorActive = connectionStatus?.connectorActive;
+  const connectorActive = isDesktop || connectionStatus?.connectorActive;
   const simConnected = connectionStatus?.simConnected;
   const appName = connectionStatus?.app || 'MSFS 2024';
   const lastSeenAgoSeconds = connectionStatus?.lastSeenAgoSeconds;
@@ -167,8 +168,10 @@ export function Navbar({
             let dotPing = 'bg-rose-500';
             let dotColor = 'bg-rose-500';
             let radioClass = 'text-rose-500';
-            let label = 'CONNECTOR OFFLINE';
-            let tooltip = 'MSFS desktop connector is offline. Click to view quick connection guide.';
+            let label = isDesktop ? 'SEARCHING FOR MSFS' : 'CONNECTOR OFFLINE';
+            let tooltip = isDesktop
+              ? 'Built-in MSFS connector is active. Launch Microsoft Flight Simulator to connect automatically.'
+              : 'MSFS desktop connector is offline. Click to view quick connection guide.';
 
             if (isMock) {
               pillClass = 'bg-purple-950/70 hover:bg-purple-900/80 border-purple-700/60 text-purple-300';
@@ -177,20 +180,22 @@ export function Navbar({
               radioClass = 'text-purple-400 animate-pulse';
               label = 'MOCK SIM';
               tooltip = 'Synthetic mock flight telemetry active. Click for details.';
-            } else if (connectorActive && simConnected) {
+            } else if (simConnected) {
               pillClass = 'bg-emerald-950/70 hover:bg-emerald-900/80 border-emerald-600/70 text-emerald-300 shadow-sm shadow-emerald-950/50';
               dotPing = 'bg-emerald-400';
               dotColor = 'bg-emerald-400';
               radioClass = 'text-emerald-400 animate-pulse';
-              label = appName || 'CONNECTOR LINKED';
-              tooltip = `Connector & MSFS SimConnect linked (${lastSeenAgoSeconds !== null ? `${lastSeenAgoSeconds}s ago` : 'Live'}). Click for details.`;
-            } else if (connectorActive && !simConnected) {
+              label = appName || 'SIMULATOR LINKED';
+              tooltip = `SimConnect linked to ${appName || 'MSFS 2024'} (${lastSeenAgoSeconds !== null ? `${lastSeenAgoSeconds}s ago` : 'Live'}). Click for details.`;
+            } else if (connectorActive || isDesktop) {
               pillClass = 'bg-amber-950/70 hover:bg-amber-900/80 border-amber-600/70 text-amber-300 shadow-sm shadow-amber-950/50';
               dotPing = 'bg-amber-400';
               dotColor = 'bg-amber-400';
               radioClass = 'text-amber-400 animate-pulse';
-              label = 'WAITING FOR SIM';
-              tooltip = 'Connector active on PC, waiting for MSFS to launch or load flight. Click for details.';
+              label = isDesktop ? 'SEARCHING FOR MSFS' : 'WAITING FOR SIM';
+              tooltip = isDesktop
+                ? 'Built-in MSFS connector is active. Launch Microsoft Flight Simulator to connect automatically.'
+                : 'Connector active on PC, waiting for MSFS to launch or load flight. Click for details.';
             }
 
             return (
@@ -201,7 +206,7 @@ export function Navbar({
                 title={tooltip}
               >
                 <span className="relative flex h-2 w-2 shrink-0">
-                  {connectorActive && (
+                  {(connectorActive || isDesktop) && (
                     <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${dotPing}`}></span>
                   )}
                   <span className={`relative inline-flex rounded-full h-2 w-2 ${dotColor}`}></span>

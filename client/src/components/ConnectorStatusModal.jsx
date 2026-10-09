@@ -19,6 +19,8 @@ export function ConnectorStatusModal({ isOpen, onClose, connectionStatus, onRefr
 
   if (!isOpen) return null;
 
+  const isDesktop = Boolean(connectionStatus?.isDesktop) || connectionStatus?.source === 'desktop' || (typeof navigator !== 'undefined' && /electron/i.test(navigator.userAgent));
+
   const {
     connectorActive = false,
     simConnected = false,
@@ -44,20 +46,22 @@ export function ConnectorStatusModal({ isOpen, onClose, connectionStatus, onRefr
         summary: 'Synthetic simulated telemetry stream is currently running.'
       };
     }
-    if (connectorActive && simConnected) {
+    if (simConnected) {
       return {
-        badge: 'CONNECTOR & SIMULATOR LINKED',
+        badge: isDesktop ? 'SIMULATOR LINKED' : 'CONNECTOR & SIMULATOR LINKED',
         color: 'text-emerald-400 bg-emerald-950/70 border-emerald-700/60',
         dot: 'bg-emerald-400',
-        summary: `Live SimConnect telemetry streaming from ${app || 'MSFS 2024'} at 1 Hz.`
+        summary: `Live SimConnect telemetry streaming directly from ${app || 'MSFS 2024'}.`
       };
     }
-    if (connectorActive && !simConnected) {
+    if (isDesktop || connectorActive) {
       return {
-        badge: 'CONNECTOR ONLINE • WAITING FOR MSFS',
+        badge: isDesktop ? 'SEARCHING FOR SIMULATOR' : 'CONNECTOR ONLINE • WAITING FOR MSFS',
         color: 'text-amber-400 bg-amber-950/70 border-amber-700/60',
         dot: 'bg-amber-400',
-        summary: 'Desktop connector is heartbeating to Airbound, but MSFS is not running or SimConnect has not yet initialized.'
+        summary: isDesktop
+          ? 'Airbound built-in connector is active and searching for MSFS 2024 / 2020. Launch the simulator to connect.'
+          : 'Desktop connector is heartbeating to Airbound, but MSFS is not running or SimConnect has not yet initialized.'
       };
     }
     return {
@@ -119,14 +123,14 @@ export function ConnectorStatusModal({ isOpen, onClose, connectionStatus, onRefr
 
           {/* Architecture Status Diagram */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-            {/* Box 1: Desktop Connector */}
+            {/* Box 1: Desktop / Built-in Connector */}
             <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1.5">
               <div className="flex items-center justify-between text-slate-400">
                 <span className="flex items-center space-x-1.5">
                   <Laptop className="w-3.5 h-3.5 text-cyan-400" />
-                  <span className="font-bold">PC Connector</span>
+                  <span className="font-bold">{isDesktop ? 'Built-in Connector' : 'PC Connector'}</span>
                 </span>
-                {connectorActive ? (
+                {(isDesktop || connectorActive) ? (
                   <span className="text-emerald-400 flex items-center space-x-1 font-bold">
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>ONLINE</span>
@@ -139,7 +143,9 @@ export function ConnectorStatusModal({ isOpen, onClose, connectionStatus, onRefr
                 )}
               </div>
               <p className="text-[11px] text-slate-400">
-                {connectorActive
+                {isDesktop
+                  ? 'Embedded inside Airbound desktop app'
+                  : connectorActive
                   ? `Heartbeating to Airbound (${lastSeenAgoSeconds !== null ? `${lastSeenAgoSeconds}s ago` : 'Active'})`
                   : 'Run start-connector.bat on your flight sim PC'}
               </p>
@@ -157,7 +163,7 @@ export function ConnectorStatusModal({ isOpen, onClose, connectionStatus, onRefr
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>LINKED</span>
                   </span>
-                ) : connectorActive ? (
+                ) : (isDesktop || connectorActive) ? (
                   <span className="text-amber-400 flex items-center space-x-1 font-bold">
                     <AlertCircle className="w-3.5 h-3.5" />
                     <span>WAITING</span>
@@ -169,7 +175,7 @@ export function ConnectorStatusModal({ isOpen, onClose, connectionStatus, onRefr
               <p className="text-[11px] text-slate-400">
                 {simConnected
                   ? `${app || 'MSFS 2024'} active`
-                  : connectorActive
+                  : (isDesktop || connectorActive)
                   ? 'Waiting for simulator to launch'
                   : 'Requires running simulator'}
               </p>
@@ -191,46 +197,62 @@ export function ConnectorStatusModal({ isOpen, onClose, connectionStatus, onRefr
               <span>How to Link Your Simulator</span>
             </h4>
 
-            <ol className="text-xs text-slate-400 space-y-2 list-decimal list-inside bg-slate-950/50 p-3.5 rounded-xl border border-slate-800">
-              <li>
-                <strong className="text-slate-200">Start MSFS:</strong> Launch MSFS 2020 / 2024 and spawn at your departure airport.
-              </li>
-              <li>
-                <strong className="text-slate-200">Start Connector:</strong> Double-click{' '}
-                <code className="text-cyan-300 bg-slate-900 px-1 py-0.5 rounded border border-slate-800">
-                  connector/start-connector.bat
-                </code>{' '}
-                on your PC.
-              </li>
-              <li>
-                <strong className="text-slate-200">Telemetry Linked:</strong> Real-time altitude, airspeed, and GPS coordinates sync to the cloud automatically!
-              </li>
-            </ol>
+            {isDesktop ? (
+              <ol className="text-xs text-slate-400 space-y-2 list-decimal list-inside bg-slate-950/50 p-3.5 rounded-xl border border-slate-800">
+                <li>
+                  <strong className="text-slate-200">Connector Ready:</strong> The SimConnect bridge is already built into this desktop app and running automatically.
+                </li>
+                <li>
+                  <strong className="text-slate-200">Start MSFS:</strong> Launch Microsoft Flight Simulator (2020 or 2024) on your PC and spawn at any airport.
+                </li>
+                <li>
+                  <strong className="text-slate-200">Automatic Sync:</strong> Airbound connects directly via SimConnect in the background—no batch files or external scripts required!
+                </li>
+              </ol>
+            ) : (
+              <>
+                <ol className="text-xs text-slate-400 space-y-2 list-decimal list-inside bg-slate-950/50 p-3.5 rounded-xl border border-slate-800">
+                  <li>
+                    <strong className="text-slate-200">Start MSFS:</strong> Launch MSFS 2020 / 2024 and spawn at your departure airport.
+                  </li>
+                  <li>
+                    <strong className="text-slate-200">Start Connector:</strong> Double-click{' '}
+                    <code className="text-cyan-300 bg-slate-900 px-1 py-0.5 rounded border border-slate-800">
+                      connector/start-connector.bat
+                    </code>{' '}
+                    on your PC.
+                  </li>
+                  <li>
+                    <strong className="text-slate-200">Telemetry Linked:</strong> Real-time altitude, airspeed, and GPS coordinates sync to the cloud automatically!
+                  </li>
+                </ol>
 
-            {/* Quick Terminal Command */}
-            <div className="relative group">
-              <div className="p-2.5 rounded-lg bg-black/60 border border-slate-800 text-[11px] text-cyan-400 flex items-center justify-between">
-                <code>cd connector && npm start</code>
-                <button
-                  type="button"
-                  onClick={handleCopyCommand}
-                  className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] flex items-center space-x-1 transition"
-                  title="Copy command to clipboard"
-                >
-                  {copied ? (
-                    <>
-                      <Check className="w-3 h-3 text-emerald-400" />
-                      <span className="text-emerald-400">Copied</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3 h-3" />
-                      <span>Copy</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
+                {/* Quick Terminal Command */}
+                <div className="relative group">
+                  <div className="p-2.5 rounded-lg bg-black/60 border border-slate-800 text-[11px] text-cyan-400 flex items-center justify-between">
+                    <code>cd connector && npm start</code>
+                    <button
+                      type="button"
+                      onClick={handleCopyCommand}
+                      className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] flex items-center space-x-1 transition"
+                      title="Copy command to clipboard"
+                    >
+                      {copied ? (
+                        <>
+                          <Check className="w-3 h-3 text-emerald-400" />
+                          <span className="text-emerald-400">Copied</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3" />
+                          <span>Copy</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
