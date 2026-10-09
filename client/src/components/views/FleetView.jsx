@@ -24,6 +24,7 @@ import {
   sellAircraft,
   returnAircraft
 } from '../../api/client.js';
+import DialogModal from '../common/DialogModal.jsx';
 
 export function FleetView({ pilot, onAircraftChanged }) {
   const [activeTab, setActiveTab] = useState('dealership'); // 'dealership' | 'hangar'
@@ -35,6 +36,16 @@ export function FleetView({ pilot, onAircraftChanged }) {
   const [feedback, setFeedback] = useState(null);
   const [sellModalPlane, setSellModalPlane] = useState(null);
   const [returnModalPlane, setReturnModalPlane] = useState(null);
+  const [dialogState, setDialogState] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    details: '',
+    type: 'confirm',
+    confirmText: 'Confirm',
+    cancelText: 'Cancel',
+    onConfirm: null
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -66,16 +77,7 @@ export function FleetView({ pilot, onAircraftChanged }) {
   const currentBalance = pilot?.balance !== undefined ? pilot.balance : (hangarData.balance || 0);
   const activeTail = hangarData.activeAircraft?.tail_number || pilot?.active_aircraft?.tail_number;
 
-  const handleBuy = async (plane) => {
-    if (currentBalance < plane.purchase_price) {
-      alert(`Insufficient funds. You need $${(plane.purchase_price - currentBalance).toLocaleString()} more.`);
-      return;
-    }
-
-    if (!confirm(`Confirm purchase of ${plane.name} for $${plane.purchase_price.toLocaleString()}?`)) {
-      return;
-    }
-
+  const executeBuy = async (plane) => {
     try {
       setActionLoading(`buy-${plane.model_id}`);
       const res = await buyAircraft(plane.model_id);
@@ -93,16 +95,36 @@ export function FleetView({ pilot, onAircraftChanged }) {
     }
   };
 
-  const handleRent = async (plane) => {
-    if (currentBalance < plane.rental_price_per_flight) {
-      alert(`Insufficient funds for rental fee of $${plane.rental_price_per_flight.toLocaleString()}.`);
+  const handleBuy = (plane) => {
+    if (currentBalance < plane.purchase_price) {
+      setDialogState({
+        isOpen: true,
+        title: 'Insufficient Funds',
+        type: 'warning',
+        message: `You need $${(plane.purchase_price - currentBalance).toLocaleString()} more to purchase ${plane.name}.`,
+        details: `Available Company Balance: $${currentBalance.toLocaleString()} • Purchase Price: $${plane.purchase_price.toLocaleString()}`,
+        confirmText: 'Understood',
+        cancelText: null
+      });
       return;
     }
 
-    if (!confirm(`Rent ${plane.name} for this flight? Fee of $${plane.rental_price_per_flight.toLocaleString()} will be deducted.`)) {
-      return;
-    }
+    setDialogState({
+      isOpen: true,
+      title: 'Confirm Aircraft Purchase',
+      type: 'confirm',
+      message: `Purchase ${plane.name} for $${plane.purchase_price.toLocaleString()}?`,
+      details: `This aircraft will be permanently added to your owned company fleet. Cruise Speed: ${plane.cruise_speed_kts} KTS • Range: ${plane.max_range_nm} NM`,
+      confirmText: 'Purchase Aircraft',
+      cancelText: 'Cancel',
+      onConfirm: () => {
+        setDialogState((prev) => ({ ...prev, isOpen: false }));
+        executeBuy(plane);
+      }
+    });
+  };
 
+  const executeRent = async (plane) => {
     try {
       setActionLoading(`rent-${plane.model_id}`);
       const res = await rentAircraft(plane.model_id);
@@ -118,6 +140,35 @@ export function FleetView({ pilot, onAircraftChanged }) {
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const handleRent = (plane) => {
+    if (currentBalance < plane.rental_price_per_flight) {
+      setDialogState({
+        isOpen: true,
+        title: 'Insufficient Rental Funds',
+        type: 'warning',
+        message: `You do not have enough company funds for the rental fee of $${plane.rental_price_per_flight.toLocaleString()}.`,
+        details: `Available Company Balance: $${currentBalance.toLocaleString()} • Required Rental Fee: $${plane.rental_price_per_flight.toLocaleString()}`,
+        confirmText: 'Understood',
+        cancelText: null
+      });
+      return;
+    }
+
+    setDialogState({
+      isOpen: true,
+      title: 'Confirm Aircraft Rental',
+      type: 'confirm',
+      message: `Rent ${plane.name} for your next flight? A fee of $${plane.rental_price_per_flight.toLocaleString()} will be deducted from your wallet balance.`,
+      details: `Cruise Speed: ${plane.cruise_speed_kts} KTS • Range: ${plane.max_range_nm} NM • Category: ${plane.category}`,
+      confirmText: 'Rent Aircraft',
+      cancelText: 'Cancel',
+      onConfirm: () => {
+        setDialogState((prev) => ({ ...prev, isOpen: false }));
+        executeRent(plane);
+      }
+    });
   };
 
   const handleSelectActive = async (fleetPlane) => {
@@ -777,6 +828,12 @@ export function FleetView({ pilot, onAircraftChanged }) {
           </div>
         </div>
       )}
+
+      {/* Styled Prompt/Alert Modal */}
+      <DialogModal
+        {...dialogState}
+        onClose={() => setDialogState((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

@@ -65,17 +65,19 @@ export function DispatchView({
             <MapPin className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center flex-wrap gap-2">
               <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400">
                 DISPATCH ORIGIN AIRPORT
               </span>
               {onOpenChangeBase && (
                 <button
+                  type="button"
                   onClick={onOpenChangeBase}
-                  className="text-[10px] text-cyan-400 hover:text-cyan-300 font-mono px-1.5 py-0.2 rounded bg-slate-800 border border-slate-700 hover:border-cyan-500 transition cursor-pointer"
-                  title="Change departure base"
+                  className="text-xs text-cyan-300 hover:text-white font-mono font-bold px-2.5 py-1 rounded-lg bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/50 hover:border-cyan-400 transition flex items-center space-x-1.5 shadow-sm shadow-cyan-950/50 cursor-pointer"
+                  title="Select a different departure airfield and refresh available contracts"
                 >
-                  Change Base
+                  <MapPin className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Change Departure Airport</span>
                 </button>
               )}
               {onOpenCharts && (

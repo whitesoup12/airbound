@@ -105,10 +105,10 @@ export function ChangeBaseModal({
             </div>
             <div>
               <h3 className="text-lg font-bold text-white font-mono tracking-wide">
-                CHANGE HOME BASE AIRPORT
+                SELECT DEPARTURE AIRPORT
               </h3>
               <p className="text-xs text-slate-400 font-mono">
-                Current Station: <strong className="text-cyan-400">{currentIcao}</strong> • 6,300+ airports available
+                Current Departure: <strong className="text-cyan-400">{currentIcao}</strong> • Select an airfield to reposition aircraft & dispatch jobs
               </p>
             </div>
           </div>

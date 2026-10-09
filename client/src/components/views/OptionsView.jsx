@@ -24,7 +24,9 @@ import {
   Globe,
   Download,
   Layers,
-  Loader2
+  Loader2,
+  AlertTriangle,
+  ShieldAlert
 } from 'lucide-react';
 import {
   fetchSettings,
@@ -36,13 +38,26 @@ import {
   triggerAirportSync,
   subscribeAirportSyncStream
 } from '../../api/client.js';
+import DialogModal from '../common/DialogModal.jsx';
 
 export function OptionsView({
   pilot,
   onPilotUpdated,
   onSwitchToLogbook,
-  onOpenOnboarding
+  onOpenOnboarding,
+  onResetPilot
 }) {
+  const [dialogState, setDialogState] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    details: '',
+    type: 'info',
+    confirmText: 'OK',
+    cancelText: null,
+    onConfirm: null
+  });
+
   // Database configuration state
   const [dbMode, setDbMode] = useState('local'); // 'local' | 'hosted'
   const [hostedUri, setHostedUri] = useState('');
@@ -131,7 +146,15 @@ export function OptionsView({
       subscribeToProgressStream();
       await triggerAirportSync();
     } catch (err) {
-      alert(`Could not start airport sync: ${err.message}`);
+      setDialogState({
+        isOpen: true,
+        title: 'Airport Synchronization Error',
+        type: 'warning',
+        message: 'Could not initialize airport download & database synchronization.',
+        details: err.message,
+        confirmText: 'Understood',
+        cancelText: null
+      });
     }
   };
 
@@ -782,7 +805,50 @@ export function OptionsView({
         </div>
       </div>
 
-      {/* SECTION 3: SYSTEM DIAGNOSTICS */}
+      {/* SECTION 3: DANGER ZONE • CAREER RESET */}
+      <div className="glass-panel rounded-2xl p-5 border border-rose-500/40 bg-rose-950/20 shadow-xl space-y-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center space-x-3.5">
+            <div className="w-10 h-10 rounded-xl bg-rose-950 border border-rose-500/50 flex items-center justify-center text-rose-400 shrink-0 shadow-md">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-rose-200 font-mono tracking-wider flex items-center gap-2">
+                DANGER ZONE • CAREER RESET
+              </h3>
+              <p className="text-xs text-slate-400 font-mono mt-0.5">
+                Reset your company funds, fleet, and base airport back to standard starting conditions.
+              </p>
+            </div>
+          </div>
+
+          {onResetPilot && (
+            <button
+              type="button"
+              onClick={onResetPilot}
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-mono font-bold text-xs transition flex items-center space-x-2 shadow-lg shadow-rose-950/60 cursor-pointer shrink-0 border border-rose-400/50"
+            >
+              <AlertTriangle className="w-4 h-4" />
+              <span>Reset Pilot Career</span>
+            </button>
+          )}
+        </div>
+
+        <div className="p-3 bg-slate-950/80 rounded-xl border border-rose-900/40 text-[11px] font-mono text-slate-400 space-y-1.5">
+          <p className="text-rose-300 font-semibold flex items-center gap-1.5">
+            <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
+            Career Reset Safety Information:
+          </p>
+          <ul className="list-disc list-inside space-y-0.5 pl-1 text-slate-400 text-[11px]">
+            <li>Resets company balance to standard starting funds ($15,000).</li>
+            <li>Resets active fleet back to starting Cessna 172 Skyhawk.</li>
+            <li>Relocates home base and generates fresh contracts for your selected airport.</li>
+            <li><strong className="text-emerald-400 font-bold">Your complete flight logbook, recorded flight hours, and career XP progression remain permanently preserved.</strong></li>
+          </ul>
+        </div>
+      </div>
+
+      {/* SECTION 4: SYSTEM DIAGNOSTICS */}
       <div className="glass-panel rounded-2xl p-5 border border-slate-800/80 bg-slate-900/40 text-xs text-slate-400 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <span className="font-bold text-slate-300">Airbound Desktop v1.0.0</span>
@@ -815,6 +881,11 @@ export function OptionsView({
           </span>
         </div>
       </div>
+
+      <DialogModal
+        {...dialogState}
+        onClose={() => setDialogState((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

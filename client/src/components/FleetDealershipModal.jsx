@@ -25,6 +25,7 @@ import {
   sellAircraft,
   returnAircraft
 } from '../api/client.js';
+import DialogModal from './common/DialogModal.jsx';
 
 export function FleetDealershipModal({ isOpen, onClose, pilot, onAircraftChanged }) {
   const [activeTab, setActiveTab] = useState('dealership'); // 'dealership' | 'hangar'
@@ -36,6 +37,16 @@ export function FleetDealershipModal({ isOpen, onClose, pilot, onAircraftChanged
   const [feedback, setFeedback] = useState(null);
   const [sellModalPlane, setSellModalPlane] = useState(null);
   const [returnModalPlane, setReturnModalPlane] = useState(null);
+  const [dialogState, setDialogState] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    details: '',
+    type: 'confirm',
+    confirmText: 'Confirm',
+    cancelText: 'Cancel',
+    onConfirm: null
+  });
 
   // Load catalog and hangar on open
   useEffect(() => {
@@ -72,25 +83,7 @@ export function FleetDealershipModal({ isOpen, onClose, pilot, onAircraftChanged
   const currentBalance = pilot?.balance !== undefined ? pilot.balance : (hangarData.balance || 0);
   const activeTail = hangarData.activeAircraft?.tail_number || pilot?.active_aircraft?.tail_number;
 
-  const handleBuy = async (plane) => {
-    const equity = plane.accumulated_equity || (hangarData.rentToOwnEquity && Number(hangarData.rentToOwnEquity[plane.model_id])) || 0;
-    const effectivePrice = Math.max(0, (plane.purchase_price || plane.catalog_purchase_price || 0) - equity);
-
-    if (currentBalance < effectivePrice) {
-      alert(`Insufficient funds. Buyout price is $${effectivePrice.toLocaleString()} (after $${equity.toLocaleString()} rent-to-own credit). You need $${(effectivePrice - currentBalance).toLocaleString()} more.`);
-      return;
-    }
-
-    const confirmMsg = equity > 0
-      ? effectivePrice === 0
-        ? `Claim permanent ownership of ${plane.name} for FREE? (100% paid off through rent-to-own!)`
-        : `Confirm buyout of ${plane.name} for $${effectivePrice.toLocaleString()}? ($${equity.toLocaleString()} rent-to-own credit applied!)`
-      : `Confirm purchase of ${plane.name} for $${plane.purchase_price.toLocaleString()}?`;
-
-    if (!confirm(confirmMsg)) {
-      return;
-    }
-
+  const executeBuy = async (plane) => {
     try {
       setActionLoading(`buy-${plane.tail_number || plane.model_id}`);
       const res = await buyAircraft(plane.model_id, plane.tail_number || '');
@@ -112,17 +105,45 @@ export function FleetDealershipModal({ isOpen, onClose, pilot, onAircraftChanged
     }
   };
 
-  const handleRent = async (plane) => {
-    if (currentBalance < plane.rental_price_per_flight) {
-      alert(`Insufficient funds for rental fee of $${plane.rental_price_per_flight.toLocaleString()}.`);
+  const handleBuy = (plane) => {
+    const equity = plane.accumulated_equity || (hangarData.rentToOwnEquity && Number(hangarData.rentToOwnEquity[plane.model_id])) || 0;
+    const effectivePrice = Math.max(0, (plane.purchase_price || plane.catalog_purchase_price || 0) - equity);
+
+    if (currentBalance < effectivePrice) {
+      setDialogState({
+        isOpen: true,
+        title: 'Insufficient Funds',
+        type: 'warning',
+        message: `Buyout price is $${effectivePrice.toLocaleString()} (after applying $${equity.toLocaleString()} Rent-to-Own equity credit). You need $${(effectivePrice - currentBalance).toLocaleString()} more.`,
+        details: `Available Company Balance: $${currentBalance.toLocaleString()} • Purchase Target: $${effectivePrice.toLocaleString()}`,
+        confirmText: 'Understood',
+        cancelText: null
+      });
       return;
     }
 
-    const equityCredit = Math.round(plane.rental_price_per_flight * 0.75);
-    if (!confirm(`Rent ${plane.name} for this flight? Fee of $${plane.rental_price_per_flight.toLocaleString()} will be deducted (+$${equityCredit.toLocaleString()} credited to Rent-to-Own purchase!).`)) {
-      return;
-    }
+    const confirmMsg = equity > 0
+      ? effectivePrice === 0
+        ? `Claim permanent ownership of ${plane.name} for FREE? (100% paid off through accumulated Rent-to-Own credits!)`
+        : `Confirm buyout of ${plane.name} for $${effectivePrice.toLocaleString()}? ($${equity.toLocaleString()} accumulated Rent-to-Own credit applied!)`
+      : `Confirm purchase of ${plane.name} for $${plane.purchase_price.toLocaleString()}?`;
 
+    setDialogState({
+      isOpen: true,
+      title: equity > 0 ? 'Confirm Rent-to-Own Buyout' : 'Confirm Aircraft Purchase',
+      type: 'confirm',
+      message: confirmMsg,
+      details: `This aircraft will be permanently registered to your company hangar. Cruise Speed: ${plane.cruise_speed_kts} KTS • Range: ${plane.max_range_nm} NM`,
+      confirmText: effectivePrice === 0 ? 'Claim Aircraft' : 'Confirm Purchase',
+      cancelText: 'Cancel',
+      onConfirm: () => {
+        setDialogState((prev) => ({ ...prev, isOpen: false }));
+        executeBuy(plane);
+      }
+    });
+  };
+
+  const executeRent = async (plane) => {
     try {
       setActionLoading(`rent-${plane.model_id}`);
       const res = await rentAircraft(plane.model_id);
@@ -142,6 +163,36 @@ export function FleetDealershipModal({ isOpen, onClose, pilot, onAircraftChanged
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const handleRent = (plane) => {
+    if (currentBalance < plane.rental_price_per_flight) {
+      setDialogState({
+        isOpen: true,
+        title: 'Insufficient Rental Funds',
+        type: 'warning',
+        message: `You do not have enough company funds for the rental fee of $${plane.rental_price_per_flight.toLocaleString()}.`,
+        details: `Available Company Balance: $${currentBalance.toLocaleString()} • Required Rental Fee: $${plane.rental_price_per_flight.toLocaleString()}`,
+        confirmText: 'Understood',
+        cancelText: null
+      });
+      return;
+    }
+
+    const equityCredit = Math.round(plane.rental_price_per_flight * 0.75);
+    setDialogState({
+      isOpen: true,
+      title: 'Confirm Aircraft Rental',
+      type: 'confirm',
+      message: `Rent ${plane.name} for your next flight? The rental fee of $${plane.rental_price_per_flight.toLocaleString()} will be charged to your wallet.`,
+      details: `Rent-to-Own Incentive: +$${equityCredit.toLocaleString()} (75%) will be credited toward permanently purchasing this aircraft! Cruise Speed: ${plane.cruise_speed_kts} KTS`,
+      confirmText: 'Rent Aircraft',
+      cancelText: 'Cancel',
+      onConfirm: () => {
+        setDialogState((prev) => ({ ...prev, isOpen: false }));
+        executeRent(plane);
+      }
+    });
   };
 
   const handleSelectActive = async (fleetPlane) => {
@@ -959,6 +1010,11 @@ export function FleetDealershipModal({ isOpen, onClose, pilot, onAircraftChanged
           </button>
         </div>
       </div>
+
+      <DialogModal
+        {...dialogState}
+        onClose={() => setDialogState((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

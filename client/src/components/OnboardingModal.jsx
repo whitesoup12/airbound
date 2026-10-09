@@ -33,10 +33,34 @@ import {
   subscribeAirportSyncStream,
   fetchAirports
 } from '../api/client.js';
+import DialogModal from './common/DialogModal.jsx';
 
 export function OnboardingModal({ isOpen, onClose, onComplete, pilot, allAirports = [] }) {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [dialogState, setDialogState] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    details: '',
+    type: 'info',
+    confirmText: 'OK',
+    cancelText: null,
+    onConfirm: null
+  });
+
+  const showDialog = (opts) => {
+    setDialogState({
+      isOpen: true,
+      title: opts.title || 'Notification',
+      message: opts.message || '',
+      details: opts.details || '',
+      type: opts.type || 'info',
+      confirmText: opts.confirmText || 'OK',
+      cancelText: opts.cancelText || null,
+      onConfirm: opts.onConfirm || null
+    });
+  };
 
   // Step 1: Database state
   const [dbType, setDbType] = useState('local'); // 'local' | 'hosted'
@@ -210,7 +234,11 @@ export function OnboardingModal({ isOpen, onClose, onComplete, pilot, allAirport
 
   const handleSaveStep1 = async () => {
     if (dbType === 'hosted' && !hostedUri) {
-      alert('Please enter your MongoDB connection URI or choose Local Database.');
+      showDialog({
+        title: 'Connection URI Required',
+        message: 'Please enter your MongoDB connection URI or choose Local Database.',
+        type: 'warning'
+      });
       return;
     }
 
@@ -224,7 +252,12 @@ export function OnboardingModal({ isOpen, onClose, onComplete, pilot, allAirport
       setDbSaved(true);
       setStep(2);
     } catch (err) {
-      alert(`Database setup error: ${err.message}`);
+      showDialog({
+        title: 'Database Setup Error',
+        message: 'Could not connect or save database configuration.',
+        details: err.message,
+        type: 'danger'
+      });
     } finally {
       setLoading(false);
     }
@@ -247,7 +280,12 @@ export function OnboardingModal({ isOpen, onClose, onComplete, pilot, allAirport
       startProgressSubscription();
       await triggerAirportSync();
     } catch (err) {
-      alert(`Could not start airport sync: ${err.message}`);
+      showDialog({
+        title: 'Airport Sync Error',
+        message: 'Could not start background airport synchronization.',
+        details: err.message,
+        type: 'danger'
+      });
     }
   };
 
@@ -866,6 +904,11 @@ export function OnboardingModal({ isOpen, onClose, onComplete, pilot, allAirport
           </div>
         </div>
       </div>
+
+      <DialogModal
+        {...dialogState}
+        onClose={() => setDialogState((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

@@ -13,6 +13,7 @@ import CockpitLockModal from './components/CockpitLockModal.jsx';
 import ConnectorStatusModal from './components/ConnectorStatusModal.jsx';
 import AirportChartsModal from './components/AirportChartsModal.jsx';
 import OnboardingModal from './components/OnboardingModal.jsx';
+import DialogModal from './components/common/DialogModal.jsx';
 import { useTelemetry } from './hooks/useTelemetry.js';
 import {
   fetchPilot,
@@ -63,6 +64,16 @@ export function App() {
   const [isLocked, setIsLocked] = useState(false);
   const [isAuthRequired, setIsAuthRequired] = useState(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  const [dialogState, setDialogState] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    details: '',
+    type: 'confirm',
+    confirmText: 'Confirm',
+    cancelText: 'Cancel',
+    onConfirm: null
+  });
 
   const handleOpenCharts = useCallback((icao, name = '') => {
     if (!icao) return;
@@ -213,39 +224,57 @@ export function App() {
       // Automatically switch user to the Flight Deck cockpit!
       handleTabChange('flight-deck');
     } catch (err) {
-      alert(err.message);
+      setDialogState({
+        isOpen: true,
+        title: 'Contract Acceptance Notice',
+        type: 'warning',
+        message: err.message,
+        confirmText: 'Understood',
+        cancelText: null
+      });
     }
   };
 
-  const handleCancelJob = async (jobId) => {
-    if (!confirm('Are you sure you want to cancel this contract?')) return;
+  const handleCancelJob = (jobId) => {
     const isFree = Boolean(activeJob?.is_free_flight);
-    const confirmPrompt = isFree
-      ? 'Are you sure you want to cancel this Free Flight session?'
-      : 'Are you sure you want to cancel this contract?';
-    if (!confirm(confirmPrompt)) return;
-    try {
-      const res = await cancelJob(jobId);
-      if (isFree) {
-        await cancelFreeFlight();
-      } else {
-        const res = await cancelJob(jobId);
-        if (res.pilot) setPilot(res.pilot);
+    setDialogState({
+      isOpen: true,
+      title: isFree ? 'Cancel Free Flight' : 'Cancel Flight Contract',
+      type: 'danger',
+      message: isFree
+        ? 'Are you sure you want to cancel this Free Flight session?'
+        : 'Are you sure you want to cancel this flight contract? Any penalty fee or forfeited deposit will be deducted.',
+      confirmText: isFree ? 'Cancel Flight' : 'Cancel Contract',
+      cancelText: 'Keep Flying',
+      onConfirm: async () => {
+        setDialogState((prev) => ({ ...prev, isOpen: false }));
+        try {
+          if (isFree) {
+            await cancelFreeFlight();
+          } else {
+            const res = await cancelJob(jobId);
+            if (res.pilot) setPilot(res.pilot);
+          }
+          setActiveJob(null);
+          // Refresh available jobs
+          const jobData = await fetchJobs(pilot?.current_icao);
+          const refreshed = jobData.jobs || [];
+          setJobs(refreshed);
+          if (refreshed.length > 0) {
+            setPreviewJob(refreshed[0]);
+          }
+        } catch (err) {
+          setDialogState({
+            isOpen: true,
+            title: 'Cancellation Error',
+            type: 'warning',
+            message: err.message,
+            confirmText: 'Understood',
+            cancelText: null
+          });
+        }
       }
-      setActiveJob(null);
-      if (res.pilot) {
-        setPilot(res.pilot);
-      }
-      // Refresh available jobs
-      const jobData = await fetchJobs(pilot?.current_icao);
-      const refreshed = jobData.jobs || [];
-      setJobs(refreshed);
-      if (refreshed.length > 0) {
-        setPreviewJob(refreshed[0]);
-      }
-    } catch (err) {
-      alert(err.message);
-    }
+    });
   };
 
   const handleStartFreeFlight = async ({ destination_icao, deduct_fees }) => {
@@ -287,7 +316,15 @@ export function App() {
       }
     } catch (err) {
       console.error('[App] Manual flight completion error:', err);
-      alert(`Could not settle flight: ${err.message}`);
+      setDialogState({
+        isOpen: true,
+        title: 'Flight Settlement Notice',
+        type: 'warning',
+        message: 'Could not settle active flight with server.',
+        details: err.message,
+        confirmText: 'Understood',
+        cancelText: null
+      });
     } finally {
       setLoading(false);
     }
@@ -304,7 +341,14 @@ export function App() {
         setPreviewJob(refreshed[0]);
       }
     } catch (err) {
-      alert(err.message);
+      setDialogState({
+        isOpen: true,
+        title: 'Contract Generation Notice',
+        type: 'warning',
+        message: err.message,
+        confirmText: 'Understood',
+        cancelText: null
+      });
     }
   };
 
@@ -350,8 +394,8 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0d14] text-slate-100 flex flex-col selection:bg-cyan-500 selection:text-black pb-8">
-      {/* Top Multi-Tab Navigation */}
+    <div className="min-h-screen bg-[#0a0d14] text-slate-100 flex flex-row selection:bg-cyan-500 selection:text-black">
+      {/* Left Multi-Tab Navigation Sidebar */}
       <Navbar
         currentTab={currentTab}
         onTabChange={handleTabChange}
@@ -361,13 +405,14 @@ export function App() {
         phase={phase}
         destDist={destDist}
         availableJobsCount={jobs.length}
-        onResetPilot={handleResetPilot}
-        onOpenChangeBase={() => setIsChangeBaseOpen(true)}
         onLockCockpit={handleLockCockpit}
         isAuthRequired={isAuthRequired}
         onOpenConnectorStatus={() => setIsConnectorStatusOpen(true)}
         onOpenCharts={handleOpenCharts}
       />
+
+      {/* Main Content & Scroll View */}
+      <div className="flex-1 min-w-0 flex flex-col min-h-screen overflow-x-hidden">
 
       {/* Completion Banner Alert with Financial Ledger & XP Breakdown */}
       {completionBanner && (() => {
@@ -578,9 +623,11 @@ export function App() {
             onPilotUpdated={(updatedPilot) => setPilot(updatedPilot)}
             onSwitchToLogbook={() => handleTabChange('logbook')}
             onOpenOnboarding={() => setIsOnboardingOpen(true)}
+            onResetPilot={handleResetPilot}
           />
         )}
       </main>
+      </div>
 
       {/* Change Base Airport Modal */}
       <ChangeBaseModal
@@ -631,6 +678,12 @@ export function App() {
         }}
         pilot={pilot}
         allAirports={allAirports}
+      />
+
+      {/* Reusable Styled Dialog Modal */}
+      <DialogModal
+        {...dialogState}
+        onClose={() => setDialogState((prev) => ({ ...prev, isOpen: false }))}
       />
     </div>
   );
