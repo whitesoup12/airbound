@@ -218,7 +218,15 @@ async function runTests() {
     assert(tiersFound.has('long'), 'Dispatch board must include Long flights');
     console.log(`✓ Job variety verified: Generated 9 jobs spanning ${Array.from(tiersFound).join(', ')} tiers.`);
 
-    console.log('\n✅ ALL SETTINGS, URI NORMALIZATION, ONBOARDING & JOB DIVERSITY TESTS PASSED!\n');
+    // 11. Test Airport Seeding Progress Status API
+    console.log('11. Testing Airport Seeding Progress API (GET /api/settings/seed-airports/status)...');
+    const syncStatusRes = await makeRequest('GET', '/api/settings/seed-airports/status');
+    assert.strictEqual(syncStatusRes.status, 200);
+    assert(typeof syncStatusRes.body.percent === 'number', 'Expected percent to be a number');
+    assert(typeof syncStatusRes.body.message === 'string', 'Expected message to be a string');
+    console.log(`✓ Airport sync progress endpoint verified: Status '${syncStatusRes.body.stage}', ${syncStatusRes.body.percent}%.`);
+
+    console.log('\n✅ ALL SETTINGS, URI NORMALIZATION, ONBOARDING, JOB DIVERSITY & AIRPORT SEEDING TESTS PASSED!\n');
   } finally {
     if (serverInstance) {
       await new Promise((resolve) => serverInstance.close(resolve));

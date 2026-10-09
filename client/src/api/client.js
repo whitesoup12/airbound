@@ -377,3 +377,39 @@ export async function completeOnboarding() {
   );
 }
 
+export async function fetchAirportSyncStatus() {
+  return safeFetchJson(`${API_BASE}/settings/seed-airports/status`, {}, 'Failed to get airport sync status');
+}
+
+export async function triggerAirportSync() {
+  return safeFetchJson(
+    `${API_BASE}/settings/seed-airports`,
+    { method: 'POST' },
+    'Failed to trigger airport sync'
+  );
+}
+
+export function subscribeAirportSyncStream(onProgress, onError) {
+  try {
+    const url = `${API_BASE}/settings/seed-airports/stream`;
+    const eventSource = new EventSource(url);
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        onProgress(data);
+      } catch (e) {
+        console.warn('Failed to parse airport sync event:', e);
+      }
+    };
+    eventSource.onerror = (err) => {
+      if (onError) onError(err);
+    };
+    return () => {
+      eventSource.close();
+    };
+  } catch (err) {
+    if (onError) onError(err);
+    return () => {};
+  }
+}
+

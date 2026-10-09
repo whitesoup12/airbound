@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Database,
   BookOpen,
@@ -20,14 +20,21 @@ import {
   Cpu,
   Clock,
   Compass,
-  Sparkles
+  Sparkles,
+  Globe,
+  Download,
+  Layers,
+  Loader2
 } from 'lucide-react';
 import {
   fetchSettings,
   testDatabaseConnection,
   updateDatabaseSetting,
   fetchMsfsLogbookStatus,
-  importMsfsLogbook
+  importMsfsLogbook,
+  fetchAirportSyncStatus,
+  triggerAirportSync,
+  subscribeAirportSyncStream
 } from '../../api/client.js';
 
 export function OptionsView({
@@ -58,11 +65,75 @@ export function OptionsView({
   const [importingLogbook, setImportingLogbook] = useState(false);
   const [importResult, setImportResult] = useState(null);
 
+  // Airport Database Sync state with Progress Bar
+  const [airportSyncStatus, setAirportSyncStatus] = useState({
+    active: false,
+    stage: 'idle',
+    percent: 0,
+    current: 0,
+    total: 0,
+    message: 'Ready to sync MSFS airports.',
+    error: null
+  });
+  const streamUnsubscribeRef = useRef(null);
+
   // Initial load
   useEffect(() => {
     loadSettings();
     scanLogbook();
+
+    fetchAirportSyncStatus()
+      .then((status) => {
+        if (status) {
+          setAirportSyncStatus(status);
+          if (status.active) {
+            subscribeToProgressStream();
+          }
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      if (streamUnsubscribeRef.current) {
+        streamUnsubscribeRef.current();
+        streamUnsubscribeRef.current = null;
+      }
+    };
   }, []);
+
+  const subscribeToProgressStream = () => {
+    if (streamUnsubscribeRef.current) streamUnsubscribeRef.current();
+
+    streamUnsubscribeRef.current = subscribeAirportSyncStream(
+      (status) => {
+        setAirportSyncStatus(status);
+        if (status.stage === 'completed') {
+          loadSettings();
+        }
+      },
+      () => {
+        // Fallback polling
+        const interval = setInterval(() => {
+          fetchAirportSyncStatus().then((s) => {
+            setAirportSyncStatus(s);
+            if (!s.active) {
+              clearInterval(interval);
+              loadSettings();
+            }
+          }).catch(() => clearInterval(interval));
+        }, 1000);
+      }
+    );
+  };
+
+  const handleStartAirportSync = async () => {
+    try {
+      subscribeToProgressStream();
+      await triggerAirportSync();
+    } catch (err) {
+      alert(`Could not start airport sync: ${err.message}`);
+    }
+  };
 
   const loadSettings = async () => {
     try {
@@ -73,6 +144,9 @@ export function OptionsView({
       }
       if (data?.liveStatus) {
         setLiveStatus(data.liveStatus);
+      }
+      if (data?.airportSync) {
+        setAirportSyncStatus(data.airportSync);
       }
     } catch (err) {
       console.error('Failed to load settings:', err);
@@ -596,6 +670,115 @@ export function OptionsView({
               </>
             )}
           </button>
+        </div>
+      </div>
+
+      {/* SECTION 3: WORLD AIRPORT DATABASE SEEDING */}
+      <div className="glass-panel rounded-2xl p-6 border border-slate-800/90 bg-slate-900/60 shadow-xl space-y-6">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div className="flex items-center space-x-2.5 text-cyan-300">
+            <Globe className="w-5 h-5" />
+            <h3 className="font-bold text-base text-white">World Airport Database</h3>
+          </div>
+          <span className="text-xs text-slate-400 font-mono">
+            Active in DB: <strong className="text-cyan-400">{(liveStatus?.totalAirports || 123).toLocaleString()} Airfields</strong>
+          </span>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div>
+              <h4 className="text-sm font-bold text-slate-200">
+                Sync ~49,000 Active MSFS Fixed-Wing Airfields
+              </h4>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Populates all major international, regional hubs, GA, and seaplane bases modeled in Microsoft Flight Simulator.
+              </p>
+            </div>
+            <span className="px-2.5 py-1 rounded bg-slate-950 border border-slate-800 text-[11px] font-mono text-cyan-400 shrink-0">
+              Clean MSFS Dataset
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-[10px] font-mono">
+            <div className="bg-slate-950/70 border border-slate-800 p-2 rounded-lg">
+              <div className="font-bold text-white text-xs">1,175</div>
+              <div className="text-slate-400 uppercase">Major Intl</div>
+            </div>
+            <div className="bg-slate-950/70 border border-slate-800 p-2 rounded-lg">
+              <div className="font-bold text-white text-xs">4,105</div>
+              <div className="text-slate-400 uppercase">Regional Hubs</div>
+            </div>
+            <div className="bg-slate-950/70 border border-slate-800 p-2 rounded-lg">
+              <div className="font-bold text-white text-xs">42,804</div>
+              <div className="text-slate-400 uppercase">General Aviation</div>
+            </div>
+            <div className="bg-slate-950/70 border border-slate-800 p-2 rounded-lg">
+              <div className="font-bold text-white text-xs">1,273</div>
+              <div className="text-slate-400 uppercase">Seaplane Bases</div>
+            </div>
+          </div>
+
+          {/* Progress Bar Container */}
+          <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between text-xs font-mono">
+              <span className="font-bold text-slate-300 flex items-center gap-2">
+                {airportSyncStatus.active && <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400" />}
+                {airportSyncStatus.stage === 'completed' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
+                <span>Seeding Progress</span>
+              </span>
+              <span className="text-cyan-400 font-bold">
+                {airportSyncStatus.percent}%
+              </span>
+            </div>
+
+            <div className="w-full bg-slate-900 rounded-full h-3 p-0.5 border border-slate-800 overflow-hidden relative">
+              <div
+                className={`h-full rounded-full transition-all duration-300 ease-out ${
+                  airportSyncStatus.stage === 'completed'
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-400 shadow-md shadow-emerald-500/50'
+                    : airportSyncStatus.stage === 'error'
+                    ? 'bg-rose-500'
+                    : 'bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 shadow-md shadow-cyan-500/50'
+                }`}
+                style={{ width: `${Math.max(airportSyncStatus.percent > 0 ? 3 : 0, airportSyncStatus.percent)}%` }}
+              />
+            </div>
+
+            <div className="text-xs font-mono text-slate-400 flex items-center justify-between">
+              <span>{airportSyncStatus.message}</span>
+              {airportSyncStatus.total > 0 && airportSyncStatus.stage === 'ingesting' && (
+                <span className="text-slate-500 text-[11px]">
+                  {airportSyncStatus.current.toLocaleString()} / {airportSyncStatus.total.toLocaleString()}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Action Trigger Button */}
+          <div className="pt-2 flex items-center justify-between border-t border-slate-800">
+            <span className="text-xs text-slate-500 font-mono">
+              Downloads runway lengths and builds 2dsphere index for instant dispatch matching.
+            </span>
+            <button
+              type="button"
+              onClick={handleStartAirportSync}
+              disabled={airportSyncStatus.active}
+              className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-slate-950 font-bold text-xs transition flex items-center space-x-2 shadow-lg shadow-cyan-950/50 cursor-pointer"
+            >
+              {airportSyncStatus.active ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+                  <span>Seeding in Progress...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4 text-slate-950" />
+                  <span>{airportSyncStatus.stage === 'completed' ? 'Re-Sync Airport Database' : 'Download & Seed 49,000 MSFS Airports'}</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 

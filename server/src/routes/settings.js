@@ -11,6 +11,11 @@ import {
   parseBinaryLogbook,
   importFlightsToPilot
 } from '../services/msfsLogbookParser.js';
+import {
+  getSyncStatus,
+  startAirportSync,
+  airportSyncEmitter
+} from '../services/airportSyncService.js';
 
 const router = express.Router();
 
@@ -32,6 +37,7 @@ router.get('/', async (req, res) => {
     const isConnected = mongoose.connection.readyState === 1;
     const dbHost = mongoose.connection.host || '127.0.0.1';
     const dbName = mongoose.connection.name || 'airbound';
+    const totalAirports = isConnected ? await Airport.countDocuments() : 0;
 
     const detectedLogbooks = detectLogbookFiles();
 
@@ -48,9 +54,11 @@ router.get('/', async (req, res) => {
         currentType: settings.database?.type || 'local',
         dbHost,
         dbName,
+        totalAirports,
         isEmbedded: dbHost.includes('127.0.0.1') || dbHost.includes('localhost')
       },
-      detectedLogbooks
+      detectedLogbooks,
+      airportSync: getSyncStatus()
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -272,6 +280,54 @@ router.post('/complete-onboarding', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+/**
+ * GET /api/settings/seed-airports/status
+ * Returns live progress status of the airport database seeding
+ */
+router.get('/seed-airports/status', (req, res) => {
+  res.json(getSyncStatus());
+});
+
+/**
+ * POST /api/settings/seed-airports
+ * Starts background sync of ~49,000 active MSFS airports
+ */
+router.post('/seed-airports', async (req, res) => {
+  try {
+    const status = await startAirportSync();
+    res.json({ success: true, status });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /api/settings/seed-airports/stream
+ * Server-Sent Events stream for real-time airport seeding progress bar updates
+ */
+router.get('/seed-airports/stream', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders?.();
+
+  // Send initial snapshot immediately
+  res.write(`data: ${JSON.stringify(getSyncStatus())}\n\n`);
+
+  const onProgress = (status) => {
+    try {
+      res.write(`data: ${JSON.stringify(status)}\n\n`);
+    } catch {}
+  };
+
+  airportSyncEmitter.on('progress', onProgress);
+
+  req.on('close', () => {
+    airportSyncEmitter.off('progress', onProgress);
+    res.end();
+  });
 });
 
 export default router;
