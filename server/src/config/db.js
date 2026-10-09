@@ -3,6 +3,8 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+import { getActiveDbUri } from '../services/settingsService.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -30,8 +32,8 @@ export async function connectTestDB() {
 /**
  * Connect to MongoDB database:
  * 1. Test Mode: Ephemeral RAM-only database
- * 2. Cloud Mode (MONGODB_URI provided): Connects to MongoDB Atlas / remote cluster
- * 3. Desktop Mode (Default, no URI): Automatically boots embedded persistent MongoDB on local disk (./data/db)
+ * 2. Cloud / Hosted Mode: Connects to specified external MongoDB cluster
+ * 3. Desktop Mode (Default): Boots embedded persistent MongoDB on local disk (./data/db)
  */
 export async function connectDB(customUri = null) {
   // Hard guard: When running in test environment, NEVER touch disk or Atlas
@@ -49,7 +51,8 @@ export async function connectDB(customUri = null) {
     return cachedPromise;
   }
 
-  const uri = customUri || process.env.MONGODB_URI;
+  // Explicit 'local' keyword forces local embedded database
+  const uri = customUri === 'local' ? null : (customUri || getActiveDbUri() || process.env.MONGODB_URI);
 
   if (uri) {
     try {

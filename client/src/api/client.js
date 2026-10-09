@@ -320,3 +320,52 @@ export async function completeFlightApi(payload = {}) {
     'Failed to settle flight'
   );
 }
+
+// Settings & Options API
+export async function fetchSettings() {
+  return safeFetchJson(`${API_BASE}/settings`, {}, 'Failed to fetch settings');
+}
+
+export async function testDatabaseConnection(uri) {
+  return safeFetchJson(
+    `${API_BASE}/settings/test-db`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uri })
+    },
+    'Failed to test database connection'
+  );
+}
+
+export async function updateDatabaseSetting({ type, uri, migrateLocalData = true }) {
+  return safeFetchJson(
+    `${API_BASE}/settings/database`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, uri, migrateLocalData })
+    },
+    'Failed to update database setting'
+  );
+}
+
+export async function fetchMsfsLogbookStatus(customPath = '') {
+  const url = customPath
+    ? `${API_BASE}/settings/msfs-logbook?path=${encodeURIComponent(customPath)}`
+    : `${API_BASE}/settings/msfs-logbook`;
+  return safeFetchJson(url, {}, 'Failed to scan MSFS logbook');
+}
+
+export async function importMsfsLogbook(customPath = '') {
+  return safeFetchJson(
+    `${API_BASE}/settings/msfs-logbook/import`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: customPath || null })
+    },
+    'Failed to import MSFS logbook'
+  );
+}
+

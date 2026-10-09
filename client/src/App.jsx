@@ -6,6 +6,7 @@ import FleetView from './components/views/FleetView.jsx';
 import CashFlowView from './components/views/CashFlowView.jsx';
 import CareerLogbookView from './components/views/CareerLogbookView.jsx';
 import CareerProgressView from './components/views/CareerProgressView.jsx';
+import OptionsView from './components/views/OptionsView.jsx';
 import ChangeBaseModal from './components/ChangeBaseModal.jsx';
 import ResetCareerModal from './components/ResetCareerModal.jsx';
 import CockpitLockModal from './components/CockpitLockModal.jsx';
@@ -33,9 +34,10 @@ import { formatLandingRating } from './utils/xpUtils.js';
 
 function getInitialTab() {
   const hash = window.location.hash.replace('#', '');
-  if (['flight-deck', 'dispatch', 'fleet', 'cash-flow', 'finances', 'progression', 'logbook', 'career'].includes(hash)) {
+  if (['flight-deck', 'dispatch', 'fleet', 'cash-flow', 'finances', 'progression', 'logbook', 'career', 'options', 'settings'].includes(hash)) {
     if (hash === 'career') return 'progression';
     if (hash === 'finances') return 'cash-flow';
+    if (hash === 'settings') return 'options';
     return hash;
   }
   return 'flight-deck';
@@ -99,9 +101,10 @@ export function App() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '');
-      if (['flight-deck', 'dispatch', 'fleet', 'cash-flow', 'finances', 'progression', 'logbook', 'career'].includes(hash)) {
+      if (['flight-deck', 'dispatch', 'fleet', 'cash-flow', 'finances', 'progression', 'logbook', 'career', 'options', 'settings'].includes(hash)) {
         if (hash === 'career') setCurrentTab('progression');
         else if (hash === 'finances') setCurrentTab('cash-flow');
+        else if (hash === 'settings') setCurrentTab('options');
         else setCurrentTab(hash);
       }
     };
@@ -554,6 +557,14 @@ export function App() {
             onReloadPilot={loadInitialData}
             onSwitchToProgression={() => handleTabChange('progression')}
             onOpenCharts={handleOpenCharts}
+          />
+        )}
+
+        {(currentTab === 'options' || currentTab === 'settings') && (
+          <OptionsView
+            pilot={pilot}
+            onPilotUpdated={(updatedPilot) => setPilot(updatedPilot)}
+            onSwitchToLogbook={() => handleTabChange('logbook')}
           />
         )}
       </main>

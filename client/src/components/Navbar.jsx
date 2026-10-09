@@ -13,7 +13,8 @@ import {
   ArrowRight,
   Award,
   Lock,
-  FileText
+  FileText,
+  Settings
 } from 'lucide-react';
 import { getPilotRank } from '../utils/xpUtils.js';
 
@@ -87,6 +88,12 @@ export function Navbar({
       icon: BookOpen,
       badge: `${pilot?.flight_log?.length || 0}`,
       badgeColor: 'bg-slate-800 text-slate-300 border-slate-700'
+    },
+    {
+      id: 'options',
+      label: 'OPTIONS',
+      icon: Settings,
+      isMatched: (t) => t === 'options' || t === 'settings'
     }
   ];
 

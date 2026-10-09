@@ -20,6 +20,7 @@ import telemetryRoutes from './routes/telemetry.js';
 import flightRoutes from './routes/flight.js';
 import weatherRoutes from './routes/weather.js';
 import authRoutes from './routes/auth.js';
+import settingsRoutes from './routes/settings.js';
 import requirePilotAuth from './middleware/auth.js';
 import { proxyChartPdf } from './controllers/airportController.js';
 
@@ -64,6 +65,7 @@ app.use('/api/free-flight', freeFlightRoutes);
 app.use('/api/telemetry', telemetryRoutes);
 app.use('/api/flight', flightRoutes);
 app.use('/api/weather', weatherRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Health Check Endpoint
 app.get('/api/health', (req, res) => {
