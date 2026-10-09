@@ -128,7 +128,7 @@ export function getDistanceTiers(category = 'single_prop') {
     case 'single_prop':
     default:
       return {
-        short: { min: 20, max: 90, label: 'Short (< 90 NM)' },
+        short: { min: 12, max: 90, label: 'Short (< 90 NM)' },
         medium: { min: 90, max: 220, label: 'Medium (90–220 NM)' },
         long: { min: 220, max: 450, label: 'Long (220+ NM)' }
       };
@@ -415,30 +415,69 @@ export async function generateJobsForAirport(originIcao, options = {}) {
       }
     }
 
-    // Fallback if sparse location has fewer than 3 total
-    if (candidatePairs.length < 3) {
-      let fallbacks = await Airport.find({
-        icao: { $nin: Array.from(seenIcaos), $regex: '^[A-Z0-9]{4}$' },
-        longest_runway_ft: { $gte: minRunwayFt }
-      }).limit(40);
+    // Ensure we fill up to targetCount (default 9 jobs) with a balanced tier distribution
+    const targetCount = count || 9;
+    if (candidatePairs.length < targetCount) {
+      let nearbyAirports = [];
+      try {
+        nearbyAirports = await Airport.find({
+          icao: { $nin: Array.from(seenIcaos), $regex: '^[A-Z0-9]{4}$' },
+          longest_runway_ft: { $gte: minRunwayFt },
+          location: {
+            $nearSphere: {
+              $geometry: { type: 'Point', coordinates: [originLon, originLat] }
+            }
+          }
+        }).limit(60);
+      } catch (geoErr) {
+        // Fallback for environments where 2dsphere index is indexing
+        nearbyAirports = await Airport.find({
+          icao: { $nin: Array.from(seenIcaos), $regex: '^[A-Z0-9]{4}$' },
+          longest_runway_ft: { $gte: minRunwayFt }
+        }).limit(60);
+      }
+
+      // Always sort ascending by distance to origin so nearest airports are preferred
+      nearbyAirports.sort((a, b) => {
+        const [aLon, aLat] = a.location.coordinates;
+        const [bLon, bLat] = b.location.coordinates;
+        return calculateDistanceNm(originLat, originLon, aLat, aLon) - calculateDistanceNm(originLat, originLon, bLat, bLon);
+      });
 
       if (direction && direction !== 'any' && direction !== 'all') {
-        const matchingFallbacks = fallbacks.filter((ap) => {
+        const matchingDir = nearbyAirports.filter((ap) => {
           const [destLon, destLat] = ap.location.coordinates;
           const b = calculateBearing(originLat, originLon, destLat, destLon);
           return matchesDirection(b, direction);
         });
-        if (matchingFallbacks.length > 0) {
-          fallbacks = matchingFallbacks;
+        if (matchingDir.length >= (targetCount - candidatePairs.length)) {
+          nearbyAirports = matchingDir;
         }
       }
 
-      for (const ap of fallbacks) {
-        if (candidatePairs.length >= 9) break;
+      let shortCount = candidatePairs.filter((p) => p.tier === 'short').length;
+      let medCount = candidatePairs.filter((p) => p.tier === 'medium').length;
+      let longCount = candidatePairs.filter((p) => p.tier === 'long').length;
+
+      for (const ap of nearbyAirports) {
+        if (candidatePairs.length >= targetCount) break;
         seenIcaos.add(ap.icao);
         const [destLon, destLat] = ap.location.coordinates;
         const dist = calculateDistanceNm(originLat, originLon, destLat, destLon);
-        candidatePairs.push({ airport: ap, tier: classifyJobTier(dist, aircraftCategory) });
+        let tier = classifyJobTier(dist, aircraftCategory);
+
+        // Intelligently balance tiers so one tier does not starve
+        if (tier === 'long' && shortCount < 3 && dist < (tiers.short.max * 1.5)) {
+          tier = 'short';
+        } else if (tier === 'long' && medCount < 3 && dist < (tiers.medium.max * 1.5)) {
+          tier = 'medium';
+        }
+
+        if (tier === 'short') shortCount++;
+        else if (tier === 'medium') medCount++;
+        else longCount++;
+
+        candidatePairs.push({ airport: ap, tier });
       }
     }
   }

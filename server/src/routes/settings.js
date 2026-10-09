@@ -1,6 +1,6 @@
 import express from 'express';
 import mongoose from 'mongoose';
-import { getSettings, saveSettings } from '../services/settingsService.js';
+import { getSettings, saveSettings, normalizeMongoUri } from '../services/settingsService.js';
 import { connectDB } from '../config/db.js';
 import { seedAirports } from '../seeds/seedAirports.js';
 import { seedAircraftCatalog } from '../seeds/seedAircraft.js';
@@ -62,10 +62,12 @@ router.get('/', async (req, res) => {
  * Tests connection to a remote MongoDB instance without modifying active app state
  */
 router.post('/test-db', async (req, res) => {
-  const { uri } = req.body;
+  let { uri } = req.body;
   if (!uri) {
     return res.status(400).json({ error: 'MongoDB connection URI is required.' });
   }
+
+  uri = normalizeMongoUri(uri);
 
   let testConnection = null;
   const startTime = Date.now();
@@ -76,7 +78,7 @@ router.post('/test-db', async (req, res) => {
     }).asPromise();
 
     const latencyMs = Date.now() - startTime;
-    const dbName = testConnection.name || 'default';
+    const dbName = testConnection.name || 'airbound';
     const host = testConnection.host;
 
     await testConnection.close();
@@ -104,14 +106,17 @@ router.post('/test-db', async (req, res) => {
  * Updates database mode (local vs hosted) and hot-swaps active connection
  */
 router.post('/database', async (req, res) => {
-  const { type, uri, migrateLocalData } = req.body;
+  let { type, uri, migrateLocalData } = req.body;
 
   if (type !== 'local' && type !== 'hosted') {
     return res.status(400).json({ error: 'Invalid database type. Must be "local" or "hosted".' });
   }
 
-  if (type === 'hosted' && !uri) {
-    return res.status(400).json({ error: 'Hosted MongoDB connection URI is required.' });
+  if (type === 'hosted') {
+    if (!uri) {
+      return res.status(400).json({ error: 'Hosted MongoDB connection URI is required.' });
+    }
+    uri = normalizeMongoUri(uri);
   }
 
   try {
@@ -143,6 +148,7 @@ router.post('/database', async (req, res) => {
     // Ensure essential seed data exists in the target database
     const airportCount = await Airport.countDocuments();
     if (airportCount === 0) {
+
       console.log('[Settings] New database detected. Seeding airports and aircraft catalog...');
       await seedAirports();
       await seedAircraftCatalog();
@@ -251,6 +257,19 @@ router.post('/msfs-logbook/import', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('[Settings] Import error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/settings/complete-onboarding
+ * Marks onboarding as completed in settings
+ */
+router.post('/complete-onboarding', async (req, res) => {
+  try {
+    const updated = saveSettings({ hasCompletedOnboarding: true });
+    res.json({ success: true, settings: updated });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });

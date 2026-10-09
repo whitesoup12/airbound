@@ -19,7 +19,8 @@ import {
   ShieldCheck,
   Cpu,
   Clock,
-  Compass
+  Compass,
+  Sparkles
 } from 'lucide-react';
 import {
   fetchSettings,
@@ -32,7 +33,8 @@ import {
 export function OptionsView({
   pilot,
   onPilotUpdated,
-  onSwitchToLogbook
+  onSwitchToLogbook,
+  onOpenOnboarding
 }) {
   // Database configuration state
   const [dbMode, setDbMode] = useState('local'); // 'local' | 'hosted'
@@ -171,14 +173,27 @@ export function OptionsView({
             </div>
           </div>
 
-          {liveStatus && (
-            <div className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-slate-300">
-              <span className={`w-2.5 h-2.5 rounded-full ${liveStatus.isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`}></span>
-              <span>
-                Active DB: <strong className="text-white">{liveStatus.currentType === 'hosted' ? 'Hosted MongoDB' : 'Local WiredTiger'}</strong>
-              </span>
-            </div>
-          )}
+          <div className="flex items-center space-x-3">
+            {onOpenOnboarding && (
+              <button
+                type="button"
+                onClick={onOpenOnboarding}
+                className="flex items-center space-x-2 px-3.5 py-1.5 rounded-xl bg-cyan-950/80 border border-cyan-500/40 hover:bg-cyan-900/80 text-xs font-mono font-bold text-cyan-300 transition shadow-sm"
+              >
+                <Compass className="w-4 h-4" />
+                <span>Run Setup Wizard</span>
+              </button>
+            )}
+
+            {liveStatus && (
+              <div className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-slate-300">
+                <span className={`w-2.5 h-2.5 rounded-full ${liveStatus.isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`}></span>
+                <span>
+                  Active DB: <strong className="text-white">{liveStatus.currentType === 'hosted' ? 'Hosted MongoDB' : 'Local WiredTiger'}</strong>
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -294,7 +309,19 @@ export function OptionsView({
                 </button>
               </div>
               <p className="text-[11px] text-slate-500 mt-1.5">
-                Standard format: <code className="text-slate-400">mongodb+srv://user:pass@host/dbname</code> or <code className="text-slate-400">mongodb://localhost:27017/airbound</code>
+                Standard format: <code className="text-slate-400">mongodb+srv://user:pass@host/airbound</code> or <code className="text-slate-400">mongodb://localhost:27017/airbound</code>
+              </p>
+            </div>
+
+            <div className="bg-cyan-950/30 border border-cyan-800/40 rounded-lg p-3 text-[11px] text-cyan-200 space-y-1">
+              <div className="font-bold flex items-center gap-1.5 text-cyan-300">
+                <Sparkles className="w-3.5 h-3.5" /> Default Database Name: airbound
+              </div>
+              <p className="text-slate-300">
+                If no database name is specified in your URI, Airbound automatically uses the database <strong className="text-white">airbound</strong> instead of MongoDB's default <strong className="text-white">test</strong>.
+              </p>
+              <p className="text-slate-400 text-[10px]">
+                Tip: You can use an existing MongoDB database from the web version; all your flight logs, aircraft fleet, and balance will be retained.
               </p>
             </div>
 

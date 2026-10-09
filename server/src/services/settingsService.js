@@ -11,7 +11,25 @@ function getSettingsFilePath() {
   return path.resolve(process.cwd(), 'data', 'settings.json');
 }
 
+/**
+ * Normalizes MongoDB connection URI so that if no database name is specified or '/test' is used,
+ * it defaults to 'airbound' database instead of MongoDB's default 'test' database.
+ */
+export function normalizeMongoUri(rawUri, defaultDb = 'airbound') {
+  if (!rawUri || typeof rawUri !== 'string') return rawUri;
+  const trimmed = rawUri.trim();
+  const match = trimmed.match(/^(mongodb(?:\+srv)?:\/\/[^/?]+)(\/[^?]*)?(\?.*)?$/i);
+  if (match) {
+    const [, base, pathPart, query = ''] = match;
+    if (!pathPart || pathPart === '/' || pathPart.toLowerCase() === '/test') {
+      return `${base}/${defaultDb}${query}`;
+    }
+  }
+  return trimmed;
+}
+
 const DEFAULT_SETTINGS = {
+  hasCompletedOnboarding: false,
   database: {
     type: 'local', // 'local' | 'hosted'
     hostedUri: ''
@@ -52,12 +70,17 @@ export function saveSettings(partial) {
     fs.mkdirSync(dir, { recursive: true });
 
     const current = getSettings();
+    const dbUpdate = { ...(partial.database || {}) };
+    if (dbUpdate.hostedUri) {
+      dbUpdate.hostedUri = normalizeMongoUri(dbUpdate.hostedUri);
+    }
+
     const updated = {
       ...current,
       ...partial,
       database: {
         ...current.database,
-        ...(partial.database || {})
+        ...dbUpdate
       },
       msfs: {
         ...current.msfs,
@@ -77,12 +100,13 @@ export function saveSettings(partial) {
 export function getActiveDbUri() {
   const settings = getSettings();
   if (settings.database?.type === 'hosted' && settings.database?.hostedUri) {
-    return settings.database.hostedUri;
+    return normalizeMongoUri(settings.database.hostedUri);
   }
-  return process.env.MONGODB_URI || null;
+  return process.env.MONGODB_URI ? normalizeMongoUri(process.env.MONGODB_URI) : null;
 }
 
 export default {
+  normalizeMongoUri,
   getSettings,
   saveSettings,
   getActiveDbUri

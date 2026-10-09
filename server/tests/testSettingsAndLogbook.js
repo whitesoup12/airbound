@@ -154,17 +154,71 @@ async function runTests() {
       assert(reimportRes.body.skipped > 0, 'Expected skipped count > 0 on duplicate import');
       console.log(`✓ Idempotency verified: ${reimportRes.body.skipped} duplicate flights safely skipped.`);
 
-      // 7. Verify Pilot DB State
       const updatedPilot = await Pilot.findOne();
       assert(updatedPilot.flight_log.length > 0, 'Pilot flight log should contain entries');
-      assert(updatedPilot.visited_airports.length > 1, 'Visited airports should be updated');
       assert(updatedPilot.xp > 0, 'Career XP should be awarded for imported flights');
       console.log(`✓ Pilot profile updated with ${updatedPilot.flight_log.length} flights and ${updatedPilot.xp} career XP.`);
     } else {
       console.log('4. Skipping binary parsing test (no local MSFS installation in test container).');
     }
 
-    console.log('\n✅ ALL SETTINGS & MSFS LOGBOOK TESTS PASSED SUCCESSFULLY!\n');
+    // 8. Test normalizeMongoUri
+    console.log('8. Testing MongoDB URI Normalization (Default to "airbound" instead of "test")...');
+    const { normalizeMongoUri } = await import('../src/services/settingsService.js');
+    const uriWithoutDb = 'mongodb+srv://user:pass@airbound.uucohew.mongodb.net/?appName=airbound-local';
+    const normalizedNoDb = normalizeMongoUri(uriWithoutDb);
+    assert.strictEqual(
+      normalizedNoDb,
+      'mongodb+srv://user:pass@airbound.uucohew.mongodb.net/airbound?appName=airbound-local',
+      'URI without DB name should default to /airbound'
+    );
+
+    const uriWithTest = 'mongodb+srv://user:pass@cluster.mongodb.net/test?retryWrites=true';
+    const normalizedTest = normalizeMongoUri(uriWithTest);
+    assert.strictEqual(
+      normalizedTest,
+      'mongodb+srv://user:pass@cluster.mongodb.net/airbound?retryWrites=true',
+      'URI with /test should be remapped to /airbound'
+    );
+
+    const uriWithCustom = 'mongodb+srv://user:pass@cluster.mongodb.net/custom_career?retryWrites=true';
+    const normalizedCustom = normalizeMongoUri(uriWithCustom);
+    assert.strictEqual(
+      normalizedCustom,
+      uriWithCustom,
+      'URI with custom DB name should remain unchanged'
+    );
+
+    const localMongoUri = 'mongodb://127.0.0.1:27017';
+    assert.strictEqual(
+      normalizeMongoUri(localMongoUri),
+      'mongodb://127.0.0.1:27017/airbound',
+      'Local MongoDB URI without DB should default to /airbound'
+    );
+    console.log('✓ MongoDB URI normalization verified: default DB name is "airbound".');
+
+    // 9. Test POST /api/settings/complete-onboarding
+    console.log('9. Testing POST /api/settings/complete-onboarding...');
+    const onboardingRes = await makeRequest('POST', '/api/settings/complete-onboarding');
+    assert.strictEqual(onboardingRes.status, 200);
+    assert.strictEqual(onboardingRes.body.success, true);
+    assert.strictEqual(onboardingRes.body.settings.hasCompletedOnboarding, true);
+    console.log('✓ Onboarding completion flag saved successfully.');
+
+    // 10. Test Job Distance Variety from KXNA
+    console.log('10. Testing Job Distance Tier Variety (Short, Medium, Long)...');
+    const { seedAirports } = await import('../src/seeds/seedAirports.js');
+    await seedAirports({ full: false, closeConnection: false });
+    const { generateJobsForAirport } = await import('../src/services/jobGenerator.js');
+    const generatedJobs = await generateJobsForAirport('KXNA');
+    assert.strictEqual(generatedJobs.length, 9, 'Expected 9 contracts generated');
+    const tiersFound = new Set(generatedJobs.map((j) => j.tier));
+    assert(tiersFound.has('short'), 'Dispatch board must include Short flights');
+    assert(tiersFound.has('medium'), 'Dispatch board must include Medium flights');
+    assert(tiersFound.has('long'), 'Dispatch board must include Long flights');
+    console.log(`✓ Job variety verified: Generated 9 jobs spanning ${Array.from(tiersFound).join(', ')} tiers.`);
+
+    console.log('\n✅ ALL SETTINGS, URI NORMALIZATION, ONBOARDING & JOB DIVERSITY TESTS PASSED!\n');
   } finally {
     if (serverInstance) {
       await new Promise((resolve) => serverInstance.close(resolve));

@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import { getActiveDbUri } from '../services/settingsService.js';
+import { getActiveDbUri, normalizeMongoUri } from '../services/settingsService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -52,7 +52,10 @@ export async function connectDB(customUri = null) {
   }
 
   // Explicit 'local' keyword forces local embedded database
-  const uri = customUri === 'local' ? null : (customUri || getActiveDbUri() || process.env.MONGODB_URI);
+  let uri = customUri === 'local' ? null : (customUri || getActiveDbUri() || process.env.MONGODB_URI);
+  if (uri) {
+    uri = normalizeMongoUri(uri);
+  }
 
   if (uri) {
     try {

@@ -369,3 +369,11 @@ export async function importMsfsLogbook(customPath = '') {
   );
 }
 
+export async function completeOnboarding() {
+  return safeFetchJson(
+    `${API_BASE}/settings/complete-onboarding`,
+    { method: 'POST' },
+    'Failed to complete onboarding'
+  );
+}
+

@@ -5,7 +5,13 @@
     "city": "Los Angeles",
     "country": "US",
     "longest_runway_ft": 12923,
-    "location": { "type": "Point", "coordinates": [-118.408074, 33.942536] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -118.408074,
+        33.942536
+      ]
+    }
   },
   {
     "icao": "KSFO",
@@ -13,7 +19,13 @@
     "city": "San Francisco",
     "country": "US",
     "longest_runway_ft": 11870,
-    "location": { "type": "Point", "coordinates": [-122.374889, 37.618972] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -122.374889,
+        37.618972
+      ]
+    }
   },
   {
     "icao": "KSAN",
@@ -21,7 +33,13 @@
     "city": "San Diego",
     "country": "US",
     "longest_runway_ft": 9400,
-    "location": { "type": "Point", "coordinates": [-117.189667, 32.733556] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -117.189667,
+        32.733556
+      ]
+    }
   },
   {
     "icao": "KLAS",
@@ -29,7 +47,13 @@
     "city": "Las Vegas",
     "country": "US",
     "longest_runway_ft": 14512,
-    "location": { "type": "Point", "coordinates": [-115.15225, 36.080056] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -115.15225,
+        36.080056
+      ]
+    }
   },
   {
     "icao": "KPHX",
@@ -37,7 +61,13 @@
     "city": "Phoenix",
     "country": "US",
     "longest_runway_ft": 11489,
-    "location": { "type": "Point", "coordinates": [-112.011583, 33.434278] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -112.011583,
+        33.434278
+      ]
+    }
   },
   {
     "icao": "KBUR",
@@ -45,7 +75,13 @@
     "city": "Burbank",
     "country": "US",
     "longest_runway_ft": 6886,
-    "location": { "type": "Point", "coordinates": [-118.358667, 34.200667] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -118.358667,
+        34.200667
+      ]
+    }
   },
   {
     "icao": "KSNA",
@@ -53,7 +89,13 @@
     "city": "Santa Ana",
     "country": "US",
     "longest_runway_ft": 5701,
-    "location": { "type": "Point", "coordinates": [-117.868222, 33.675667] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -117.868222,
+        33.675667
+      ]
+    }
   },
   {
     "icao": "KPSP",
@@ -61,7 +103,13 @@
     "city": "Palm Springs",
     "country": "US",
     "longest_runway_ft": 10000,
-    "location": { "type": "Point", "coordinates": [-116.506694, 33.829667] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -116.506694,
+        33.829667
+      ]
+    }
   },
   {
     "icao": "KSBA",
@@ -69,7 +117,13 @@
     "city": "Santa Barbara",
     "country": "US",
     "longest_runway_ft": 6052,
-    "location": { "type": "Point", "coordinates": [-119.840375, 34.426214] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -119.840375,
+        34.426214
+      ]
+    }
   },
   {
     "icao": "KONT",
@@ -77,7 +131,13 @@
     "city": "Ontario",
     "country": "US",
     "longest_runway_ft": 12197,
-    "location": { "type": "Point", "coordinates": [-117.601194, 34.056] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -117.601194,
+        34.056
+      ]
+    }
   },
   {
     "icao": "KSMO",
@@ -85,7 +145,13 @@
     "city": "Santa Monica",
     "country": "US",
     "longest_runway_ft": 3500,
-    "location": { "type": "Point", "coordinates": [-118.451306, 34.015833] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -118.451306,
+        34.015833
+      ]
+    }
   },
   {
     "icao": "KVNY",
@@ -93,7 +159,13 @@
     "city": "Van Nuys",
     "country": "US",
     "longest_runway_ft": 8001,
-    "location": { "type": "Point", "coordinates": [-118.490019, 34.209811] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -118.490019,
+        34.209811
+      ]
+    }
   },
   {
     "icao": "KCRQ",
@@ -101,7 +173,13 @@
     "city": "Carlsbad",
     "country": "US",
     "longest_runway_ft": 4897,
-    "location": { "type": "Point", "coordinates": [-117.279861, 33.128361] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -117.279861,
+        33.128361
+      ]
+    }
   },
   {
     "icao": "KAVX",
@@ -109,7 +187,13 @@
     "city": "Avalon",
     "country": "US",
     "longest_runway_ft": 3000,
-    "location": { "type": "Point", "coordinates": [-118.415833, 33.405] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -118.415833,
+        33.405
+      ]
+    }
   },
   {
     "icao": "KMRY",
@@ -117,7 +201,13 @@
     "city": "Monterey",
     "country": "US",
     "longest_runway_ft": 7611,
-    "location": { "type": "Point", "coordinates": [-121.842944, 36.586972] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -121.842944,
+        36.586972
+      ]
+    }
   },
   {
     "icao": "KDEN",
@@ -125,7 +215,13 @@
     "city": "Denver",
     "country": "US",
     "longest_runway_ft": 16000,
-    "location": { "type": "Point", "coordinates": [-104.673778, 39.861694] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -104.673778,
+        39.861694
+      ]
+    }
   },
   {
     "icao": "KASE",
@@ -133,7 +229,13 @@
     "city": "Aspen",
     "country": "US",
     "longest_runway_ft": 8006,
-    "location": { "type": "Point", "coordinates": [-106.86885, 39.223167] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -106.86885,
+        39.223167
+      ]
+    }
   },
   {
     "icao": "KSEA",
@@ -141,7 +243,13 @@
     "city": "Seattle",
     "country": "US",
     "longest_runway_ft": 11901,
-    "location": { "type": "Point", "coordinates": [-122.309306, 47.449] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -122.309306,
+        47.449
+      ]
+    }
   },
   {
     "icao": "KPDX",
@@ -149,7 +257,13 @@
     "city": "Portland",
     "country": "US",
     "longest_runway_ft": 11000,
-    "location": { "type": "Point", "coordinates": [-122.5975, 45.588722] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -122.5975,
+        45.588722
+      ]
+    }
   },
   {
     "icao": "KORD",
@@ -157,7 +271,13 @@
     "city": "Chicago",
     "country": "US",
     "longest_runway_ft": 13000,
-    "location": { "type": "Point", "coordinates": [-87.904842, 41.978603] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -87.904842,
+        41.978603
+      ]
+    }
   },
   {
     "icao": "KJFK",
@@ -165,7 +285,13 @@
     "city": "New York",
     "country": "US",
     "longest_runway_ft": 14511,
-    "location": { "type": "Point", "coordinates": [-73.778925, 40.639751] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -73.778925,
+        40.639751
+      ]
+    }
   },
   {
     "icao": "KEWR",
@@ -173,7 +299,13 @@
     "city": "Newark",
     "country": "US",
     "longest_runway_ft": 11000,
-    "location": { "type": "Point", "coordinates": [-74.168667, 40.6925] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -74.168667,
+        40.6925
+      ]
+    }
   },
   {
     "icao": "KMIA",
@@ -181,7 +313,13 @@
     "city": "Miami",
     "country": "US",
     "longest_runway_ft": 13016,
-    "location": { "type": "Point", "coordinates": [-80.290556, 25.79325] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -80.290556,
+        25.79325
+      ]
+    }
   },
   {
     "icao": "KEYW",
@@ -189,7 +327,13 @@
     "city": "Key West",
     "country": "US",
     "longest_runway_ft": 5076,
-    "location": { "type": "Point", "coordinates": [-81.759556, 24.555639] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -81.759556,
+        24.555639
+      ]
+    }
   },
   {
     "icao": "EGLL",
@@ -197,7 +341,13 @@
     "city": "London",
     "country": "GB",
     "longest_runway_ft": 12799,
-    "location": { "type": "Point", "coordinates": [-0.461389, 51.4775] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -0.461389,
+        51.4775
+      ]
+    }
   },
   {
     "icao": "EGKK",
@@ -205,7 +355,13 @@
     "city": "London",
     "country": "GB",
     "longest_runway_ft": 10879,
-    "location": { "type": "Point", "coordinates": [-0.190278, 51.148056] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -0.190278,
+        51.148056
+      ]
+    }
   },
   {
     "icao": "LFPG",
@@ -213,7 +369,13 @@
     "city": "Paris",
     "country": "FR",
     "longest_runway_ft": 13829,
-    "location": { "type": "Point", "coordinates": [2.55, 49.012779] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        2.55,
+        49.012779
+      ]
+    }
   },
   {
     "icao": "LFPO",
@@ -221,7 +383,13 @@
     "city": "Paris",
     "country": "FR",
     "longest_runway_ft": 11975,
-    "location": { "type": "Point", "coordinates": [2.379444, 48.723333] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        2.379444,
+        48.723333
+      ]
+    }
   },
   {
     "icao": "LFMN",
@@ -229,7 +397,13 @@
     "city": "Nice",
     "country": "FR",
     "longest_runway_ft": 9711,
-    "location": { "type": "Point", "coordinates": [7.2175, 43.658411] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        7.2175,
+        43.658411
+      ]
+    }
   },
   {
     "icao": "EHAM",
@@ -237,7 +411,13 @@
     "city": "Amsterdam",
     "country": "NL",
     "longest_runway_ft": 12467,
-    "location": { "type": "Point", "coordinates": [4.763889, 52.308613] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        4.763889,
+        52.308613
+      ]
+    }
   },
   {
     "icao": "EDDF",
@@ -245,7 +425,13 @@
     "city": "Frankfurt",
     "country": "DE",
     "longest_runway_ft": 13123,
-    "location": { "type": "Point", "coordinates": [8.570556, 50.033333] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        8.570556,
+        50.033333
+      ]
+    }
   },
   {
     "icao": "EDDM",
@@ -253,7 +439,13 @@
     "city": "Munich",
     "country": "DE",
     "longest_runway_ft": 13123,
-    "location": { "type": "Point", "coordinates": [11.786086, 48.353783] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        11.786086,
+        48.353783
+      ]
+    }
   },
   {
     "icao": "LSZH",
@@ -261,7 +453,13 @@
     "city": "Zurich",
     "country": "CH",
     "longest_runway_ft": 12139,
-    "location": { "type": "Point", "coordinates": [8.549167, 47.464722] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        8.549167,
+        47.464722
+      ]
+    }
   },
   {
     "icao": "LOWI",
@@ -269,7 +467,13 @@
     "city": "Innsbruck",
     "country": "AT",
     "longest_runway_ft": 6562,
-    "location": { "type": "Point", "coordinates": [11.343981, 47.260211] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        11.343981,
+        47.260211
+      ]
+    }
   },
   {
     "icao": "LEMD",
@@ -277,7 +481,13 @@
     "city": "Madrid",
     "country": "ES",
     "longest_runway_ft": 13776,
-    "location": { "type": "Point", "coordinates": [-3.56264, 40.471926] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -3.56264,
+        40.471926
+      ]
+    }
   },
   {
     "icao": "LEBL",
@@ -285,7 +495,13 @@
     "city": "Barcelona",
     "country": "ES",
     "longest_runway_ft": 10997,
-    "location": { "type": "Point", "coordinates": [2.078464, 41.297078] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        2.078464,
+        41.297078
+      ]
+    }
   },
   {
     "icao": "LIRF",
@@ -293,7 +509,13 @@
     "city": "Rome",
     "country": "IT",
     "longest_runway_ft": 12808,
-    "location": { "type": "Point", "coordinates": [12.238889, 41.800278] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        12.238889,
+        41.800278
+      ]
+    }
   },
   {
     "icao": "OMDB",
@@ -301,7 +523,13 @@
     "city": "Dubai",
     "country": "AE",
     "longest_runway_ft": 14764,
-    "location": { "type": "Point", "coordinates": [55.364444, 25.252778] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        55.364444,
+        25.252778
+      ]
+    }
   },
   {
     "icao": "RJTT",
@@ -309,7 +537,13 @@
     "city": "Tokyo",
     "country": "JP",
     "longest_runway_ft": 11024,
-    "location": { "type": "Point", "coordinates": [139.781113, 35.552258] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        139.781113,
+        35.552258
+      ]
+    }
   },
   {
     "icao": "RJAA",
@@ -317,7 +551,13 @@
     "city": "Tokyo",
     "country": "JP",
     "longest_runway_ft": 13123,
-    "location": { "type": "Point", "coordinates": [140.386389, 35.764722] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        140.386389,
+        35.764722
+      ]
+    }
   },
   {
     "icao": "VHHH",
@@ -325,7 +565,13 @@
     "city": "Hong Kong",
     "country": "HK",
     "longest_runway_ft": 12467,
-    "location": { "type": "Point", "coordinates": [113.914722, 22.308889] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        113.914722,
+        22.308889
+      ]
+    }
   },
   {
     "icao": "WSSS",
@@ -333,7 +579,13 @@
     "city": "Singapore",
     "country": "SG",
     "longest_runway_ft": 13123,
-    "location": { "type": "Point", "coordinates": [103.994444, 1.350189] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        103.994444,
+        1.350189
+      ]
+    }
   },
   {
     "icao": "YSSY",
@@ -341,7 +593,13 @@
     "city": "Sydney",
     "country": "AU",
     "longest_runway_ft": 12999,
-    "location": { "type": "Point", "coordinates": [151.177222, -33.946111] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        151.177222,
+        -33.946111
+      ]
+    }
   },
   {
     "icao": "YMML",
@@ -349,7 +607,13 @@
     "city": "Melbourne",
     "country": "AU",
     "longest_runway_ft": 11998,
-    "location": { "type": "Point", "coordinates": [144.843333, -37.673333] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        144.843333,
+        -37.673333
+      ]
+    }
   },
   {
     "icao": "NZAA",
@@ -357,7 +621,13 @@
     "city": "Auckland",
     "country": "NZ",
     "longest_runway_ft": 11926,
-    "location": { "type": "Point", "coordinates": [174.791667, -37.008056] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        174.791667,
+        -37.008056
+      ]
+    }
   },
   {
     "icao": "CYYZ",
@@ -365,7 +635,13 @@
     "city": "Toronto",
     "country": "CA",
     "longest_runway_ft": 11120,
-    "location": { "type": "Point", "coordinates": [-79.630556, 43.677222] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -79.630556,
+        43.677222
+      ]
+    }
   },
   {
     "icao": "CYVR",
@@ -373,7 +649,13 @@
     "city": "Vancouver",
     "country": "CA",
     "longest_runway_ft": 11500,
-    "location": { "type": "Point", "coordinates": [-123.184444, 49.193889] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -123.184444,
+        49.193889
+      ]
+    }
   },
   {
     "icao": "MMMX",
@@ -381,7 +663,13 @@
     "city": "Mexico City",
     "country": "MX",
     "longest_runway_ft": 13074,
-    "location": { "type": "Point", "coordinates": [-99.072098, 19.436302] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -99.072098,
+        19.436302
+      ]
+    }
   },
   {
     "icao": "KXNA",
@@ -389,7 +677,1048 @@
     "city": "Fayetteville/Springdale/Rogers",
     "country": "US",
     "longest_runway_ft": 8801,
-    "location": { "type": "Point", "coordinates": [-94.306811, 36.281861] }
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -94.306811,
+        36.281861
+      ]
+    }
+  },
+  {
+    "icao": "KDFW",
+    "name": "Dallas Fort Worth International Airport",
+    "city": "Dallas",
+    "country": "US",
+    "longest_runway_ft": 13401,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -97.037999,
+        32.896801
+      ]
+    }
+  },
+  {
+    "icao": "KDAL",
+    "name": "Dallas Love Field",
+    "city": "Dallas",
+    "country": "US",
+    "longest_runway_ft": 8800,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -96.851778,
+        32.847111
+      ]
+    }
+  },
+  {
+    "icao": "KIAH",
+    "name": "George Bush Intercontinental Airport",
+    "city": "Houston",
+    "country": "US",
+    "longest_runway_ft": 12001,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -95.341444,
+        29.984444
+      ]
+    }
+  },
+  {
+    "icao": "KHOU",
+    "name": "William P Hobby Airport",
+    "city": "Houston",
+    "country": "US",
+    "longest_runway_ft": 7602,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -95.278889,
+        29.645417
+      ]
+    }
+  },
+  {
+    "icao": "KAUS",
+    "name": "Austin-Bergstrom International Airport",
+    "city": "Austin",
+    "country": "US",
+    "longest_runway_ft": 12250,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -97.669889,
+        30.194528
+      ]
+    }
+  },
+  {
+    "icao": "KSAT",
+    "name": "San Antonio International Airport",
+    "city": "San Antonio",
+    "country": "US",
+    "longest_runway_ft": 8505,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -98.469778,
+        29.533694
+      ]
+    }
+  },
+  {
+    "icao": "KELP",
+    "name": "El Paso International Airport",
+    "city": "El Paso",
+    "country": "US",
+    "longest_runway_ft": 12010,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -106.377806,
+        31.807194
+      ]
+    }
+  },
+  {
+    "icao": "KLBB",
+    "name": "Lubbock Preston Smith International Airport",
+    "city": "Lubbock",
+    "country": "US",
+    "longest_runway_ft": 11500,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -101.822778,
+        33.663611
+      ]
+    }
+  },
+  {
+    "icao": "KLIT",
+    "name": "Bill and Hillary Clinton National Airport",
+    "city": "Little Rock",
+    "country": "US",
+    "longest_runway_ft": 8224,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -92.224306,
+        34.729444
+      ]
+    }
+  },
+  {
+    "icao": "KTUL",
+    "name": "Tulsa International Airport",
+    "city": "Tulsa",
+    "country": "US",
+    "longest_runway_ft": 9999,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -95.888111,
+        36.198389
+      ]
+    }
+  },
+  {
+    "icao": "KOKC",
+    "name": "Will Rogers World Airport",
+    "city": "Oklahoma City",
+    "country": "US",
+    "longest_runway_ft": 9802,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -97.600694,
+        35.393083
+      ]
+    }
+  },
+  {
+    "icao": "KSTL",
+    "name": "St Louis Lambert International Airport",
+    "city": "St Louis",
+    "country": "US",
+    "longest_runway_ft": 11020,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -90.370028,
+        38.748697
+      ]
+    }
+  },
+  {
+    "icao": "KMCI",
+    "name": "Kansas City International Airport",
+    "city": "Kansas City",
+    "country": "US",
+    "longest_runway_ft": 10801,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -94.713889,
+        39.297611
+      ]
+    }
+  },
+  {
+    "icao": "KICT",
+    "name": "Wichita Dwight D Eisenhower National Airport",
+    "city": "Wichita",
+    "country": "US",
+    "longest_runway_ft": 10301,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -97.433056,
+        37.649944
+      ]
+    }
+  },
+  {
+    "icao": "KSGF",
+    "name": "Springfield-Branson National Airport",
+    "city": "Springfield",
+    "country": "US",
+    "longest_runway_ft": 8000,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -93.388611,
+        37.245667
+      ]
+    }
+  },
+  {
+    "icao": "KFSM",
+    "name": "Fort Smith Regional Airport",
+    "city": "Fort Smith",
+    "country": "US",
+    "longest_runway_ft": 8017,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -94.367444,
+        35.336611
+      ]
+    }
+  },
+  {
+    "icao": "KMCO",
+    "name": "Orlando International Airport",
+    "city": "Orlando",
+    "country": "US",
+    "longest_runway_ft": 12005,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -81.308994,
+        28.429394
+      ]
+    }
+  },
+  {
+    "icao": "KTPA",
+    "name": "Tampa International Airport",
+    "city": "Tampa",
+    "country": "US",
+    "longest_runway_ft": 11002,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -82.53325,
+        27.975472
+      ]
+    }
+  },
+  {
+    "icao": "KFLL",
+    "name": "Fort Lauderdale Hollywood International Airport",
+    "city": "Fort Lauderdale",
+    "country": "US",
+    "longest_runway_ft": 9000,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -80.15275,
+        26.072556
+      ]
+    }
+  },
+  {
+    "icao": "KRSW",
+    "name": "Southwest Florida International Airport",
+    "city": "Fort Myers",
+    "country": "US",
+    "longest_runway_ft": 12000,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -81.755167,
+        26.536167
+      ]
+    }
+  },
+  {
+    "icao": "KJAX",
+    "name": "Jacksonville International Airport",
+    "city": "Jacksonville",
+    "country": "US",
+    "longest_runway_ft": 10000,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -81.687861,
+        30.494056
+      ]
+    }
+  },
+  {
+    "icao": "KPBI",
+    "name": "Palm Beach International Airport",
+    "city": "West Palm Beach",
+    "country": "US",
+    "longest_runway_ft": 10001,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -80.095583,
+        26.683167
+      ]
+    }
+  },
+  {
+    "icao": "KATL",
+    "name": "Hartsfield-Jackson Atlanta International Airport",
+    "city": "Atlanta",
+    "country": "US",
+    "longest_runway_ft": 12390,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -84.428056,
+        33.636667
+      ]
+    }
+  },
+  {
+    "icao": "KSAV",
+    "name": "Savannah Hilton Head International Airport",
+    "city": "Savannah",
+    "country": "US",
+    "longest_runway_ft": 9351,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -81.202111,
+        32.127583
+      ]
+    }
+  },
+  {
+    "icao": "KCHS",
+    "name": "Charleston International Airport",
+    "city": "Charleston",
+    "country": "US",
+    "longest_runway_ft": 9001,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -80.040528,
+        32.898639
+      ]
+    }
+  },
+  {
+    "icao": "KCLT",
+    "name": "Charlotte Douglas International Airport",
+    "city": "Charlotte",
+    "country": "US",
+    "longest_runway_ft": 10000,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -80.943139,
+        35.214
+      ]
+    }
+  },
+  {
+    "icao": "KRDU",
+    "name": "Raleigh-Durham International Airport",
+    "city": "Raleigh",
+    "country": "US",
+    "longest_runway_ft": 10000,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -78.787472,
+        35.877639
+      ]
+    }
+  },
+  {
+    "icao": "KBNA",
+    "name": "Nashville International Airport",
+    "city": "Nashville",
+    "country": "US",
+    "longest_runway_ft": 11030,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -86.678194,
+        36.124472
+      ]
+    }
+  },
+  {
+    "icao": "KMEM",
+    "name": "Memphis International Airport",
+    "city": "Memphis",
+    "country": "US",
+    "longest_runway_ft": 11120,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -89.976667,
+        35.042417
+      ]
+    }
+  },
+  {
+    "icao": "KBHM",
+    "name": "Birmingham-Shuttlesworth International Airport",
+    "city": "Birmingham",
+    "country": "US",
+    "longest_runway_ft": 12007,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -86.753556,
+        33.562944
+      ]
+    }
+  },
+  {
+    "icao": "KMSY",
+    "name": "Louis Armstrong New Orleans International Airport",
+    "city": "New Orleans",
+    "country": "US",
+    "longest_runway_ft": 10104,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -90.258028,
+        29.993389
+      ]
+    }
+  },
+  {
+    "icao": "KMDW",
+    "name": "Chicago Midway International Airport",
+    "city": "Chicago",
+    "country": "US",
+    "longest_runway_ft": 6522,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -87.752167,
+        41.785972
+      ]
+    }
+  },
+  {
+    "icao": "KMKE",
+    "name": "Milwaukee Mitchell International Airport",
+    "city": "Milwaukee",
+    "country": "US",
+    "longest_runway_ft": 9990,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -87.896583,
+        42.947222
+      ]
+    }
+  },
+  {
+    "icao": "KMSP",
+    "name": "Minneapolis-Saint Paul International Airport",
+    "city": "Minneapolis",
+    "country": "US",
+    "longest_runway_ft": 11006,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -93.221806,
+        44.881972
+      ]
+    }
+  },
+  {
+    "icao": "KDTW",
+    "name": "Detroit Metro Wayne County Airport",
+    "city": "Detroit",
+    "country": "US",
+    "longest_runway_ft": 12003,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -83.353389,
+        42.212444
+      ]
+    }
+  },
+  {
+    "icao": "KIND",
+    "name": "Indianapolis International Airport",
+    "city": "Indianapolis",
+    "country": "US",
+    "longest_runway_ft": 11200,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -86.294694,
+        39.717333
+      ]
+    }
+  },
+  {
+    "icao": "KCVG",
+    "name": "Cincinnati Northern Kentucky International Airport",
+    "city": "Cincinnati",
+    "country": "US",
+    "longest_runway_ft": 12000,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -84.667861,
+        39.048833
+      ]
+    }
+  },
+  {
+    "icao": "KCMH",
+    "name": "John Glenn Columbus International Airport",
+    "city": "Columbus",
+    "country": "US",
+    "longest_runway_ft": 10113,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -82.891889,
+        39.997972
+      ]
+    }
+  },
+  {
+    "icao": "KCLE",
+    "name": "Cleveland Hopkins International Airport",
+    "city": "Cleveland",
+    "country": "US",
+    "longest_runway_ft": 9956,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -81.849778,
+        41.411694
+      ]
+    }
+  },
+  {
+    "icao": "KGRR",
+    "name": "Gerald R Ford International Airport",
+    "city": "Grand Rapids",
+    "country": "US",
+    "longest_runway_ft": 10000,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -85.522806,
+        42.880806
+      ]
+    }
+  },
+  {
+    "icao": "KLGA",
+    "name": "LaGuardia Airport",
+    "city": "New York",
+    "country": "US",
+    "longest_runway_ft": 7003,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -73.872611,
+        40.77725
+      ]
+    }
+  },
+  {
+    "icao": "KBOS",
+    "name": "Boston Logan International Airport",
+    "city": "Boston",
+    "country": "US",
+    "longest_runway_ft": 10083,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -71.005167,
+        42.362972
+      ]
+    }
+  },
+  {
+    "icao": "KPHL",
+    "name": "Philadelphia International Airport",
+    "city": "Philadelphia",
+    "country": "US",
+    "longest_runway_ft": 12000,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -75.241139,
+        39.871889
+      ]
+    }
+  },
+  {
+    "icao": "KBWI",
+    "name": "Baltimore/Washington International Thurgood Marshall Airport",
+    "city": "Baltimore",
+    "country": "US",
+    "longest_runway_ft": 10502,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -76.668389,
+        39.175361
+      ]
+    }
+  },
+  {
+    "icao": "KDCA",
+    "name": "Ronald Reagan Washington National Airport",
+    "city": "Washington",
+    "country": "US",
+    "longest_runway_ft": 7169,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -77.037694,
+        38.852083
+      ]
+    }
+  },
+  {
+    "icao": "KIAD",
+    "name": "Washington Dulles International Airport",
+    "city": "Washington",
+    "country": "US",
+    "longest_runway_ft": 11500,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -77.455806,
+        38.944528
+      ]
+    }
+  },
+  {
+    "icao": "KPIT",
+    "name": "Pittsburgh International Airport",
+    "city": "Pittsburgh",
+    "country": "US",
+    "longest_runway_ft": 11500,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -80.232861,
+        40.491472
+      ]
+    }
+  },
+  {
+    "icao": "KBUF",
+    "name": "Buffalo Niagara International Airport",
+    "city": "Buffalo",
+    "country": "US",
+    "longest_runway_ft": 8829,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -78.732167,
+        42.940528
+      ]
+    }
+  },
+  {
+    "icao": "KBDL",
+    "name": "Bradley International Airport",
+    "city": "Hartford",
+    "country": "US",
+    "longest_runway_ft": 9510,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -72.683222,
+        41.938889
+      ]
+    }
+  },
+  {
+    "icao": "KPVD",
+    "name": "Rhode Island T F Green International Airport",
+    "city": "Providence",
+    "country": "US",
+    "longest_runway_ft": 8700,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -71.428222,
+        41.728083
+      ]
+    }
+  },
+  {
+    "icao": "KSLC",
+    "name": "Salt Lake City International Airport",
+    "city": "Salt Lake City",
+    "country": "US",
+    "longest_runway_ft": 12003,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -111.977772,
+        40.788389
+      ]
+    }
+  },
+  {
+    "icao": "KBOI",
+    "name": "Boise Airport",
+    "city": "Boise",
+    "country": "US",
+    "longest_runway_ft": 10000,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -116.222778,
+        43.564361
+      ]
+    }
+  },
+  {
+    "icao": "KRNO",
+    "name": "Reno/Tahoe International Airport",
+    "city": "Reno",
+    "country": "US",
+    "longest_runway_ft": 11002,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -119.768111,
+        39.499111
+      ]
+    }
+  },
+  {
+    "icao": "KABQ",
+    "name": "Albuquerque International Sunport",
+    "city": "Albuquerque",
+    "country": "US",
+    "longest_runway_ft": 13793,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -106.609194,
+        35.040194
+      ]
+    }
+  },
+  {
+    "icao": "KTUS",
+    "name": "Tucson International Airport",
+    "city": "Tucson",
+    "country": "US",
+    "longest_runway_ft": 10996,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -110.941028,
+        32.116083
+      ]
+    }
+  },
+  {
+    "icao": "KFLG",
+    "name": "Flagstaff Pulliam Airport",
+    "city": "Flagstaff",
+    "country": "US",
+    "longest_runway_ft": 8800,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -111.671222,
+        35.138472
+      ]
+    }
+  },
+  {
+    "icao": "KSEZ",
+    "name": "Sedona Airport",
+    "city": "Sedona",
+    "country": "US",
+    "longest_runway_ft": 5132,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -111.788694,
+        34.848556
+      ]
+    }
+  },
+  {
+    "icao": "KFAT",
+    "name": "Fresno Yosemite International Airport",
+    "city": "Fresno",
+    "country": "US",
+    "longest_runway_ft": 9539,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -119.718139,
+        36.776194
+      ]
+    }
+  },
+  {
+    "icao": "KSMF",
+    "name": "Sacramento International Airport",
+    "city": "Sacramento",
+    "country": "US",
+    "longest_runway_ft": 8605,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -121.590778,
+        38.695417
+      ]
+    }
+  },
+  {
+    "icao": "KSJC",
+    "name": "San Jose Mineta International Airport",
+    "city": "San Jose",
+    "country": "US",
+    "longest_runway_ft": 11000,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -121.929028,
+        37.362944
+      ]
+    }
+  },
+  {
+    "icao": "KOAK",
+    "name": "Oakland International Airport",
+    "city": "Oakland",
+    "country": "US",
+    "longest_runway_ft": 10520,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -122.220722,
+        37.721278
+      ]
+    }
+  },
+  {
+    "icao": "KSTS",
+    "name": "Charles M Schulz Sonoma County Airport",
+    "city": "Santa Rosa",
+    "country": "US",
+    "longest_runway_ft": 6000,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -122.812889,
+        38.508889
+      ]
+    }
+  },
+  {
+    "icao": "KTRK",
+    "name": "Truckee Tahoe Airport",
+    "city": "Truckee",
+    "country": "US",
+    "longest_runway_ft": 7000,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -120.139556,
+        39.320056
+      ]
+    }
+  },
+  {
+    "icao": "KTVL",
+    "name": "Lake Tahoe Airport",
+    "city": "South Lake Tahoe",
+    "country": "US",
+    "longest_runway_ft": 8544,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -119.995389,
+        38.894444
+      ]
+    }
+  },
+  {
+    "icao": "KGEG",
+    "name": "Spokane International Airport",
+    "city": "Spokane",
+    "country": "US",
+    "longest_runway_ft": 11002,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -117.533833,
+        47.619861
+      ]
+    }
+  },
+  {
+    "icao": "KBZN",
+    "name": "Bozeman Yellowstone International Airport",
+    "city": "Bozeman",
+    "country": "US",
+    "longest_runway_ft": 9003,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -111.153,
+        45.776889
+      ]
+    }
+  },
+  {
+    "icao": "KJAC",
+    "name": "Jackson Hole Airport",
+    "city": "Jackson",
+    "country": "US",
+    "longest_runway_ft": 6300,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -110.73775,
+        43.607333
+      ]
+    }
+  },
+  {
+    "icao": "CYUL",
+    "name": "Montreal-Pierre Elliott Trudeau International Airport",
+    "city": "Montreal",
+    "country": "CA",
+    "longest_runway_ft": 11000,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -73.740833,
+        45.470556
+      ]
+    }
+  },
+  {
+    "icao": "CYOW",
+    "name": "Ottawa Macdonald-Cartier International Airport",
+    "city": "Ottawa",
+    "country": "CA",
+    "longest_runway_ft": 10005,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -75.669167,
+        45.3225
+      ]
+    }
+  },
+  {
+    "icao": "CYYC",
+    "name": "Calgary International Airport",
+    "city": "Calgary",
+    "country": "CA",
+    "longest_runway_ft": 14000,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -114.020278,
+        51.113889
+      ]
+    }
+  },
+  {
+    "icao": "MMUN",
+    "name": "Cancun International Airport",
+    "city": "Cancun",
+    "country": "MX",
+    "longest_runway_ft": 11483,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -86.877083,
+        21.036528
+      ]
+    }
+  },
+  {
+    "icao": "EIDW",
+    "name": "Dublin Airport",
+    "city": "Dublin",
+    "country": "IE",
+    "longest_runway_ft": 10203,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        -6.270075,
+        53.421333
+      ]
+    }
+  },
+  {
+    "icao": "EDDH",
+    "name": "Hamburg Airport",
+    "city": "Hamburg",
+    "country": "DE",
+    "longest_runway_ft": 12028,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        9.988228,
+        53.630389
+      ]
+    }
+  },
+  {
+    "icao": "EBBR",
+    "name": "Brussels Airport",
+    "city": "Brussels",
+    "country": "BE",
+    "longest_runway_ft": 11936,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        4.484444,
+        50.901389
+      ]
+    }
   }
 ]
-

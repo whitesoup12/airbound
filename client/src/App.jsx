@@ -12,6 +12,7 @@ import ResetCareerModal from './components/ResetCareerModal.jsx';
 import CockpitLockModal from './components/CockpitLockModal.jsx';
 import ConnectorStatusModal from './components/ConnectorStatusModal.jsx';
 import AirportChartsModal from './components/AirportChartsModal.jsx';
+import OnboardingModal from './components/OnboardingModal.jsx';
 import { useTelemetry } from './hooks/useTelemetry.js';
 import {
   fetchPilot,
@@ -27,7 +28,8 @@ import {
   completeFlightApi,
   checkAuthStatus,
   getStoredPasscode,
-  clearStoredPasscode
+  clearStoredPasscode,
+  fetchSettings
 } from './api/client.js';
 import { Trophy, X, Award, Sparkles } from 'lucide-react';
 import { formatLandingRating } from './utils/xpUtils.js';
@@ -60,6 +62,7 @@ export function App() {
   const [completionBanner, setCompletionBanner] = useState(null);
   const [isLocked, setIsLocked] = useState(false);
   const [isAuthRequired, setIsAuthRequired] = useState(false);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
 
   const handleOpenCharts = useCallback((icao, name = '') => {
     if (!icao) return;
@@ -67,7 +70,7 @@ export function App() {
     setChartsModalOpen(true);
   }, []);
 
-  // Check auth requirement on startup
+  // Check auth requirement and onboarding status on startup
   useEffect(() => {
     checkAuthStatus()
       .then((status) => {
@@ -76,6 +79,15 @@ export function App() {
           if (!getStoredPasscode()) {
             setIsLocked(true);
           }
+        }
+      })
+      .catch(() => {});
+
+    // Check if initial startup / onboarding is needed
+    fetchSettings()
+      .then((data) => {
+        if (data?.settings && data.settings.hasCompletedOnboarding === false) {
+          setIsOnboardingOpen(true);
         }
       })
       .catch(() => {});
@@ -565,6 +577,7 @@ export function App() {
             pilot={pilot}
             onPilotUpdated={(updatedPilot) => setPilot(updatedPilot)}
             onSwitchToLogbook={() => handleTabChange('logbook')}
+            onOpenOnboarding={() => setIsOnboardingOpen(true)}
           />
         )}
       </main>
@@ -606,6 +619,17 @@ export function App() {
         onClose={() => setChartsModalOpen(false)}
         icao={selectedChartsAirport.icao}
         airportName={selectedChartsAirport.name}
+      />
+
+      {/* Initial Startup / Onboarding Modal */}
+      <OnboardingModal
+        isOpen={isOnboardingOpen}
+        onClose={() => setIsOnboardingOpen(false)}
+        onComplete={() => {
+          setIsOnboardingOpen(false);
+          loadInitialData();
+        }}
+        pilot={pilot}
       />
     </div>
   );
