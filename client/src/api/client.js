@@ -133,6 +133,15 @@ export async function fetchAirports(query = '') {
   );
 }
 
+export async function fetchAirportCharts(icao) {
+  if (!icao) return null;
+  return safeFetchJson(
+    `${API_BASE}/airports/${encodeURIComponent(icao.toUpperCase())}/charts`,
+    {},
+    `Failed to fetch charts for ${icao}`
+  );
+}
+
 // Simulator Control API
 export async function stepFlightPhase(phase) {
   return safeFetchJson(

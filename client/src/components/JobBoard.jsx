@@ -17,7 +17,8 @@ import {
   Compass,
   Layers,
   Sparkles,
-  Award
+  Award,
+  FileText
 } from 'lucide-react';
 
 function getDistanceTiers(category = 'single_prop') {
@@ -81,6 +82,7 @@ export function JobBoard({
   onSelectJob,
   onAcceptJob,
   onRefreshJobs,
+  onOpenCharts,
   loading = false
 }) {
   const [refreshing, setRefreshing] = useState(false);
@@ -445,6 +447,20 @@ export function JobBoard({
                             <AlertTriangle className="w-2.5 h-2.5" />
                             <span>SHORT RWY</span>
                           </span>
+                        )}
+                        {onOpenCharts && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenCharts(job.destination_icao, job.destination_name);
+                            }}
+                            className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-slate-800 hover:bg-cyan-950 text-slate-300 hover:text-cyan-300 border border-slate-700 hover:border-cyan-600 transition flex items-center space-x-1 cursor-pointer"
+                            title={`View airport taxi diagram & approach plates for ${job.destination_icao}`}
+                          >
+                            <FileText className="w-2.5 h-2.5 text-cyan-400" />
+                            <span>CHARTS</span>
+                          </button>
                         )}
                       </div>
                       <p className="text-xs text-slate-300 line-clamp-1 mt-0.5">

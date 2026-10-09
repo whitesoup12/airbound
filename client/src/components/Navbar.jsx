@@ -12,7 +12,8 @@ import {
   Sparkles,
   ArrowRight,
   Award,
-  Lock
+  Lock,
+  FileText
 } from 'lucide-react';
 import { getPilotRank } from '../utils/xpUtils.js';
 
@@ -29,7 +30,8 @@ export function Navbar({
   onOpenChangeBase,
   onLockCockpit,
   isAuthRequired = false,
-  onOpenConnectorStatus
+  onOpenConnectorStatus,
+  onOpenCharts
 }) {
   const isMock = connectionStatus?.isMock;
   const connectorActive = connectionStatus?.connectorActive;
@@ -219,6 +221,19 @@ export function Navbar({
             <MapPin className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform" />
             <span className="text-white font-bold">{pilot?.current_icao || 'KLAX'}</span>
           </button>
+
+          {/* Quick Charts Button */}
+          {onOpenCharts && (
+            <button
+              type="button"
+              onClick={() => onOpenCharts(activeJob?.destination_icao || pilot?.current_icao || 'KLAX')}
+              className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-cyan-950/70 border border-slate-800 hover:border-cyan-500/60 text-xs font-mono text-cyan-400 transition cursor-pointer group"
+              title="Open Airport Charts & Approach Plates"
+            >
+              <FileText className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+              <span className="hidden md:inline font-bold">CHARTS</span>
+            </button>
+          )}
 
           {/* Wallet Balance Pill */}
           <button

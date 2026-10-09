@@ -40,7 +40,8 @@ export function CareerLogbookView({
   visitedAirportsDetails = [],
   allAirports = [],
   onOpenChangeBase,
-  onSwitchToProgression
+  onSwitchToProgression,
+  onOpenCharts
 }) {
   const [filter, setFilter] = useState('all'); // 'all' | 'dispatch' | 'msfs'
   const [searchQuery, setSearchQuery] = useState('');
@@ -380,6 +381,17 @@ export function CareerLogbookView({
                 <span className="px-2 py-0.5 rounded bg-purple-900/60 text-purple-200 border border-purple-700/60 font-bold">
                   {getFullCountryName(hoveredAirport.country)} ({hoveredAirport.country})
                 </span>
+                {onOpenCharts && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenCharts(hoveredAirport.icao, hoveredAirport.name)}
+                    className="px-2 py-0.5 rounded bg-cyan-950/90 hover:bg-cyan-900 text-cyan-300 border border-cyan-700/60 font-bold text-[10px] flex items-center space-x-1 cursor-pointer transition shadow-sm"
+                    title={`View airport charts for ${hoveredAirport.icao}`}
+                  >
+                    <FileText className="w-2.5 h-2.5 text-cyan-400" />
+                    <span>CHARTS</span>
+                  </button>
+                )}
               </div>
             </div>
           ) : (

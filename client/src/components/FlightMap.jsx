@@ -19,7 +19,8 @@ import {
   ArrowRight,
   DollarSign,
   Maximize2,
-  Locate
+  Locate,
+  FileText
 } from 'lucide-react';
 
 const CARTO_API_KEY = import.meta.env.VITE_CARTO_API_KEY || '';
@@ -238,6 +239,7 @@ export function FlightMap({
   currentAirport = null,
   onAcceptJob = null,
   activeAircraft = null,
+  onOpenCharts = null,
   heightClass = 'h-[620px]'
 }) {
   // Determine active route vs preview route
@@ -483,6 +485,19 @@ export function FlightMap({
               <span className="font-bold">DEST: {displayedJob.destination_icao}</span>
             </button>
           )}
+
+          {/* Quick Airport Charts Button */}
+          {onOpenCharts && displayedJob?.destination_icao && (
+            <button
+              type="button"
+              onClick={() => onOpenCharts(displayedJob.destination_icao, destName)}
+              className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-cyan-950 text-cyan-300 border border-cyan-800/60 hover:border-cyan-400 transition cursor-pointer"
+              title={`View Airport Charts & Approach Plates for ${displayedJob.destination_icao}`}
+            >
+              <FileText className="w-3.5 h-3.5 text-cyan-400" />
+              <span className="font-bold">CHARTS</span>
+            </button>
+          )}
         </div>
 
         {/* Center / Right Route Summary Badge */}
@@ -627,6 +642,16 @@ export function FlightMap({
                   {displayedJob?.origin_airport?.longest_runway_ft && (
                     <p>Longest Runway: {displayedJob.origin_airport.longest_runway_ft.toLocaleString()} ft</p>
                   )}
+                  {onOpenCharts && displayedJob?.origin_icao && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenCharts(displayedJob.origin_icao, origName)}
+                      className="mt-2 w-full py-1 bg-slate-800 hover:bg-slate-700 text-cyan-400 font-bold rounded text-[11px] transition border border-slate-700 flex items-center justify-center space-x-1 cursor-pointer"
+                    >
+                      <FileText className="w-3 h-3 text-cyan-400" />
+                      <span>View Airport Charts</span>
+                    </button>
+                  )}
                 </div>
               </Popup>
             </Marker>
@@ -677,10 +702,20 @@ export function FlightMap({
                   <p className="text-purple-700 text-[11px] font-semibold">
                     XP Reward: +{displayedJob?.xp_reward || displayedJob?.distance_nm} XP
                   </p>
+                  {onOpenCharts && displayedJob?.destination_icao && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenCharts(displayedJob.destination_icao, destName)}
+                      className="mt-2 w-full py-1 bg-slate-800 hover:bg-slate-700 text-cyan-400 font-bold rounded text-[11px] transition border border-slate-700 flex items-center justify-center space-x-1 cursor-pointer"
+                    >
+                      <FileText className="w-3 h-3 text-cyan-400" />
+                      <span>View Airport Charts & Plates</span>
+                    </button>
+                  )}
                   {isPreview && onAcceptJob && (
                     <button
                       onClick={() => onAcceptJob(displayedJob._id)}
-                      className="mt-2 w-full py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded text-xs transition shadow-md"
+                      className="mt-1.5 w-full py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded text-xs transition shadow-md cursor-pointer"
                     >
                       Accept Contract (${displayedJob.payout?.toLocaleString()})
                     </button>
@@ -714,6 +749,16 @@ export function FlightMap({
                     <p className="font-bold">{airport.icao} — {airport.name}</p>
                     <p>{airport.city}, {airport.country}</p>
                     <p>Longest Runway: {airport.longest_runway_ft?.toLocaleString()} ft</p>
+                    {onOpenCharts && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenCharts(airport.icao, airport.name)}
+                        className="mt-2 w-full py-1 bg-slate-800 hover:bg-slate-700 text-cyan-400 font-bold rounded text-[11px] transition border border-slate-700 flex items-center justify-center space-x-1 cursor-pointer"
+                      >
+                        <FileText className="w-3 h-3 text-cyan-400" />
+                        <span>View Airport Charts</span>
+                      </button>
+                    )}
                   </div>
                 </Popup>
               </Marker>

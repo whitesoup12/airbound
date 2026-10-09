@@ -16,7 +16,8 @@ import {
   MapPin,
   Award,
   Plane,
-  Radio
+  Radio,
+  FileText
 } from 'lucide-react';
 import { calculateNavEstimates } from '../utils/navigation.js';
 
@@ -66,7 +67,8 @@ export function TelemetryDashboard({
   onOpenCareer,
   connectionStatus,
   onOpenConnectorStatus,
-  onCompleteFlight
+  onCompleteFlight,
+  onOpenCharts
 }) {
   const phaseInfo = PHASE_CONFIG[phase] || PHASE_CONFIG.STANDBY;
 
@@ -467,6 +469,32 @@ export function TelemetryDashboard({
                     : (activeJob.destination_airport?.name || activeJob.destination_name || 'En Route to Destination')}
                   {activeJob.destination_airport?.city ? ` • ${activeJob.destination_airport.city}` : ''}
                 </p>
+                {onOpenCharts && (
+                  <div className="flex items-center gap-2 mt-2">
+                    {activeJob.origin_icao && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenCharts(activeJob.origin_icao, activeJob.origin_airport?.name || activeJob.origin_name)}
+                        className="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-cyan-300 border border-slate-700/80 hover:border-cyan-500/60 transition flex items-center space-x-1 cursor-pointer"
+                        title={`View charts and taxi diagram for origin (${activeJob.origin_icao})`}
+                      >
+                        <FileText className="w-2.5 h-2.5 text-cyan-400" />
+                        <span>DEP CHARTS ({activeJob.origin_icao})</span>
+                      </button>
+                    )}
+                    {activeJob.destination_icao && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenCharts(activeJob.destination_icao, activeJob.destination_airport?.name || activeJob.destination_name)}
+                        className="px-2 py-0.5 rounded text-[10px] font-mono bg-cyan-950/80 hover:bg-cyan-900 text-cyan-300 border border-cyan-700/70 hover:border-cyan-400 transition flex items-center space-x-1 cursor-pointer shadow-sm"
+                        title={`View approach plates and taxi diagram for destination (${activeJob.destination_icao})`}
+                      >
+                        <FileText className="w-2.5 h-2.5 text-cyan-400" />
+                        <span>DEST CHARTS ({activeJob.destination_icao})</span>
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 

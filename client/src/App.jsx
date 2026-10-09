@@ -10,6 +10,7 @@ import ChangeBaseModal from './components/ChangeBaseModal.jsx';
 import ResetCareerModal from './components/ResetCareerModal.jsx';
 import CockpitLockModal from './components/CockpitLockModal.jsx';
 import ConnectorStatusModal from './components/ConnectorStatusModal.jsx';
+import AirportChartsModal from './components/AirportChartsModal.jsx';
 import { useTelemetry } from './hooks/useTelemetry.js';
 import {
   fetchPilot,
@@ -51,10 +52,18 @@ export function App() {
   const [isChangeBaseOpen, setIsChangeBaseOpen] = useState(false);
   const [isResetCareerOpen, setIsResetCareerOpen] = useState(false);
   const [isConnectorStatusOpen, setIsConnectorStatusOpen] = useState(false);
+  const [chartsModalOpen, setChartsModalOpen] = useState(false);
+  const [selectedChartsAirport, setSelectedChartsAirport] = useState({ icao: '', name: '' });
   const [loading, setLoading] = useState(true);
   const [completionBanner, setCompletionBanner] = useState(null);
   const [isLocked, setIsLocked] = useState(false);
   const [isAuthRequired, setIsAuthRequired] = useState(false);
+
+  const handleOpenCharts = useCallback((icao, name = '') => {
+    if (!icao) return;
+    setSelectedChartsAirport({ icao: icao.toUpperCase().trim(), name: name || '' });
+    setChartsModalOpen(true);
+  }, []);
 
   // Check auth requirement on startup
   useEffect(() => {
@@ -342,6 +351,7 @@ export function App() {
         onLockCockpit={handleLockCockpit}
         isAuthRequired={isAuthRequired}
         onOpenConnectorStatus={() => setIsConnectorStatusOpen(true)}
+        onOpenCharts={handleOpenCharts}
       />
 
       {/* Completion Banner Alert with Financial Ledger & XP Breakdown */}
@@ -477,6 +487,7 @@ export function App() {
             connectionStatus={connectionStatus}
             onOpenConnectorStatus={() => setIsConnectorStatusOpen(true)}
             onCompleteFlight={handleManualCompleteFlight}
+            onOpenCharts={handleOpenCharts}
           />
         )}
 
@@ -495,6 +506,7 @@ export function App() {
             onOpenChangeBase={() => setIsChangeBaseOpen(true)}
             onStartFreeFlight={handleStartFreeFlight}
             onCancelFreeFlight={handleCancelFreeFlight}
+            onOpenCharts={handleOpenCharts}
             loading={loading}
             telemetry={telemetry}
           />
@@ -536,6 +548,7 @@ export function App() {
             onOpenChangeBase={() => setIsChangeBaseOpen(true)}
             onReloadPilot={loadInitialData}
             onSwitchToProgression={() => handleTabChange('progression')}
+            onOpenCharts={handleOpenCharts}
           />
         )}
       </main>
@@ -569,6 +582,14 @@ export function App() {
         isOpen={isConnectorStatusOpen}
         onClose={() => setIsConnectorStatusOpen(false)}
         connectionStatus={connectionStatus}
+      />
+
+      {/* Airport Aeronautical Charts & Plates Modal */}
+      <AirportChartsModal
+        isOpen={chartsModalOpen}
+        onClose={() => setChartsModalOpen(false)}
+        icao={selectedChartsAirport.icao}
+        airportName={selectedChartsAirport.name}
       />
     </div>
   );

@@ -11,7 +11,8 @@ import {
   ArrowRight,
   ShieldCheck,
   Briefcase,
-  Globe
+  Globe,
+  FileText
 } from 'lucide-react';
 
 export function DispatchView({
@@ -28,6 +29,7 @@ export function DispatchView({
   onOpenChangeBase,
   onStartFreeFlight,
   onCancelFreeFlight,
+  onOpenCharts,
   loading,
   telemetry
 }) {
@@ -71,6 +73,17 @@ export function DispatchView({
                   title="Change departure base"
                 >
                   Change Base
+                </button>
+              )}
+              {onOpenCharts && (
+                <button
+                  type="button"
+                  onClick={() => onOpenCharts(currentAirport?.icao || currentIcao, currentAirport?.name)}
+                  className="text-[10px] text-cyan-400 hover:text-cyan-300 font-mono px-2 py-0.5 rounded bg-slate-800 border border-slate-700 hover:border-cyan-500 transition flex items-center space-x-1 cursor-pointer"
+                  title={`View charts and taxi diagram for ${currentAirport?.icao || currentIcao}`}
+                >
+                  <FileText className="w-2.5 h-2.5 text-cyan-400" />
+                  <span>CHARTS</span>
                 </button>
               )}
             </div>
@@ -150,6 +163,20 @@ export function DispatchView({
                 <h3 className="text-sm font-mono uppercase tracking-wider text-slate-300 font-bold">
                   ROUTE PLANNING & DESTINATION RADAR
                 </h3>
+                {(activeJob || previewJob) && onOpenCharts && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const t = activeJob || previewJob;
+                      onOpenCharts(t.destination_icao, t.destination_name);
+                    }}
+                    className="ml-2 px-2 py-0.5 rounded text-[10px] font-mono bg-cyan-950/80 hover:bg-cyan-900 text-cyan-300 border border-cyan-700/60 transition flex items-center space-x-1 cursor-pointer"
+                    title={`View charts for ${(activeJob || previewJob).destination_icao}`}
+                  >
+                    <FileText className="w-2.5 h-2.5 text-cyan-400" />
+                    <span>CHARTS ({(activeJob || previewJob).destination_icao})</span>
+                  </button>
+                )}
               </div>
               <span className="text-xs font-mono text-slate-400">
                 Select a contract below to preview flight path
@@ -165,6 +192,7 @@ export function DispatchView({
               visitedAirports={pilot?.visited_airports || []}
               allAirports={allAirports}
               activeAircraft={activeAircraft}
+              onOpenCharts={onOpenCharts}
               heightClass="h-[380px]"
             />
           </div>
@@ -180,6 +208,7 @@ export function DispatchView({
             onSelectJob={onSelectJob}
             onAcceptJob={onAcceptJob}
             onRefreshJobs={onRefreshJobs}
+            onOpenCharts={onOpenCharts}
             loading={loading}
           />
         </>
