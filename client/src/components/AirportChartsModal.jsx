@@ -16,6 +16,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { fetchAirportCharts } from '../api/client.js';
+import WeatherBriefingCard from './WeatherBriefingCard.jsx';
 
 export function AirportChartsModal({
   isOpen,
@@ -237,6 +238,11 @@ export function AirportChartsModal({
               <X className="w-5 h-5" />
             </button>
           </div>
+        </div>
+
+        {/* Live Weather Observation & Active Runway Strip */}
+        <div className="px-5 py-2 bg-slate-950/80 border-b border-slate-800/80 flex items-center justify-between">
+          <WeatherBriefingCard icao={activeIcao} compact={true} />
         </div>
 
         {/* Modal Body: Left Procedure List & Right PDF Viewer */}
@@ -464,7 +470,7 @@ export function AirportChartsModal({
                     </div>
                   )}
                   <iframe
-                    src={selectedChart.url}
+                    src={selectedChart.proxyUrl || selectedChart.url}
                     title={selectedChart.chart_name}
                     onLoad={() => setIframeLoading(false)}
                     className="w-full h-full border-none bg-slate-950"

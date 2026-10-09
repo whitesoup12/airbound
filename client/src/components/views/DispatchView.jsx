@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import JobBoard from '../JobBoard.jsx';
 import FlightMap from '../FlightMap.jsx';
 import FreeFlightDispatcher from '../FreeFlightDispatcher.jsx';
+import WeatherBriefingCard from '../WeatherBriefingCard.jsx';
 import {
   MapPin,
   Plane,
@@ -12,7 +13,8 @@ import {
   ShieldCheck,
   Briefcase,
   Globe,
-  FileText
+  FileText,
+  Wind
 } from 'lucide-react';
 
 export function DispatchView({
@@ -36,6 +38,7 @@ export function DispatchView({
   const [dispatchTab, setDispatchTab] = useState(
     activeJob?.is_free_flight ? 'free_flight' : 'commercial'
   );
+  const [showOriginWeather, setShowOriginWeather] = useState(false);
 
   const activeAircraft = {
     name: pilot?.active_aircraft?.name || 'Cessna 172 Skyhawk',
@@ -86,6 +89,19 @@ export function DispatchView({
                   <span>CHARTS</span>
                 </button>
               )}
+              <button
+                type="button"
+                onClick={() => setShowOriginWeather(!showOriginWeather)}
+                className={`text-[10px] font-mono px-2 py-0.5 rounded border transition flex items-center space-x-1 cursor-pointer ${
+                  showOriginWeather
+                    ? 'bg-cyan-950 text-cyan-300 border-cyan-500 shadow-sm'
+                    : 'bg-slate-800 text-slate-300 hover:text-cyan-300 border-slate-700 hover:border-cyan-500'
+                }`}
+                title="Toggle Origin Airport METAR & Runway Analysis"
+              >
+                <Wind className="w-2.5 h-2.5 text-cyan-400" />
+                <span>{showOriginWeather ? 'HIDE WEATHER' : 'WEATHER (METAR)'}</span>
+              </button>
             </div>
             <h2 className="text-lg sm:text-xl font-bold text-white font-mono tracking-wide">
               {currentAirport ? `${currentAirport.name} (${currentAirport.icao})` : currentIcao}
@@ -113,6 +129,17 @@ export function DispatchView({
           </div>
         </div>
       </div>
+
+      {/* Origin Live Weather Briefing & Departure Runway */}
+      {showOriginWeather && (
+        <WeatherBriefingCard
+          icao={currentAirport?.icao || currentIcao}
+          airportName={currentAirport?.name}
+          type="departure"
+          showAllRunwaysDefault={true}
+          onOpenCharts={onOpenCharts}
+        />
+      )}
 
       {/* Dispatch Operation Mode Switcher Tabs */}
       <div className="flex items-center space-x-3 border-b border-slate-800 pb-3">
@@ -195,6 +222,16 @@ export function DispatchView({
               onOpenCharts={onOpenCharts}
               heightClass="h-[380px]"
             />
+
+            {/* Destination Live Weather & Recommended Arrival Runway */}
+            {(activeJob || previewJob) && (
+              <WeatherBriefingCard
+                icao={(activeJob || previewJob).destination_icao}
+                airportName={(activeJob || previewJob).destination_name || (activeJob || previewJob).destination_airport?.name}
+                type="arrival"
+                onOpenCharts={onOpenCharts}
+              />
+            )}
           </div>
 
           {/* Job Dispatch Board */}

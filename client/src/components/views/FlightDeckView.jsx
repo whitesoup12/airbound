@@ -1,6 +1,7 @@
 import React from 'react';
 import TelemetryDashboard from '../TelemetryDashboard.jsx';
 import FlightMap from '../FlightMap.jsx';
+import WeatherBriefingCard from '../WeatherBriefingCard.jsx';
 import { Plane, Compass, ArrowRight, Radio, FileText } from 'lucide-react';
 
 export function FlightDeckView({
@@ -82,6 +83,26 @@ export function FlightDeckView({
               </button>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Live In-Flight Weather Briefing & Runway Advisor */}
+      {activeJob?.destination_icao ? (
+        <WeatherBriefingCard
+          icao={activeJob.destination_icao}
+          airportName={activeJob.destination_airport?.name || activeJob.destination_name}
+          type="arrival"
+          onOpenCharts={onOpenCharts}
+        />
+      ) : (
+        <div className="flex justify-end">
+          <WeatherBriefingCard
+            icao={pilot?.current_icao || 'KLAX'}
+            airportName={currentAirport?.name}
+            type="departure"
+            compact={true}
+            onOpenCharts={onOpenCharts}
+          />
         </div>
       )}
 

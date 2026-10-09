@@ -30,6 +30,9 @@ yarn-error.log*
 Thumbs.db
 
 # Cached Aeronautical Data
-server/data/charts/
-data/charts/
+/server/data/
+/data/
+*.csv
+!server/src/data/*.gz
+
 

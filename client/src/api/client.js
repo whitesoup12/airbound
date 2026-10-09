@@ -142,6 +142,27 @@ export async function fetchAirportCharts(icao) {
   );
 }
 
+export async function fetchAirportWeather(icao) {
+  if (!icao) return null;
+  return safeFetchJson(
+    `${API_BASE}/weather/${encodeURIComponent(icao.toUpperCase())}`,
+    {},
+    `Failed to fetch weather for ${icao}`
+  );
+}
+
+export async function fetchWeatherBriefing(originIcao, destIcao) {
+  const params = new URLSearchParams();
+  if (originIcao) params.append('origin', originIcao.toUpperCase());
+  if (destIcao) params.append('dest', destIcao.toUpperCase());
+
+  return safeFetchJson(
+    `${API_BASE}/weather/briefing?${params.toString()}`,
+    {},
+    'Failed to fetch weather briefing'
+  );
+}
+
 // Simulator Control API
 export async function stepFlightPhase(phase) {
   return safeFetchJson(

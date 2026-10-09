@@ -1,12 +1,14 @@
 import fs from 'fs';
 import path from 'path';
+import zlib from 'zlib';
+import os from 'os';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Cache directory on disk for fast startup
-const CACHE_DIR = path.resolve(__dirname, '../../data/charts');
+// Pre-bundled compressed index for instantaneous serverless startup on Vercel
+const BUNDLED_INDEX_FILE = path.resolve(__dirname, '../data/charts_index.json.gz');
 
 class ChartsService {
   constructor() {
@@ -68,12 +70,34 @@ class ChartsService {
 
     this.initPromise = (async () => {
       try {
-        if (!fs.existsSync(CACHE_DIR)) {
-          fs.mkdirSync(CACHE_DIR, { recursive: true });
+        // Priority 1: Instant load from pre-bundled compressed index (ideal for Vercel Serverless)
+        if (fs.existsSync(BUNDLED_INDEX_FILE)) {
+          const t0 = Date.now();
+          const buf = fs.readFileSync(BUNDLED_INDEX_FILE);
+          const decompressed = zlib.gunzipSync(buf).toString('utf8');
+          const parsed = JSON.parse(decompressed);
+          if (parsed && parsed.airports) {
+            this.currentCycle = parsed.cycle || this.currentCycle;
+            this.airportMap = new Map(Object.entries(parsed.airports));
+            this.isInitialized = true;
+            console.log(`[ChartsService] Loaded bundled charts index (${this.airportMap.size} airports, cycle ${this.currentCycle}) in ${Date.now() - t0}ms.`);
+            return;
+          }
         }
 
+        // Priority 2: Safe cache directory with writable tmpdir fallback for serverless
+        const cacheDir = process.env.VERCEL
+          ? path.join(os.tmpdir(), 'airbound_charts')
+          : path.resolve(__dirname, '../../data/charts');
+
+        try {
+          if (!fs.existsSync(cacheDir)) {
+            fs.mkdirSync(cacheDir, { recursive: true });
+          }
+        } catch (_) {}
+
         await this.detectCurrentCycle();
-        const cacheFile = path.join(CACHE_DIR, `d-tpp_metafile_${this.currentCycle}.xml`);
+        const cacheFile = path.join(cacheDir, `d-tpp_metafile_${this.currentCycle}.xml`);
 
         let xml = '';
         if (fs.existsSync(cacheFile)) {
@@ -85,15 +109,17 @@ class ChartsService {
             `https://aeronav.faa.gov/d-tpp/${this.currentCycle}/xml_data/d-TPP_Metafile.xml`,
             {
               headers: { 'User-Agent': 'Airbound-Sim/1.0' },
-              signal: AbortSignal.timeout(30000)
+              signal: AbortSignal.timeout(20000)
             }
           );
           if (!res.ok) {
             throw new Error(`FAA Aeronav server returned ${res.status}`);
           }
           xml = await res.text();
-          fs.writeFileSync(cacheFile, xml, 'utf8');
-          console.log(`[ChartsService] Cached d-TPP metafile to disk (${(xml.length / 1024 / 1024).toFixed(2)} MB).`);
+          try {
+            fs.writeFileSync(cacheFile, xml, 'utf8');
+            console.log(`[ChartsService] Cached d-TPP metafile to disk (${(xml.length / 1024 / 1024).toFixed(2)} MB).`);
+          } catch (_) {}
         }
 
         this.parseAndIndexXml(xml);

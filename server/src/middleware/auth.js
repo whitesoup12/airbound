@@ -12,9 +12,9 @@ export function requirePilotAuth(req, res, next) {
     return next();
   }
 
-  // Allow public access to health check and auth verification
+  // Allow public access to health check, auth verification, and chart PDF proxy
   const reqPath = req.baseUrl || req.path || req.originalUrl || '';
-  if (reqPath.includes('/health') || reqPath.includes('/auth')) {
+  if (reqPath.includes('/health') || reqPath.includes('/auth') || reqPath.includes('/charts/proxy')) {
     return next();
   }
 
