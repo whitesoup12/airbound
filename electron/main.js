@@ -46,8 +46,13 @@ function waitForServer(url, timeoutMs = 45000) {
 
 function getServerScriptPath() {
   if (app.isPackaged) {
+    const appDir = path.join(process.resourcesPath, 'app');
+    const directServer = path.join(appDir, 'server', 'src', 'server.js');
+    if (fs.existsSync(directServer)) return directServer;
+
     const unpacked = path.join(process.resourcesPath, 'app.asar.unpacked', 'server', 'src', 'server.js');
     if (fs.existsSync(unpacked)) return unpacked;
+
     const resourcesPath = path.join(process.resourcesPath, 'server', 'src', 'server.js');
     if (fs.existsSync(resourcesPath)) return resourcesPath;
   }
@@ -63,7 +68,11 @@ function startBackendServer() {
   fs.mkdirSync(dataDir, { recursive: true });
 
   const clientDistDir = app.isPackaged
-    ? path.join(process.resourcesPath, 'app.asar.unpacked', 'dist')
+    ? (fs.existsSync(path.join(process.resourcesPath, 'app', 'dist'))
+        ? path.join(process.resourcesPath, 'app', 'dist')
+        : (fs.existsSync(path.join(process.resourcesPath, 'app.asar.unpacked', 'dist'))
+            ? path.join(process.resourcesPath, 'app.asar.unpacked', 'dist')
+            : path.join(process.resourcesPath, 'dist')))
     : path.resolve(__dirname, '..', 'dist');
 
   const env = {
@@ -140,6 +149,15 @@ async function createMainWindow() {
     }
   });
 
+  // Log renderer console messages and load failures to diagnostic log
+  mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+    console.log(`[Renderer Console level ${level}] ${message} (${sourceId}:${line})`);
+  });
+
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    console.error(`[Renderer Fail Load] ${errorCode} - ${errorDescription} on ${validatedURL}`);
+  });
+
   // Open external links (e.g. Navigraph / AirNav / SkyVector) in default browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('http:') || url.startsWith('https:')) {
@@ -147,6 +165,13 @@ async function createMainWindow() {
       return { action: 'deny' };
     }
     return { action: 'allow' };
+  });
+
+  // Enable F12 DevTools toggle for easy debugging if ever needed
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'F12' || (input.control && input.shift && input.key.toLowerCase() === 'i')) {
+      mainWindow.webContents.toggleDevTools();
+    }
   });
 
   mainWindow.on('closed', () => {

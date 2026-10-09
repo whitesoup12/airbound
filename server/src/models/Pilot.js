@@ -86,7 +86,6 @@ const FlightRecordSchema = new mongoose.Schema(
     },
     source: {
       type: String,
-      enum: ['airbound_dispatch', 'msfs_import'],
       enum: ['airbound_dispatch', 'msfs_import', 'free_flight'],
       default: 'airbound_dispatch'
     },

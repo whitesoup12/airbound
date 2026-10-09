@@ -80,13 +80,7 @@
         ]
       }
     ],
-    "asar": true,
-    "asarUnpack": [
-      "dist/**/*",
-      "server/**/*",
-      "**/node_modules/mongodb-memory-server/**/*",
-      "**/node_modules/node-simconnect/**/*"
-    ],
+    "asar": false,
     "win": {
       "target": [
         {
@@ -109,7 +103,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Airbound"
+      "shortcutName": "Airbound",
+      "deleteAppDataOnUninstall": true
     }
   }
 }

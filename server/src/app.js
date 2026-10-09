@@ -87,6 +87,7 @@ app.all('/api/*', (req, res) => {
 // Serve production static frontend if built (Desktop / Standalone Mode)
 const possibleDistPaths = [
   process.env.AIRBOUND_CLIENT_DIST,
+  process.resourcesPath ? path.resolve(process.resourcesPath, 'app', 'dist') : null,
   path.resolve(__dirname, '../../dist'),
   path.resolve(__dirname, '../../client/dist'),
   process.resourcesPath ? path.resolve(process.resourcesPath, 'app.asar.unpacked', 'dist') : null,
