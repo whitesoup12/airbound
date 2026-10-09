@@ -15,7 +15,7 @@ import {
   Globe,
   Loader2
 } from 'lucide-react';
-import { fetchAirportCharts } from '../api/client.js';
+import { fetchAirportCharts, getStoredPasscode } from '../api/client.js';
 import WeatherBriefingCard from './WeatherBriefingCard.jsx';
 
 export function AirportChartsModal({
@@ -85,6 +85,18 @@ export function AirportChartsModal({
     if (selectedChart) {
       setIframeLoading(true);
     }
+  }, [selectedChart]);
+
+  // Build PDF URL with passcode parameter if configured
+  const chartPdfUrl = useMemo(() => {
+    if (!selectedChart) return '';
+    const base = selectedChart.proxyUrl || selectedChart.url;
+    const passcode = getStoredPasscode();
+    if (passcode && base.includes('/charts/proxy')) {
+      const sep = base.includes('?') ? '&' : '?';
+      return `${base}${sep}passcode=${encodeURIComponent(passcode)}`;
+    }
+    return base;
   }, [selectedChart]);
 
   // Filter procedures by category and search query
@@ -439,7 +451,7 @@ export function AirportChartsModal({
                   <div className="flex items-center space-x-2 flex-shrink-0">
                     {/* Open direct PDF link in new tab */}
                     <a
-                      href={selectedChart.url}
+                      href={chartPdfUrl || selectedChart.url}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-300 text-[11px] font-bold border border-slate-700 flex items-center space-x-1.5 transition"
@@ -451,7 +463,7 @@ export function AirportChartsModal({
 
                     {/* Download PDF button */}
                     <a
-                      href={selectedChart.url}
+                      href={chartPdfUrl || selectedChart.url}
                       download={selectedChart.pdf_name}
                       className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition"
                       title="Download PDF"
@@ -470,7 +482,7 @@ export function AirportChartsModal({
                     </div>
                   )}
                   <iframe
-                    src={selectedChart.proxyUrl || selectedChart.url}
+                    src={chartPdfUrl}
                     title={selectedChart.chart_name}
                     onLoad={() => setIframeLoading(false)}
                     className="w-full h-full border-none bg-slate-950"

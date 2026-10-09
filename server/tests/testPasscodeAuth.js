@@ -104,6 +104,11 @@ async function runTests() {
     assert.strictEqual(bearerReq.status, 200);
     console.log('✓ Request with Authorization: Bearer <passcode> header succeeded.');
 
+    // Public chart PDF proxy should be accessible without credentials
+    const chartProxyReq = await makeRequest('GET', '/api/airports/charts/proxy?pdf=00022AD.PDF&cycle=2611');
+    assert.strictEqual(chartProxyReq.status, 200, 'Expected 200 OK for public chart proxy');
+    console.log('✓ Public chart PDF proxy was accessible without auth in protected mode.');
+
     console.log('\n✅ ALL PASSCODE AUTHENTICATION TESTS PASSED SUCCESSFULLY!\n');
   } finally {
     delete process.env.PILOT_PASSCODE;

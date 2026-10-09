@@ -15,6 +15,7 @@ import flightRoutes from './routes/flight.js';
 import weatherRoutes from './routes/weather.js';
 import authRoutes from './routes/auth.js';
 import requirePilotAuth from './middleware/auth.js';
+import { proxyChartPdf } from './controllers/airportController.js';
 
 import simConnectBridge from './services/simconnect.js';
 import flightStateMachine from './services/stateMachine.js';
@@ -40,8 +41,9 @@ app.use(async (req, res, next) => {
   }
 });
 
-// Public Auth Endpoints
+// Public Auth & Public Chart Proxy Endpoints
 app.use('/api/auth', authRoutes);
+app.get('/api/airports/charts/proxy', proxyChartPdf);
 
 // Protect all remaining /api/* routes with Pilot Passcode Authentication
 app.use('/api', requirePilotAuth);
