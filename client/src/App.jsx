@@ -6,6 +6,7 @@ import FleetView from './components/views/FleetView.jsx';
 import CashFlowView from './components/views/CashFlowView.jsx';
 import CareerLogbookView from './components/views/CareerLogbookView.jsx';
 import CareerProgressView from './components/views/CareerProgressView.jsx';
+import GuideView from './components/views/GuideView.jsx';
 import OptionsView from './components/views/OptionsView.jsx';
 import ChangeBaseModal from './components/ChangeBaseModal.jsx';
 import ResetCareerModal from './components/ResetCareerModal.jsx';
@@ -37,9 +38,10 @@ import { formatLandingRating } from './utils/xpUtils.js';
 
 function getInitialTab() {
   const hash = window.location.hash.replace('#', '');
-  if (['flight-deck', 'dispatch', 'fleet', 'cash-flow', 'finances', 'progression', 'logbook', 'career', 'options', 'settings'].includes(hash)) {
+  if (['flight-deck', 'dispatch', 'fleet', 'cash-flow', 'finances', 'progression', 'logbook', 'career', 'guide', 'handbook', 'options', 'settings'].includes(hash)) {
     if (hash === 'career') return 'progression';
     if (hash === 'finances') return 'cash-flow';
+    if (hash === 'handbook') return 'guide';
     if (hash === 'settings') return 'options';
     return hash;
   }
@@ -614,6 +616,13 @@ export function App() {
             onReloadPilot={loadInitialData}
             onSwitchToProgression={() => handleTabChange('progression')}
             onOpenCharts={handleOpenCharts}
+          />
+        )}
+
+        {(currentTab === 'guide' || currentTab === 'handbook') && (
+          <GuideView
+            pilot={pilot}
+            onNavigateTab={handleTabChange}
           />
         )}
 

@@ -13,7 +13,8 @@ import {
   Settings,
   ArrowRight,
   User,
-  ShieldCheck
+  ShieldCheck,
+  HelpCircle
 } from 'lucide-react';
 import { getPilotRank } from '../utils/xpUtils.js';
 
@@ -85,6 +86,12 @@ export function Navbar({
       icon: BookOpen,
       badge: `${pilot?.flight_log?.length || 0}`,
       badgeColor: 'bg-slate-800 text-slate-300 border-slate-700'
+    },
+    {
+      id: 'guide',
+      label: 'Pilot Guide',
+      icon: HelpCircle,
+      isMatched: (t) => t === 'guide' || t === 'handbook'
     },
     {
       id: 'options',
