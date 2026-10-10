@@ -226,6 +226,8 @@ router.get('/msfs-logbook', async (req, res) => {
     // Calculate preview summary stats
     const totalFlights = parsedFlights.length;
     const totalDurationSec = parsedFlights.reduce((acc, f) => acc + (f.duration_seconds || 0), 0);
+    const shortSessionsCount = parsedFlights.filter((f) => (f.duration_seconds || 0) < 180).length;
+    const fullFlightsCount = parsedFlights.filter((f) => (f.duration_seconds || 0) >= 180).length;
     const uniqueAirports = new Set();
     parsedFlights.forEach((f) => {
       if (f.origin_icao && f.origin_icao !== 'ZZZZ') uniqueAirports.add(f.origin_icao);
@@ -240,6 +242,8 @@ router.get('/msfs-logbook', async (req, res) => {
       totalFlights,
       totalDurationHours: Math.round((totalDurationSec / 3600) * 10) / 10,
       uniqueAirportsCount: uniqueAirports.size,
+      shortSessionsCount,
+      fullFlightsCount,
       latestFlight,
       sampleFlights: parsedFlights.slice(-5).reverse(),
       error

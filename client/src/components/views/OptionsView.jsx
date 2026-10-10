@@ -26,7 +26,8 @@ import {
   Layers,
   Loader2,
   AlertTriangle,
-  ShieldAlert
+  ShieldAlert,
+  Info
 } from 'lucide-react';
 import {
   fetchSettings,
@@ -628,6 +629,20 @@ export function OptionsView({
           </div>
         </div>
 
+        {/* Informative Merge & Count Explainer */}
+        <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800/90 text-xs font-mono space-y-1.5">
+          <div className="flex items-center gap-1.5 text-cyan-300 font-bold text-[11px] uppercase tracking-wide">
+            <Info className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+            <span>Non-Destructive Merge & MSFS Logbook Counts</span>
+          </div>
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            • <strong className="text-slate-300">Non-Destructive Merge:</strong> Re-importing will never erase or overwrite your existing Airbound flights, company balance, or fleet. Any flight already in your logbook is safely kept with zero duplicates.
+          </p>
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            • <strong className="text-slate-300">Why disk file counts differ from MSFS:</strong> MSFS writes every loaded session into its raw data file (<code className="text-cyan-300">sr_logbook</code>)—including aborted departures, restarts, or quick tests under 2–3 minutes. The in-game MSFS pilot profile hides flights without recorded landings, while the raw file logs all spawned sessions.
+          </p>
+        </div>
+
         {/* Import Results Banner */}
         {importResult && (
           <div
@@ -645,11 +660,15 @@ export function OptionsView({
               )}
               <div>
                 <span className="font-bold text-sm block">
-                  {importResult.success ? 'Logbook Successfully Imported!' : 'Import Error'}
+                  {importResult.success ? 'Logbook Successfully Merged!' : 'Import Error'}
                 </span>
                 <span className="text-xs opacity-90">
                   {importResult.success
-                    ? `Imported ${importResult.imported} new flights (${importResult.skipped} already logged). Career XP awarded: +${importResult.xpAwarded?.toLocaleString()} XP.`
+                    ? importResult.imported === 0
+                      ? `All ${importResult.skipped} flights are already recorded in Airbound. Your existing logbook was safely preserved with zero duplicates.`
+                      : importResult.skipped > 0
+                      ? `Successfully merged ${importResult.imported} new flights into your logbook! (${importResult.skipped} existing flights safely kept, 0 duplicates). Career XP awarded: +${importResult.xpAwarded?.toLocaleString()} XP.`
+                      : `Successfully imported ${importResult.imported} flights into your logbook (+${importResult.xpAwarded?.toLocaleString()} Career XP awarded).`
                     : importResult.error}
                 </span>
               </div>

@@ -19,7 +19,8 @@ import {
   Layers,
   User,
   MapPin,
-  Search
+  Search,
+  Info
 } from 'lucide-react';
 import {
   fetchSettings,
@@ -549,12 +550,32 @@ export function OnboardingModal({ isOpen, onClose, onComplete, pilot, allAirport
                       </div>
                     </div>
 
+                    {/* Informative Merge & Count Explainer */}
+                    <div className="p-3 rounded-lg bg-slate-950/80 border border-slate-800 text-[11px] font-mono space-y-1">
+                      <div className="flex items-center gap-1.5 text-cyan-300 font-bold">
+                        <Info className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                        <span>Non-Destructive Merge & Flight Counts</span>
+                      </div>
+                      <p className="text-slate-400 leading-relaxed">
+                        • <strong>Safe Merge:</strong> Importing never overwrites existing flights. Duplicates are skipped.
+                      </p>
+                      <p className="text-slate-400 leading-relaxed">
+                        • <strong>Why file counts differ:</strong> MSFS writes every loaded session to its raw data file (including aborted departures or quick test sessions under 3 min), whereas the in-game pilot logbook hides flights without completed landings.
+                      </p>
+                    </div>
+
                     {importResult ? (
-                      <div className="p-2.5 bg-emerald-950/60 border border-emerald-500/50 rounded-lg text-xs font-mono text-emerald-300 flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                        <div>
-                          Imported <strong>{importResult.imported}</strong> flights (+{importResult.xpAwarded?.toLocaleString()} XP).
-                          {importResult.skipped > 0 && ` (${importResult.skipped} duplicate flights skipped).`}
+                      <div className="p-3 bg-emerald-950/70 border border-emerald-500/60 rounded-lg text-xs font-mono text-emerald-200 flex items-start gap-2.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                        <div className="space-y-0.5">
+                          <span className="font-bold block text-white">Logbook Merged Successfully!</span>
+                          <p className="text-emerald-300 text-[11px]">
+                            {importResult.imported === 0
+                              ? `All ${importResult.skipped} flights are already recorded in Airbound. Existing records safely preserved with 0 duplicates.`
+                              : importResult.skipped > 0
+                              ? `Merged ${importResult.imported} new flights (+${importResult.xpAwarded?.toLocaleString()} XP). ${importResult.skipped} existing flights safely kept.`
+                              : `Imported ${importResult.imported} flights (+${importResult.xpAwarded?.toLocaleString()} XP).`}
+                          </p>
                         </div>
                       </div>
                     ) : (
@@ -562,7 +583,7 @@ export function OnboardingModal({ isOpen, onClose, onComplete, pilot, allAirport
                         type="button"
                         onClick={handleImportLogbook}
                         disabled={importingLogbook}
-                        className="w-full py-2 px-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-mono text-xs font-bold rounded-lg transition flex items-center justify-center gap-2 disabled:opacity-50"
+                        className="w-full py-2 px-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-mono text-xs font-bold rounded-lg transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer shadow-lg shadow-emerald-950/50"
                       >
                         {importingLogbook ? (
                           <>
@@ -572,7 +593,7 @@ export function OnboardingModal({ isOpen, onClose, onComplete, pilot, allAirport
                         ) : (
                           <>
                             <BookOpen className="w-3.5 h-3.5" />
-                            <span>Import {logbookInfo.totalFlights} Flights into Career Logbook</span>
+                            <span>Merge {logbookInfo.totalFlights} Flights into Career Logbook</span>
                           </>
                         )}
                       </button>
