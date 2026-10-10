@@ -14,7 +14,8 @@ import { normalizeTo4CharIcao } from '../utils/icaoUtils.js';
 import {
   detectLogbookFiles,
   parseBinaryLogbook,
-  importFlightsToPilot
+  importFlightsToPilot,
+  deduplicatePilotFlightLog
 } from '../services/msfsLogbookParser.js';
 import {
   getSyncStatus,
@@ -274,6 +275,33 @@ router.post('/msfs-logbook/import', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('[Settings] Import error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/settings/clean-duplicate-flights
+ * Cleans up any redundant msfs_import records that duplicate internal Airbound dispatch flights
+ */
+router.post('/clean-duplicate-flights', async (req, res) => {
+  try {
+    const pilot = await Pilot.findOne();
+    if (!pilot) {
+      return res.status(404).json({ error: 'Pilot not found.' });
+    }
+    const result = deduplicatePilotFlightLog(pilot);
+    if (result.removedCount > 0) {
+      await pilot.save();
+    }
+    res.json({
+      success: true,
+      removedCount: result.removedCount,
+      removedXp: result.removedXp,
+      remainingFlights: pilot.flight_log.length,
+      pilot
+    });
+  } catch (err) {
+    console.error('[Settings] Clean duplicates error:', err);
     res.status(500).json({ error: err.message });
   }
 });

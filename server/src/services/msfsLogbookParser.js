@@ -266,6 +266,112 @@ export function parseBinaryLogbook(filePath) {
 }
 
 /**
+ * Determines whether a candidate MSFS flight is a duplicate of an existing flight record.
+ * Matches on:
+ * 1. Matching external flight number
+ * 2. Exact timestamp signature
+ * 3. Same route (origin & dest) within a 3-hour window of departed_at or completed_at
+ * 4. Same route on the same calendar day with similar duration (+/- 30 min)
+ */
+export function isDuplicateFlight(candidate, existingFlightLogs = []) {
+  const candFlightNum = candidate.flight_number;
+  const candDate = candidate.date ? new Date(candidate.date) : new Date();
+  const candTime = candDate.getTime();
+  const candOrig = (candidate.origin_icao || '').toUpperCase();
+  const candDest = (candidate.destination_icao || '').toUpperCase();
+  const candDuration = Math.round(candidate.duration_seconds || 0);
+
+  for (const log of existingFlightLogs) {
+    // 1. Exact external flight number match (for MSFS-to-MSFS re-imports)
+    if (candFlightNum != null && log.external_flight_number != null && log.external_flight_number === candFlightNum) {
+      return true;
+    }
+
+    const logOrig = (log.origin_icao || '').toUpperCase();
+    const logDest = (log.destination_icao || '').toUpperCase();
+
+    // 2. Route matching
+    if (logOrig === candOrig && logDest === candDest) {
+      const logCompletedTime = log.completed_at ? new Date(log.completed_at).getTime() : 0;
+      const logDepartedTime = log.departed_at ? new Date(log.departed_at).getTime() : logCompletedTime;
+
+      // Check if within 3 hours (180 minutes) of departure or completion
+      const diffMinutes = Math.min(
+        Math.abs(candTime - logCompletedTime),
+        Math.abs(candTime - logDepartedTime)
+      ) / (60 * 1000);
+
+      if (diffMinutes <= 180) {
+        return true;
+      }
+
+      // Check if same calendar day with duration within 30 minutes
+      const candIso = candDate.toISOString().slice(0, 10);
+      const logIso = log.completed_at ? new Date(log.completed_at).toISOString().slice(0, 10) : '';
+      if (candIso && logIso && candIso === logIso) {
+        const logDuration = Math.round(log.duration_seconds || 0);
+        if (Math.abs(candDuration - logDuration) < 1800) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Deduplicates existing flight logs in a pilot profile.
+ * Removes redundant msfs_import entries that duplicate an Airbound dispatch or free flight.
+ */
+export function deduplicatePilotFlightLog(pilot) {
+  if (!pilot || !pilot.flight_log || pilot.flight_log.length <= 1) {
+    return { removedCount: 0, removedXp: 0 };
+  }
+
+  const logs = pilot.flight_log;
+  const idsToRemove = new Set();
+  let removedXp = 0;
+
+  // Identify all internal Airbound dispatch / career flights
+  const internalFlights = logs.filter((f) => f.source !== 'msfs_import' && f.is_external !== true);
+
+  for (const internal of internalFlights) {
+    const intCompTime = internal.completed_at ? new Date(internal.completed_at).getTime() : 0;
+    const intDepTime = internal.departed_at ? new Date(internal.departed_at).getTime() : intCompTime;
+    const intOrig = (internal.origin_icao || '').toUpperCase();
+    const intDest = (internal.destination_icao || '').toUpperCase();
+
+    for (const imp of logs) {
+      if (imp.source === 'msfs_import' || imp.is_external === true) {
+        const impOrig = (imp.origin_icao || '').toUpperCase();
+        const impDest = (imp.destination_icao || '').toUpperCase();
+
+        if (impOrig === intOrig && impDest === intDest) {
+          const impTime = new Date(imp.completed_at || imp.departed_at).getTime();
+          const diffMinutes = Math.min(
+            Math.abs(impTime - intCompTime),
+            Math.abs(impTime - intDepTime)
+          ) / (60 * 1000);
+
+          if (diffMinutes <= 180) {
+            idsToRemove.add(String(imp._id));
+            removedXp += (imp.xp_earned || 0);
+          }
+        }
+      }
+    }
+  }
+
+  if (idsToRemove.size > 0) {
+    pilot.flight_log = logs.filter((f) => !idsToRemove.has(String(f._id)));
+    pilot.xp = Math.max(0, (pilot.xp || 0) - removedXp);
+  }
+
+  return { removedCount: idsToRemove.size, removedXp };
+}
+
+/**
  * Imports parsed flights into pilot's career profile
  */
 export async function importFlightsToPilot(flights) {
@@ -282,18 +388,8 @@ export async function importFlightsToPilot(flights) {
 
   pilot.flight_log = pilot.flight_log || [];
 
-  // Build lookup sets for idempotency
-  const existingFlightNumbers = new Set(
-    pilot.flight_log
-      .filter((r) => r.external_flight_number != null)
-      .map((r) => r.external_flight_number)
-  );
-
-  const existingTimestampKeys = new Set(
-    pilot.flight_log
-      .filter((r) => r.completed_at)
-      .map((r) => `${r.origin_icao}_${r.destination_icao}_${new Date(r.completed_at).toISOString()}`)
-  );
+  // Automatically clean up any existing duplicate msfs_import records overlapping with Airbound flights
+  const dedupInitial = deduplicatePilotFlightLog(pilot);
 
   const visitedAirportsSet = new Set(pilot.visited_airports || []);
   const visitedCountriesSet = new Set(pilot.visited_countries || ['US']);
@@ -316,12 +412,16 @@ export async function importFlightsToPilot(flights) {
 
     const origIcao = (await normalizeTo4CharIcao(f.origin_icao || 'ZZZZ')).toUpperCase();
     const destIcao = (await normalizeTo4CharIcao(f.destination_icao || 'ZZZZ')).toUpperCase();
-    const timestampKey = `${origIcao}_${destIcao}_${completedAt.toISOString()}`;
 
-    if (
-      (flightNumber && existingFlightNumbers.has(flightNumber)) ||
-      existingTimestampKeys.has(timestampKey)
-    ) {
+    const candidate = {
+      flight_number: flightNumber,
+      date: completedAt,
+      origin_icao: origIcao,
+      destination_icao: destIcao,
+      duration_seconds: f.duration_seconds
+    };
+
+    if (isDuplicateFlight(candidate, pilot.flight_log)) {
       skippedCount++;
       continue;
     }
@@ -421,6 +521,7 @@ export async function importFlightsToPilot(flights) {
     success: true,
     imported: newImportedCount,
     skipped: skippedCount,
+    cleanedDuplicates: dedupInitial.removedCount,
     totalFlights: pilot.flight_log.length,
     xpAwarded: totalXpAdded,
     pilot
@@ -430,5 +531,7 @@ export async function importFlightsToPilot(flights) {
 export default {
   detectLogbookFiles,
   parseBinaryLogbook,
-  importFlightsToPilot
+  importFlightsToPilot,
+  isDuplicateFlight,
+  deduplicatePilotFlightLog
 };

@@ -6,6 +6,7 @@ import mongoose from 'mongoose';
 import Pilot from '../models/Pilot.js';
 import Airport from '../models/Airport.js';
 import { normalizeTo4CharIcao } from '../utils/icaoUtils.js';
+import { isDuplicateFlight, deduplicatePilotFlightLog } from '../services/msfsLogbookParser.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -64,18 +65,8 @@ export async function importMsfsLogbook(options = {}) {
     console.log(`[Import] Removed ${purgedLegacyCount} legacy flight log entries with dates prior to 2026.`);
   }
 
-  // Build lookup of existing logs to ensure idempotency
-  const existingFlightNumbers = new Set(
-    pilot.flight_log
-      .filter((r) => r.external_flight_number != null)
-      .map((r) => r.external_flight_number)
-  );
-
-  const existingTimestampKeys = new Set(
-    pilot.flight_log
-      .filter((r) => r.completed_at)
-      .map((r) => `${r.origin_icao}_${r.destination_icao}_${new Date(r.completed_at).toISOString()}`)
-  );
+  // Clean any previous duplicates
+  deduplicatePilotFlightLog(pilot);
 
   let newImportedCount = 0;
   let skippedCount = 0;
@@ -100,16 +91,6 @@ export async function importMsfsLogbook(options = {}) {
       continue;
     }
 
-    const timestampKey = `${f.origin_icao}_${f.destination_icao}_${completedAt.toISOString()}`;
-
-    if (
-      (flightNumber && existingFlightNumbers.has(flightNumber)) ||
-      existingTimestampKeys.has(timestampKey)
-    ) {
-      skippedCount++;
-      continue;
-    }
-
     const durationSec = Math.round(f.duration_seconds || 0);
     const departedAt =
       completedAt && durationSec > 0
@@ -118,6 +99,19 @@ export async function importMsfsLogbook(options = {}) {
 
     const origIcao = (await normalizeTo4CharIcao(f.origin_icao || 'ZZZZ')).toUpperCase();
     const destIcao = (await normalizeTo4CharIcao(f.destination_icao || 'ZZZZ')).toUpperCase();
+
+    const candidate = {
+      flight_number: flightNumber,
+      date: completedAt,
+      origin_icao: origIcao,
+      destination_icao: destIcao,
+      duration_seconds: durationSec
+    };
+
+    if (isDuplicateFlight(candidate, pilot.flight_log)) {
+      skippedCount++;
+      continue;
+    }
 
     const logEntry = {
       origin_icao: origIcao,
