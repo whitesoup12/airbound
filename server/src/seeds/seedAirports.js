@@ -75,6 +75,7 @@ export async function seedAirports(options = {}) {
               city: a.municipality || '',
               country: a.iso_country || '',
               longest_runway_ft: longestRunway,
+              is_msfs: true,
               location: {
                 type: 'Point',
                 coordinates: [lon, lat]

@@ -31,6 +31,11 @@ const AirportSchema = new mongoose.Schema(
       default: 3000,
       min: 0
     },
+    is_msfs: {
+      type: Boolean,
+      default: true,
+      index: true
+    },
     location: {
       type: {
         type: String,

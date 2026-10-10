@@ -185,6 +185,7 @@ export async function startAirportSync() {
                 city,
                 country,
                 longest_runway_ft: runwayFt,
+                is_msfs: true,
                 location: {
                   type: 'Point',
                   coordinates: [lon, lat]

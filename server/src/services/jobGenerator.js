@@ -255,6 +255,10 @@ export async function generateJobsForAirport(originIcao, options = {}) {
 
   const [originLon, originLat] = originAirport.location.coordinates;
 
+  // Check if verified MSFS airports are tagged in database to prevent generating jobs to non-MSFS airfields
+  const hasMsfsTag = await Airport.exists({ is_msfs: true });
+  const msfsFilter = hasMsfsTag ? { is_msfs: true } : {};
+
   let candidatePairs = []; // array of { airport, tier }
   const seenIcaos = new Set([originAirport.icao]);
   if (originAirport.icao.length === 4 && originAirport.icao.startsWith('K')) {
@@ -271,6 +275,7 @@ export async function generateJobsForAirport(originIcao, options = {}) {
     // 1. Try querying non-small airports first
     const customLimit = (direction && direction !== 'any' && direction !== 'all') ? 40 : 25;
     let candidateAirports = await Airport.find({
+      ...msfsFilter,
       icao: { $ne: originAirport.icao, $regex: '^[A-Z0-9]{4}$' },
       longest_runway_ft: { $gte: nonSmallMinRunway },
       location: {
@@ -286,6 +291,7 @@ export async function generateJobsForAirport(originIcao, options = {}) {
     if (!candidateAirports || candidateAirports.length < count) {
       const existingIcaos = candidateAirports.map((a) => a.icao);
       const moreAirports = await Airport.find({
+        ...msfsFilter,
         icao: { $ne: originAirport.icao, $nin: existingIcaos, $regex: '^[A-Z0-9]{4}$' },
         longest_runway_ft: { $gte: minRunwayFt },
         location: {
@@ -302,6 +308,7 @@ export async function generateJobsForAirport(originIcao, options = {}) {
 
     if (!candidateAirports || candidateAirports.length === 0) {
       candidateAirports = await Airport.find({
+        ...msfsFilter,
         icao: { $ne: originAirport.icao, $regex: '^[A-Z0-9]{4}$' },
         longest_runway_ft: { $gte: minRunwayFt }
       }).limit(10);
@@ -347,6 +354,7 @@ export async function generateJobsForAirport(originIcao, options = {}) {
       const effectiveRunwayThreshold = isDirectional ? minRunwayFt : nonSmallMinRunway;
 
       let tierCandidates = await Airport.find({
+        ...msfsFilter,
         icao: { $nin: Array.from(seenIcaos), $regex: '^[A-Z0-9]{4}$' },
         longest_runway_ft: { $gte: effectiveRunwayThreshold },
         location: {
@@ -362,6 +370,7 @@ export async function generateJobsForAirport(originIcao, options = {}) {
       if (tierCandidates.length < 6 && effectiveRunwayThreshold > minRunwayFt) {
         const existingIcaos = tierCandidates.map((a) => a.icao);
         const fallbackCandidates = await Airport.find({
+          ...msfsFilter,
           icao: { $nin: [...Array.from(seenIcaos), ...existingIcaos], $regex: '^[A-Z0-9]{4}$' },
           longest_runway_ft: { $gte: minRunwayFt },
           location: {
@@ -421,6 +430,7 @@ export async function generateJobsForAirport(originIcao, options = {}) {
       let nearbyAirports = [];
       try {
         nearbyAirports = await Airport.find({
+          ...msfsFilter,
           icao: { $nin: Array.from(seenIcaos), $regex: '^[A-Z0-9]{4}$' },
           longest_runway_ft: { $gte: minRunwayFt },
           location: {
@@ -432,6 +442,7 @@ export async function generateJobsForAirport(originIcao, options = {}) {
       } catch (geoErr) {
         // Fallback for environments where 2dsphere index is indexing
         nearbyAirports = await Airport.find({
+          ...msfsFilter,
           icao: { $nin: Array.from(seenIcaos), $regex: '^[A-Z0-9]{4}$' },
           longest_runway_ft: { $gte: minRunwayFt }
         }).limit(60);
@@ -489,6 +500,7 @@ export async function generateJobsForAirport(originIcao, options = {}) {
     const unvisitedLimit = isDirectional ? 40 : 10;
     // Actively seek unvisited non-small airports in the aircraft's radius
     let unvisitedAvailable = await Airport.find({
+      ...msfsFilter,
       icao: { $nin: [...Array.from(seenIcaos), ...Array.from(visitedSet)], $regex: '^[A-Z0-9]{4}$' },
       longest_runway_ft: { $gte: isDirectional ? minRunwayFt : nonSmallMinRunway },
       location: {
