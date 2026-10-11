@@ -100,12 +100,16 @@
       "icon": "electron/assets/icon.png"
     },
     "nsis": {
+      "artifactName": "${productName}-${version}.${ext}",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Airbound",
       "include": "electron/installer.nsh"
+    },
+    "portable": {
+      "artifactName": "${productName}-Portable-${version}.${ext}"
     }
   }
 }

@@ -57,7 +57,7 @@ Airbound generates distance- and runway-scaled contract jobs from your current l
 Airbound runs **100% locally on your PC** with zero external database configuration, no API keys, and automatic SimConnect integration.
 
 ### Method 1: Download Windows Executable (.exe) — *For Flight Simmers*
-1. Download **`Airbound Setup 1.0.0.exe`** (Installer) or **`Airbound 1.0.0.exe`** (Portable standalone) from [GitHub Releases](https://github.com/whitesoup12/airbound/releases).
+1. Download **`Airbound-1.0.0.exe`** (Standard Installer) or **`Airbound-Portable-1.0.0.exe`** (Standalone Portable) from [GitHub Releases](https://github.com/whitesoup12/airbound/releases).
 2. Run the executable.
 3. Airbound starts immediately with an embedded database, hooks into MSFS 2024, and launches the cockpit dashboard in a dedicated window.  
 *(No Node.js, terminal, or database installation required!)*
