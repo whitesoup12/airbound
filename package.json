@@ -50,7 +50,8 @@
   "license": "MIT",
   "devDependencies": {
     "electron": "^44.7.0",
-    "electron-builder": "^26.15.3"
+    "electron-builder": "^26.15.3",
+    "puppeteer-core": "^25.13.0"
   },
   "build": {
     "appId": "com.airbound.msfs",

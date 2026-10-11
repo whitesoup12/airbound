@@ -126,9 +126,10 @@ export function App() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '');
-      if (['flight-deck', 'dispatch', 'fleet', 'cash-flow', 'finances', 'progression', 'logbook', 'career', 'options', 'settings'].includes(hash)) {
+      if (['flight-deck', 'dispatch', 'fleet', 'cash-flow', 'finances', 'progression', 'logbook', 'career', 'guide', 'handbook', 'options', 'settings'].includes(hash)) {
         if (hash === 'career') setCurrentTab('progression');
         else if (hash === 'finances') setCurrentTab('cash-flow');
+        else if (hash === 'handbook') setCurrentTab('guide');
         else if (hash === 'settings') setCurrentTab('options');
         else setCurrentTab(hash);
       }
