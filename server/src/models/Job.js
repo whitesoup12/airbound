@@ -1,0 +1,118 @@
+import mongoose from 'mongoose';
+
+const JobSchema = new mongoose.Schema(
+  {
+    origin_icao: {
+      type: String,
+      required: true,
+      uppercase: true,
+      trim: true,
+      index: true
+    },
+    destination_icao: {
+      type: String,
+      required: true,
+      uppercase: true,
+      trim: true,
+      index: true
+    },
+    distance_nm: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    cargo_lbs: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    pax_count: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    payout: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    status: {
+      type: String,
+      enum: ['available', 'accepted', 'completed', 'failed'],
+      default: 'available',
+      index: true
+    },
+    accepted_at: {
+      type: Date
+    },
+    completed_at: {
+      type: Date
+    },
+    rental_fee_charged: {
+      type: Number,
+      default: 0
+    },
+    tier: {
+      type: String,
+      enum: ['short', 'medium', 'long'],
+      default: 'short'
+    },
+    is_unvisited: {
+      type: Boolean,
+      default: false
+    },
+    is_featured_destination: {
+      type: Boolean,
+      default: false
+    },
+    exploration_bonus: {
+      type: Number,
+      default: 0
+    },
+    seniority_multiplier: {
+      type: Number,
+      default: 1.0
+    },
+    seniority_bonus: {
+      type: Number,
+      default: 0
+    },
+    xp_reward: {
+      type: Number,
+      default: 0
+    },
+    touchdown_fpm: {
+      type: Number,
+      default: null
+    },
+    landing_rating: {
+      type: String,
+      default: ''
+    },
+    landing_class: {
+      type: String,
+      default: ''
+    },
+    approach_speed_kts: {
+      type: Number,
+      default: null
+    },
+    bearing: {
+      type: Number,
+      default: null
+    },
+    cardinal_direction: {
+      type: String,
+      default: ''
+    }
+  },
+  {
+    timestamps: true
+  }
+);
+
+JobSchema.index({ origin_icao: 1, status: 1 });
+
+export const Job = mongoose.model('Job', JobSchema);
+export default Job;
+

@@ -1,0 +1,37 @@
+{
+  "name": "airbound-server",
+  "version": "1.0.0",
+  "description": "MSFS 2024 Career & Logbook Tracker Backend & SimConnect Bridge",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "seed": "node src/seeds/seedCommercialAirports.js",
+    "seed:curated": "node src/seeds/seedAirports.js",
+    "test": "node tests/runAllTests.js && node tests/testRentalAndValidation.js && node tests/testRentToOwn.js && node tests/testPilotXp.js && node tests/testFreeFlight.js && node tests/testCloudTelemetryAndSettlement.js && node tests/testPasscodeAuth.js && node tests/testSettingsAndLogbook.js",
+    "test:freeflight": "node tests/testFreeFlight.js",
+    "test:fleet": "node tests/fleetEconomyTest.js",
+    "test:rental": "node tests/testRentalAndValidation.js",
+    "test:renttoown": "node tests/testRentToOwn.js",
+    "test:xp": "node tests/testPilotXp.js",
+    "test:cloud": "node tests/testCloudTelemetryAndSettlement.js",
+    "test:auth": "node tests/testPasscodeAuth.js",
+    "test:settings": "node tests/testSettingsAndLogbook.js",
+    "test:all": "node tests/runAllTests.js && node tests/testRentalAndValidation.js && node tests/testRentToOwn.js && node tests/fleetEconomyTest.js && node tests/testPilotXp.js && node tests/testFreeFlight.js && node tests/testCloudTelemetryAndSettlement.js && node tests/testPasscodeAuth.js && node tests/testSettingsAndLogbook.js",
+    "test:e2e": "node tests/e2eTest.js",
+    "export:msfs": "node src/scripts/exportMsfsLogbook.js",
+    "import:msfs": "node src/scripts/importMsfsLogbook.js",
+    "import:ourairports": "node src/scripts/importOurAirports.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "csv-parser": "^3.2.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mongodb-memory-server": "^10.1.3",
+    "mongoose": "^8.9.5",
+    "node-simconnect": "^3.0.0",
+    "socket.io": "^4.8.1"
+  }
+}

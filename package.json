@@ -1,0 +1,111 @@
+{
+  "name": "airbound",
+  "version": "1.0.0",
+  "description": "MSFS 2024 Career & Logbook Tracker",
+  "type": "module",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "main": "electron/main.js",
+  "scripts": {
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "start": "node scripts/startDesktop.js",
+    "start:server": "npm --prefix server start",
+    "electron": "npm run build && electron .",
+    "dist:exe": "npm run build && electron-builder --win",
+    "dist:portable": "npm run build && electron-builder --win portable",
+    "seed": "npm --prefix server run seed",
+    "seed:full": "npm --prefix server run seed:full",
+    "test": "npm --prefix server test",
+    "build": "node scripts/build.js",
+    "export:msfs": "npm --prefix server run export:msfs",
+    "release:bump": "node scripts/release.js bump",
+    "release:build": "node scripts/release.js build",
+    "release:checksums": "node scripts/release.js checksums",
+    "release:publish": "node scripts/release.js publish",
+    "release": "node scripts/release.js all"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "csv-parser": "^3.2.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mongodb-memory-server": "^10.1.3",
+    "mongoose": "^8.9.5",
+    "node-simconnect": "^3.0.0",
+    "socket.io": "^4.8.1"
+  },
+  "keywords": [
+    "msfs",
+    "msfs2024",
+    "simconnect",
+    "flight-simulator",
+    "logbook",
+    "career"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^44.7.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.airbound.msfs",
+    "productName": "Airbound",
+    "publish": {
+      "provider": "github",
+      "owner": "whitesoup12",
+      "repo": "airbound"
+    },
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "server/src/**/*",
+      "server/package.json",
+      "electron/**/*",
+      "package.json"
+    ],
+    "extraMetadata": {
+      "main": "electron/main.js"
+    },
+    "extraResources": [
+      {
+        "from": "server/bin",
+        "to": "bin",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "asar": false,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "electron/assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Airbound",
+      "include": "electron/installer.nsh"
+    }
+  }
+}
