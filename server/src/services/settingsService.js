@@ -8,7 +8,11 @@ function getSettingsFilePath() {
     const userDataDir = path.resolve(process.env.AIRBOUND_DATA_DIR, '..', '..');
     return path.join(userDataDir, 'settings.json');
   }
-  return path.resolve(process.cwd(), 'data', 'settings.json');
+  const rootData = path.resolve(process.cwd(), 'data', 'settings.json');
+  if (fs.existsSync(rootData)) return rootData;
+  const serverData = path.resolve(process.cwd(), 'server', 'data', 'settings.json');
+  if (fs.existsSync(serverData)) return serverData;
+  return rootData;
 }
 
 /**

@@ -21,6 +21,7 @@
     "test": "npm --prefix server test",
     "build": "node scripts/build.js",
     "export:msfs": "npm --prefix server run export:msfs",
+    "screenshots": "node scripts/captureScreenshots.js",
     "release:bump": "node scripts/release.js bump",
     "release:build": "node scripts/release.js build",
     "release:checksums": "node scripts/release.js checksums",

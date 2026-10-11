@@ -201,8 +201,8 @@ export function TelemetryDashboard({
         </div>
       </div>
 
-      {/* Desktop Mode: Searching for MSFS Simulator Standby Banner */}
-      {isDesktop && !connectionStatus?.simConnected && !connectionStatus?.isMock && (
+      {/* Searching for MSFS Simulator Standby Banner */}
+      {!connectionStatus?.simConnected && !connectionStatus?.isMock && (
         <div className="p-3 sm:p-3.5 rounded-xl bg-slate-900/90 border border-amber-900/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs font-mono text-slate-300 shadow-lg">
           <div className="flex items-center space-x-2.5">
             <Radio className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
@@ -221,29 +221,7 @@ export function TelemetryDashboard({
         </div>
       )}
 
-      {/* Cloud Mode: MSFS Desktop Connector Offline Helper Banner */}
-      {!isDesktop && !connectionStatus?.connectorActive && !connectionStatus?.isMock && (
-        <div className="p-3 sm:p-3.5 rounded-xl bg-slate-900/90 border border-slate-800/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs font-mono text-slate-400 shadow-lg">
-          <div className="flex items-center space-x-2.5">
-            <Radio className="w-4 h-4 text-rose-500 shrink-0 animate-pulse" />
-            <span>
-              <strong className="text-slate-200">MSFS Connector Offline:</strong> Run{' '}
-              <code className="text-cyan-300 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800 font-bold">
-                start-connector.bat
-              </code>{' '}
-              on your PC to stream live MSFS 2024 / 2020 telemetry.
-            </span>
-          </div>
-          {onOpenConnectorStatus && (
-            <button
-              onClick={onOpenConnectorStatus}
-              className="px-3 py-1 rounded-lg bg-cyan-950/90 hover:bg-cyan-900 text-cyan-300 border border-cyan-700/60 text-[11px] font-bold transition whitespace-nowrap shrink-0 cursor-pointer"
-            >
-              How to Connect
-            </button>
-          )}
-        </div>
-      )}
+
 
       {/* Airframe Mismatch Alert Banner (Takes priority when mismatch is detected) */}
       {activeJob && aircraftValidation && !aircraftValidation.matches && (
