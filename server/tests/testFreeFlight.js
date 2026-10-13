@@ -1,10 +1,12 @@
 import './setupTestEnv.js';
 import assert from 'assert';
+import request from 'http';
 import { connectTestDB, disconnectDB } from '../src/config/db.js';
 import Airport from '../src/models/Airport.js';
 import Pilot from '../src/models/Pilot.js';
 import { seedAirports } from '../src/seeds/seedAirports.js';
 import { FlightStateMachine, FLIGHT_PHASES } from '../src/services/stateMachine.js';
+import app from '../src/app.js';
 
 async function testFreeFlight() {
   console.log('--- TESTING AIRBOUND FREE FLIGHT DISPATCH & EXECUTION ---');
@@ -226,6 +228,92 @@ async function testFreeFlight() {
   assert.strictEqual(casualFlight.landing_fee, 0);
   assert.strictEqual(casualFlight.net_payout, 0);
   console.log('✓ Casual Mode verified: $0 fuel, $0 landing fees, $0 wallet deduction.');
+
+  // 7. Test REST API Endpoints (/api/free-flight/start, status, cancel)
+  console.log('7. Testing Free Flight REST API endpoints...');
+  let serverInstance = null;
+  let serverPort = null;
+  const makeRequest = (method, path, body = null) => {
+    return new Promise((resolve, reject) => {
+      const dataString = body ? JSON.stringify(body) : null;
+      const req = request.request(
+        {
+          hostname: '127.0.0.1',
+          port: serverPort,
+          path,
+          method,
+          headers: {
+            'Content-Type': 'application/json',
+            ...(dataString ? { 'Content-Length': Buffer.byteLength(dataString) } : {})
+          }
+        },
+        (res) => {
+          let raw = '';
+          res.on('data', (chunk) => (raw += chunk));
+          res.on('end', () => {
+            try {
+              const parsed = raw ? JSON.parse(raw) : null;
+              resolve({ status: res.statusCode, body: parsed });
+            } catch {
+              resolve({ status: res.statusCode, body: raw });
+            }
+          });
+        }
+      );
+      req.on('error', reject);
+      if (dataString) req.write(dataString);
+      req.end();
+    });
+  };
+
+  await new Promise((resolve) => {
+    serverInstance = app.listen(0, '127.0.0.1', () => {
+      serverPort = serverInstance.address().port;
+      resolve();
+    });
+  });
+
+  try {
+    // 7a. Start Open Roam flight (destination_icao = null)
+    const openRoamRes = await makeRequest('POST', '/api/free-flight/start', {
+      destination_icao: null,
+      deduct_fees: false
+    });
+    assert.strictEqual(openRoamRes.status, 200, `Expected 200 from free-flight start, got: ${JSON.stringify(openRoamRes.body)}`);
+    assert.strictEqual(openRoamRes.body.activeJob.is_free_flight, true);
+    assert.strictEqual(openRoamRes.body.activeJob.destination_icao, null);
+    assert.strictEqual(openRoamRes.body.activeJob.distance_nm, 0);
+    console.log('✓ POST /api/free-flight/start with null destination succeeded without destIcao error.');
+
+    // 7b. Check status
+    const statusRes = await makeRequest('GET', '/api/free-flight/status');
+    assert.strictEqual(statusRes.status, 200);
+    assert.strictEqual(statusRes.body.isFreeFlight, true);
+    console.log('✓ GET /api/free-flight/status reported active free flight.');
+
+    // 7c. Cancel flight
+    const cancelRes = await makeRequest('POST', '/api/free-flight/cancel');
+    assert.strictEqual(cancelRes.status, 200);
+    assert.strictEqual(cancelRes.body.activeJob, null);
+    console.log('✓ POST /api/free-flight/cancel cleared active free flight.');
+
+    // 7d. Start destination-specified free flight (destination_icao = 'KSFO')
+    const destRes = await makeRequest('POST', '/api/free-flight/start', {
+      destination_icao: 'KSFO',
+      deduct_fees: true
+    });
+    assert.strictEqual(destRes.status, 200, `Expected 200, got: ${JSON.stringify(destRes.body)}`);
+    assert.strictEqual(destRes.body.activeJob.destination_icao, 'KSFO');
+    assert(destRes.body.activeJob.distance_nm > 0, 'Distance to KSFO should be greater than 0');
+    console.log(`✓ POST /api/free-flight/start with KSFO destination succeeded (Distance: ${destRes.body.activeJob.distance_nm} NM).`);
+
+    // Clean up
+    await makeRequest('POST', '/api/free-flight/cancel');
+  } finally {
+    if (serverInstance) {
+      await new Promise((resolve) => serverInstance.close(resolve));
+    }
+  }
 
   await disconnectDB();
   console.log('\n✅ ALL FREE FLIGHT TESTS PASSED SUCCESSFULLY!');

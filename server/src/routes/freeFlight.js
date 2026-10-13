@@ -31,7 +31,9 @@ router.get('/status', async (req, res) => {
  */
 router.post('/start', async (req, res) => {
   try {
-    const { destination_icao = null, deduct_fees = false } = req.body || {};
+    const { destination_icao = null, destIcao: bodyDestIcao = null, deduct_fees = false } = req.body || {};
+    const rawDestIcao = destination_icao || bodyDestIcao || null;
+    const destIcao = rawDestIcao ? String(rawDestIcao).trim().toUpperCase() : null;
 
     // Check if commercial job contract is currently in progress
     const activeContract = await Job.findOne({ status: 'accepted' });
@@ -81,6 +83,7 @@ router.post('/start', async (req, res) => {
       originAirport = await Airport.findOne({ icao: originIcao });
     }
     let destAirport = null;
+    let distanceNm = 0;
 
     if (destIcao) {
       destAirport = await Airport.findOne({ icao: destIcao });
