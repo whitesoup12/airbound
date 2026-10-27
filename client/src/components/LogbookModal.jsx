@@ -235,7 +235,7 @@ export function LogbookModal({ isOpen, onClose, pilot }) {
                   <div className="pt-2.5 border-t border-slate-800/80 flex flex-wrap items-center justify-between text-[11px] font-mono text-slate-400 gap-2">
                     <div className="flex items-center space-x-1 text-cyan-300">
                       <Plane className="w-3 h-3 text-cyan-400" />
-                      <span>{record.aircraft_name || 'Cessna 172 Skyhawk'}</span>
+                      <span>{record.aircraft_name || 'Cessna 152'}</span>
                     </div>
 
                     {record.gross_payout ? (

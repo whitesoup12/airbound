@@ -244,7 +244,7 @@ export function FleetView({ pilot, onAircraftChanged }) {
               AIRCRAFT FLEET & HANGAR
             </h2>
             <p className="text-xs text-slate-400 font-mono">
-              Active Cockpit Plane: <strong className="text-cyan-300">{hangarData.activeAircraft?.name || 'Cessna 172'}</strong> ({activeTail || 'N172AB'})
+              Active Cockpit Plane: <strong className="text-cyan-300">{hangarData.activeAircraft?.name || 'Cessna 152'}</strong> ({activeTail || 'N152AB'})
             </p>
           </div>
         </div>

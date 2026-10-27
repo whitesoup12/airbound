@@ -55,7 +55,7 @@ export function FlightDeckView({
                 NO ACTIVE CONTRACT ACCEPTED
               </h4>
               <p className="text-xs text-slate-400">
-                You are currently parked at <strong className="text-cyan-300">{pilot?.current_icao || 'KLAX'}</strong> in your <strong className="text-white">{pilot?.active_aircraft?.name || 'Cessna 172'}</strong>. Select a contract to generate a flight plan.
+                You are currently parked at <strong className="text-cyan-300">{pilot?.current_icao || 'KLAX'}</strong> in your <strong className="text-white">{pilot?.active_aircraft?.name || 'Cessna 152'}</strong>. Select a contract to generate a flight plan.
               </p>
             </div>
           </div>

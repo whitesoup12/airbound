@@ -5,6 +5,11 @@
  */
 
 export const AIRCRAFT_MATCH_RULES = {
+  c152: {
+    name: 'Cessna 152',
+    patterns: [/152/i, /c152/i, /cessna 152/i],
+    models: [/c152/i]
+  },
   c172: {
     name: 'Cessna 172 Skyhawk',
     patterns: [/172/i, /skyhawk/i, /c172/i],
@@ -90,8 +95,8 @@ export const AIRCRAFT_MATCH_RULES = {
  * @returns {object} { matches: boolean, simAircraftTitle: string, simAircraftModel: string, expectedAircraft: string, reason?: string }
  */
 export function validateAircraftMatch(activeAircraft, telemetry = {}, isMockMode = false) {
-  const expectedName = activeAircraft?.name || 'Cessna 172 Skyhawk';
-  const expectedModelId = (activeAircraft?.model_id || 'c172').toLowerCase();
+  const expectedName = activeAircraft?.name || 'Cessna 152';
+  const expectedModelId = (activeAircraft?.model_id || 'c152').toLowerCase();
 
   // If in Mock Mode, automatically simulate a verified match
   if (isMockMode) {

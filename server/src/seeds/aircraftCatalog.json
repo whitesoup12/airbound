@@ -1,5 +1,21 @@
 [
   {
+    "model_id": "c152",
+    "name": "Cessna 152",
+    "manufacturer": "Textron Aviation",
+    "category": "single_prop",
+    "purchase_price": 75000,
+    "rental_price_per_flight": 1200,
+    "cruise_speed_kts": 105,
+    "max_range_nm": 415,
+    "max_cargo_lbs": 200,
+    "max_pax": 1,
+    "min_runway_ft": 1350,
+    "fuel_type": "100LL",
+    "fuel_burn_gph": 6.0,
+    "description": "The quintessential two-seat trainer and light cross-country runabout. Ultra-reliable, economical to fly, and the foundational stepping stone for general aviation pilots."
+  },
+  {
     "model_id": "c172",
     "name": "Cessna 172 Skyhawk",
     "manufacturer": "Textron Aviation",

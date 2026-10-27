@@ -67,7 +67,7 @@ const FlightRecordSchema = new mongoose.Schema(
     },
     aircraft_name: {
       type: String,
-      default: 'Cessna 172 Skyhawk'
+      default: 'Cessna 152'
     },
     duration_seconds: {
       type: Number,
@@ -224,9 +224,9 @@ const PilotSchema = new mongoose.Schema(
     },
     // Active flying aircraft
     active_aircraft: {
-      model_id: { type: String, default: 'c172' },
-      name: { type: String, default: 'Cessna 172 Skyhawk' },
-      tail_number: { type: String, default: 'N172AB' },
+      model_id: { type: String, default: 'c152' },
+      name: { type: String, default: 'Cessna 152' },
+      tail_number: { type: String, default: 'N152AB' },
       category: { type: String, default: 'single_prop' },
       is_rental: { type: Boolean, default: false },
       rental_price_per_flight: { type: Number, default: 0 },
@@ -234,21 +234,21 @@ const PilotSchema = new mongoose.Schema(
       accumulated_equity: { type: Number, default: 0 },
       flight_hours: { type: Number, default: 0 },
       is_loaner: { type: Boolean, default: false },
-      cruise_speed_kts: { type: Number, default: 120 },
-      max_range_nm: { type: Number, default: 500 },
-      max_cargo_lbs: { type: Number, default: 500 },
-      max_pax: { type: Number, default: 3 },
-      min_runway_ft: { type: Number, default: 1600 },
+      cruise_speed_kts: { type: Number, default: 105 },
+      max_range_nm: { type: Number, default: 415 },
+      max_cargo_lbs: { type: Number, default: 200 },
+      max_pax: { type: Number, default: 1 },
+      min_runway_ft: { type: Number, default: 1350 },
       fuel_type: { type: String, default: '100LL' },
-      fuel_burn_gph: { type: Number, default: 9.0 }
+      fuel_burn_gph: { type: Number, default: 6.0 }
     },
     fleet: {
       type: [OwnedAircraftSchema],
       default: [
         {
-          model_id: 'c172',
-          name: 'Cessna 172 Skyhawk',
-          tail_number: 'N172AB',
+          model_id: 'c152',
+          name: 'Cessna 152',
+          tail_number: 'N152AB',
           category: 'single_prop',
           is_rental: false,
           purchased_at: new Date(),

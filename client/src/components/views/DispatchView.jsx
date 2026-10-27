@@ -41,8 +41,8 @@ export function DispatchView({
   const [showOriginWeather, setShowOriginWeather] = useState(false);
 
   const activeAircraft = {
-    name: pilot?.active_aircraft?.name || 'Cessna 172 Skyhawk',
-    tail_number: pilot?.active_aircraft?.tail_number || 'N172AB',
+    name: pilot?.active_aircraft?.name || 'Cessna 152',
+    tail_number: pilot?.active_aircraft?.tail_number || 'N152AB',
     category: pilot?.active_aircraft?.category || 'single_prop',
     is_rental: Boolean(pilot?.active_aircraft?.is_rental),
     rental_price_per_flight: pilot?.active_aircraft?.rental_price_per_flight || 0,

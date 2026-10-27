@@ -22,23 +22,23 @@ export async function getPilot(req, res) {
         visited_countries: ['US'],
         flight_log: [],
         active_aircraft: {
-          model_id: 'c172',
-          name: 'Cessna 172 Skyhawk',
-          tail_number: 'N172AB',
+          model_id: 'c152',
+          name: 'Cessna 152',
+          tail_number: 'N152AB',
           category: 'single_prop',
-          cruise_speed_kts: 120,
-          max_range_nm: 500,
-          max_cargo_lbs: 500,
-          max_pax: 3,
-          min_runway_ft: 1600,
+          cruise_speed_kts: 105,
+          max_range_nm: 415,
+          max_cargo_lbs: 200,
+          max_pax: 1,
+          min_runway_ft: 1350,
           fuel_type: '100LL',
-          fuel_burn_gph: 9.0
+          fuel_burn_gph: 6.0
         },
         fleet: [
           {
-            model_id: 'c172',
-            name: 'Cessna 172 Skyhawk',
-            tail_number: 'N172AB',
+            model_id: 'c152',
+            name: 'Cessna 152',
+            tail_number: 'N152AB',
             category: 'single_prop',
             is_rental: false,
             purchased_at: new Date(),
@@ -123,17 +123,17 @@ export async function healPilotData() {
 
     if (!pilot.active_aircraft || !pilot.active_aircraft.model_id) {
       pilot.active_aircraft = {
-        model_id: 'c172',
-        name: 'Cessna 172 Skyhawk',
-        tail_number: 'N172AB',
+        model_id: 'c152',
+        name: 'Cessna 152',
+        tail_number: 'N152AB',
         category: 'single_prop',
-        cruise_speed_kts: 120,
-        max_range_nm: 500,
-        max_cargo_lbs: 500,
-        max_pax: 3,
-        min_runway_ft: 1600,
+        cruise_speed_kts: 105,
+        max_range_nm: 415,
+        max_cargo_lbs: 200,
+        max_pax: 1,
+        min_runway_ft: 1350,
         fuel_type: '100LL',
-        fuel_burn_gph: 9.0
+        fuel_burn_gph: 6.0
       };
       needsSave = true;
     }
@@ -141,9 +141,9 @@ export async function healPilotData() {
     if (!pilot.fleet || pilot.fleet.length === 0) {
       pilot.fleet = [
         {
-          model_id: 'c172',
-          name: 'Cessna 172 Skyhawk',
-          tail_number: 'N172AB',
+          model_id: 'c152',
+          name: 'Cessna 152',
+          tail_number: 'N152AB',
           category: 'single_prop',
           is_rental: false,
           purchased_at: new Date(),
@@ -242,23 +242,23 @@ export async function resetPilot(req, res) {
     // Flight logs are permanently preserved across career resets
     pilot.flight_log = pilot.flight_log || [];
     pilot.active_aircraft = {
-      model_id: 'c172',
-      name: 'Cessna 172 Skyhawk',
-      tail_number: 'N172AB',
+      model_id: 'c152',
+      name: 'Cessna 152',
+      tail_number: 'N152AB',
       category: 'single_prop',
-      cruise_speed_kts: 120,
-      max_range_nm: 500,
-      max_cargo_lbs: 500,
-      max_pax: 3,
-      min_runway_ft: 1600,
+      cruise_speed_kts: 105,
+      max_range_nm: 415,
+      max_cargo_lbs: 200,
+      max_pax: 1,
+      min_runway_ft: 1350,
       fuel_type: '100LL',
-      fuel_burn_gph: 9.0
+      fuel_burn_gph: 6.0
     };
     pilot.fleet = [
       {
-        model_id: 'c172',
-        name: 'Cessna 172 Skyhawk',
-        tail_number: 'N172AB',
+        model_id: 'c152',
+        name: 'Cessna 152',
+        tail_number: 'N152AB',
         category: 'single_prop',
         is_rental: false,
         purchased_at: new Date(),

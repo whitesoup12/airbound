@@ -254,7 +254,9 @@ async function runTests() {
   assert.strictEqual(resetPilotDoc.flight_log.length, 1, 'Flight log must NOT be deleted on career reset');
   assert.strictEqual(resetPilotDoc.fleet.length, 1, 'Fleet must have 1 starter plane');
   assert.strictEqual(resetPilotDoc.fleet[0].is_rental, false, 'Starter plane must be owned');
-  console.log('✓ Career Reset verified: Home Base KXNA, Balance $15,000, Starter C172 Owned, Flight Logs Retained');
+  assert.strictEqual(resetPilotDoc.fleet[0].model_id, 'c152', 'Starter plane must be C152');
+  assert.strictEqual(resetPilotDoc.active_aircraft.model_id, 'c152', 'Active aircraft must be C152');
+  console.log('✓ Career Reset verified: Home Base KXNA, Balance $15,000, Starter C152 Owned, Flight Logs Retained');
 
   // 7. Test Flight Pause & Simulation Active Flight Time Tracking
   console.log('\nTesting Flight Pause & Active Simulation Time Tracking...');

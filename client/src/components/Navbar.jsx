@@ -61,7 +61,7 @@ export function Navbar({
       id: 'fleet',
       label: 'Fleet',
       icon: Warehouse,
-      badge: pilot?.active_aircraft?.tail_number || 'N172AB',
+      badge: pilot?.active_aircraft?.tail_number || 'N152AB',
       badgeColor: 'bg-amber-950/80 text-amber-300 border-amber-700/60'
     },
     {

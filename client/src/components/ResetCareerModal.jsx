@@ -172,7 +172,7 @@ export function ResetCareerModal({
           <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
           <div className="text-xs font-mono text-slate-300 space-y-1">
             <div>
-              Flight logs and flight hours are <strong>permanently preserved</strong>. Resetting will set your liquid funds to $15,000, cancel any active job, reset your fleet to an owned starter Cessna 172 Skyhawk, and reposition you at your chosen home base.
+              Flight logs and flight hours are <strong>permanently preserved</strong>. Resetting will set your liquid funds to $15,000, cancel any active job, reset your fleet to an owned starter Cessna 152, and reposition you at your chosen home base.
             </div>
             <div className="flex items-center space-x-2 text-emerald-400 font-semibold pt-0.5">
               <Sparkles className="w-3.5 h-3.5" />

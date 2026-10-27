@@ -273,7 +273,7 @@ export function FleetDealershipModal({ isOpen, onClose, pilot, onAircraftChanged
                 AIRCRAFT FLEET & HANGAR
               </h2>
               <p className="text-xs text-slate-400 font-mono">
-                Active Flight: <strong className="text-cyan-400">{hangarData.activeAircraft?.name || 'Cessna 172'}</strong> ({activeTail || 'N172AB'})
+                Active Flight: <strong className="text-cyan-400">{hangarData.activeAircraft?.name || 'Cessna 152'}</strong> ({activeTail || 'N152AB'})
               </p>
             </div>
           </div>

@@ -136,8 +136,8 @@ export function CareerProgressView({
   }, [totalNm, flightLog, pilot?.visited_airports, landingStats.totalLandingBonusXp]);
 
   const activeAircraft = pilot?.active_aircraft || {
-    name: 'Cessna 172 Skyhawk',
-    tail_number: 'N172AB',
+    name: 'Cessna 152',
+    tail_number: 'N152AB',
     category: 'single_prop'
   };
 

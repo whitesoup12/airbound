@@ -226,6 +226,7 @@ export function parseBinaryLogbook(filePath) {
             if (
               str.startsWith('asobo-aircraft-') ||
               str.startsWith('aircraft-') ||
+              str.includes('c152') ||
               str.includes('c172') ||
               str.includes('a320') ||
               str.includes('da40') ||

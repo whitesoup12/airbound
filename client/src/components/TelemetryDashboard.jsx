@@ -74,9 +74,9 @@ export function TelemetryDashboard({
   const phaseInfo = PHASE_CONFIG[phase] || PHASE_CONFIG.STANDBY;
 
   const activeAircraft = pilot?.active_aircraft || {
-    name: 'Cessna 172 Skyhawk',
-    cruise_speed_kts: 120,
-    fuel_burn_gph: 9.0,
+    name: 'Cessna 152',
+    cruise_speed_kts: 105,
+    fuel_burn_gph: 6.0,
     fuel_type: '100LL'
   };
 

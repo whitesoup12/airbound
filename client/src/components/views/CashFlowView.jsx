@@ -81,7 +81,7 @@ export function CashFlowView({
         dispatchCount++;
 
         // Track per aircraft model
-        const planeName = f.aircraft_name || 'Cessna 172 Skyhawk';
+        const planeName = f.aircraft_name || 'Cessna 152';
         if (!aircraftMap.has(planeName)) {
           const matchingFleet = fleet.find(
             (p) => p.name === planeName || (p.model_id && planeName.toLowerCase().includes(p.model_id.toLowerCase()))
@@ -89,7 +89,7 @@ export function CashFlowView({
 
           aircraftMap.set(planeName, {
             name: planeName,
-            tailNumber: matchingFleet?.tail_number || 'N172AB',
+            tailNumber: matchingFleet?.tail_number || 'N152AB',
             isRental: Boolean(matchingFleet?.is_rental || rental > 0),
             rentalRate: matchingFleet?.rental_price_per_flight || (rental > 0 ? rental : 0),
             flights: 0,

@@ -9,8 +9,8 @@ export function PilotHUD({ pilot, rankInfo: propRankInfo, currentAirport, onOpen
   const visitedAirportsCount = pilot?.visited_airports?.length || 1;
   const visitedCountriesCount = pilot?.visited_countries?.length || 1;
   const activeAircraft = pilot?.active_aircraft || {
-    name: 'Cessna 172 Skyhawk',
-    tail_number: 'N172AB',
+    name: 'Cessna 152',
+    tail_number: 'N152AB',
     category: 'single_prop'
   };
 
@@ -104,7 +104,7 @@ export function PilotHUD({ pilot, rankInfo: propRankInfo, currentAirport, onOpen
               {activeAircraft.name}
             </h3>
             <div className="flex items-center space-x-1">
-              <span className="text-xs text-amber-300 font-mono">{activeAircraft.tail_number || 'N172AB'}</span>
+              <span className="text-xs text-amber-300 font-mono">{activeAircraft.tail_number || 'N152AB'}</span>
               <span className="text-[10px] text-slate-400 uppercase">({activeAircraft.category?.replace('_', ' ')})</span>
             </div>
           </div>

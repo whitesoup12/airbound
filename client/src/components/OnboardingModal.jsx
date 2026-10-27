@@ -856,7 +856,7 @@ export function OnboardingModal({ isOpen, onClose, onComplete, pilot, allAirport
                 </div>
                 <div>
                   <span className="text-[10px] text-slate-500 block uppercase">Assigned Aircraft</span>
-                  <span className="font-bold text-white truncate block">Cessna 172 Skyhawk</span>
+                  <span className="font-bold text-white truncate block">Cessna 152</span>
                 </div>
                 <div className="col-span-2 sm:col-span-1">
                   <span className="text-[10px] text-slate-500 block uppercase">Database Airfields</span>

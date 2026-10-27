@@ -860,7 +860,7 @@ export function OptionsView({
           </p>
           <ul className="list-disc list-inside space-y-0.5 pl-1 text-slate-400 text-[11px]">
             <li>Resets company balance to standard starting funds ($15,000).</li>
-            <li>Resets active fleet back to starting Cessna 172 Skyhawk.</li>
+            <li>Resets active fleet back to starting Cessna 152.</li>
             <li>Relocates home base and generates fresh contracts for your selected airport.</li>
             <li><strong className="text-emerald-400 font-bold">Your complete flight logbook, recorded flight hours, and career XP progression remain permanently preserved.</strong></li>
           </ul>

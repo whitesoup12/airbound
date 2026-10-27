@@ -409,14 +409,14 @@ export async function selectActiveAircraft(req, res) {
 }
 
 /**
- * Helper to generate a free starter loaner Cessna 172
+ * Helper to generate a free starter loaner Cessna 152
  */
-function createStarterLoanerC172() {
+function createStarterLoanerC152() {
   const loanerSuffix = Math.floor(100 + Math.random() * 899);
   const tailNumber = `N${loanerSuffix}LN`;
   const loanerPlane = {
-    model_id: 'c172',
-    name: 'Cessna 172 Skyhawk (Loaner)',
+    model_id: 'c152',
+    name: 'Cessna 152 (Loaner)',
     tail_number: tailNumber,
     category: 'single_prop',
     is_rental: true,
@@ -427,21 +427,21 @@ function createStarterLoanerC172() {
     flight_hours: 0
   };
   const activeAircraft = {
-    model_id: 'c172',
-    name: 'Cessna 172 Skyhawk (Loaner)',
+    model_id: 'c152',
+    name: 'Cessna 152 (Loaner)',
     tail_number: tailNumber,
     category: 'single_prop',
     is_rental: true,
     rental_price_per_flight: 0,
     rental_flights_paid: 9999,
     is_loaner: true,
-    cruise_speed_kts: 120,
-    max_range_nm: 500,
-    max_cargo_lbs: 500,
-    max_pax: 3,
-    min_runway_ft: 1600,
+    cruise_speed_kts: 105,
+    max_range_nm: 415,
+    max_cargo_lbs: 200,
+    max_pax: 1,
+    min_runway_ft: 1350,
     fuel_type: '100LL',
-    fuel_burn_gph: 9.0
+    fuel_burn_gph: 6.0
   };
   return { loanerPlane, activeAircraft };
 }
@@ -507,9 +507,9 @@ export async function sellAircraft(req, res) {
     let activeSwitched = false;
     let loanerProvided = false;
 
-    // If hangar is now empty, automatically provide a free rented loaner Cessna 172
+    // If hangar is now empty, automatically provide a free rented loaner Cessna 152
     if (pilot.fleet.length === 0) {
-      const { loanerPlane, activeAircraft } = createStarterLoanerC172();
+      const { loanerPlane, activeAircraft } = createStarterLoanerC152();
       pilot.fleet.push(loanerPlane);
       pilot.active_aircraft = activeAircraft;
       activeSwitched = true;
@@ -549,7 +549,7 @@ export async function sellAircraft(req, res) {
     }
 
     const message = loanerProvided
-      ? `Successfully sold ${plane.name} (${cleanTail}) for $${resale.resaleValue.toLocaleString()}! Airbound Operations provided a free rented Cessna 172 Skyhawk loaner (${pilot.active_aircraft.tail_number}) for your hangar.`
+      ? `Successfully sold ${plane.name} (${cleanTail}) for $${resale.resaleValue.toLocaleString()}! Airbound Operations provided a free rented Cessna 152 loaner (${pilot.active_aircraft.tail_number}) for your hangar.`
       : `Successfully sold ${plane.name} (${cleanTail}) for $${resale.resaleValue.toLocaleString()}!`;
 
     res.json({
@@ -629,9 +629,9 @@ export async function returnAircraft(req, res) {
     let activeSwitched = false;
     let loanerProvided = false;
 
-    // If hangar is now empty, automatically provide a free rented loaner Cessna 172
+    // If hangar is now empty, automatically provide a free rented loaner Cessna 152
     if (pilot.fleet.length === 0) {
-      const { loanerPlane, activeAircraft } = createStarterLoanerC172();
+      const { loanerPlane, activeAircraft } = createStarterLoanerC152();
       pilot.fleet.push(loanerPlane);
       pilot.active_aircraft = activeAircraft;
       activeSwitched = true;
@@ -673,11 +673,11 @@ export async function returnAircraft(req, res) {
     let message;
     if (resale) {
       message = loanerProvided
-        ? `Sold ${plane.name} (${cleanTail}) for $${resale.resaleValue.toLocaleString()}! Airbound Operations provided a free rented Cessna 172 Skyhawk loaner (${pilot.active_aircraft.tail_number}) for your hangar.`
+        ? `Sold ${plane.name} (${cleanTail}) for $${resale.resaleValue.toLocaleString()}! Airbound Operations provided a free rented Cessna 152 loaner (${pilot.active_aircraft.tail_number}) for your hangar.`
         : `Sold ${plane.name} (${cleanTail}) for $${resale.resaleValue.toLocaleString()}!`;
     } else {
       message = loanerProvided
-        ? `Returned leased ${plane.name} (${cleanTail}) to lessor. Airbound Operations provided a free rented Cessna 172 Skyhawk loaner (${pilot.active_aircraft.tail_number}) for your hangar.`
+        ? `Returned leased ${plane.name} (${cleanTail}) to lessor. Airbound Operations provided a free rented Cessna 152 loaner (${pilot.active_aircraft.tail_number}) for your hangar.`
         : `Returned leased ${plane.name} (${cleanTail}) to fleet lessor.`;
     }
 

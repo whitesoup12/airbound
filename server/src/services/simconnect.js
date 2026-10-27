@@ -232,8 +232,8 @@ export class SimConnectBridge extends EventEmitter {
     this.isMockMode = true;
     this.isConnected = true;
     this.appName = 'Simulated MSFS Bridge';
-    this.telemetry.simAircraftTitle = this.telemetry.simAircraftTitle || 'Cessna 172 Skyhawk (Mock)';
-    this.telemetry.simAircraftModel = this.telemetry.simAircraftModel || 'C172';
+    this.telemetry.simAircraftTitle = this.telemetry.simAircraftTitle || 'Cessna 152 (Mock)';
+    this.telemetry.simAircraftModel = this.telemetry.simAircraftModel || 'C152';
     this.emit('connectionStatus', { connected: true, isMock: true, app: this.appName });
 
     if (this.pollInterval) clearInterval(this.pollInterval);
