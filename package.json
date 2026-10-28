@@ -1,6 +1,6 @@
 {
   "name": "airbound",
-  "version": "1.0.1",
+  "version": "1.1.1",
   "description": "MSFS 2024 Career & Logbook Tracker",
   "type": "module",
   "workspaces": [
